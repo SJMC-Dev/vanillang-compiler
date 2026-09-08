@@ -1,8 +1,8 @@
 #ifndef VNLC_VARIABLE_DECLARATION_PRIMARY_PARSING_RESULT_HPP
 #define VNLC_VARIABLE_DECLARATION_PRIMARY_PARSING_RESULT_HPP
 
-#include "../../ast/declaration/VnlcValueDeclarationType.hpp"
-#include "../../ast/type/VnlcTypeNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationType.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 #include <optional>
 

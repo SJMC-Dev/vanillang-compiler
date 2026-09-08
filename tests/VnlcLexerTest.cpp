@@ -1,4 +1,4 @@
-#include "../src/lexer/VnlcLexer.hpp"
+#include "lexer/VnlcLexer.hpp"
 #include <gtest/gtest.h>
 #include <sstream>
 

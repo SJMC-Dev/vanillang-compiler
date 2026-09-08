@@ -1,5 +1,5 @@
 #include "VnlcSession.hpp"
-#include "../log/VnlcLogger.hpp"
+#include "log/VnlcLogger.hpp"
 
 VnlcSession::VnlcSession(VnlcConfig&& config) : config(config) {}
 

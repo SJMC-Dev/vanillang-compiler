@@ -1,8 +1,8 @@
 #ifndef VNLC_LOOP_STATEMENT_NODE_HPP
 #define VNLC_LOOP_STATEMENT_NODE_HPP
 
-#include "../identifier/VnlcIdentifierNode.hpp"
-#include "VnlcControlFlowStatementNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
+#include "ast/statement/VnlcControlFlowStatementNode.hpp"
 #include <memory>
 #include <optional>
 

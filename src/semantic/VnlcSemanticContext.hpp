@@ -1,14 +1,14 @@
 #ifndef VNLC_SEMANTIC_CONTEXT_HPP
 #define VNLC_SEMANTIC_CONTEXT_HPP
 
-#include "../ast/declaration/VnlcFunctionDeclarationNode.hpp"
-#include "../ast/declaration/VnlcValueDeclarationNode.hpp"
-#include "../ast/type/VnlcTypeNode.hpp"
-#include "../diagnostic/VnlcDiagnostic.hpp"
-#include "../type/VnlcCustomizedType.hpp"
-#include "../type/VnlcSemanticType.hpp"
-#include "../vni/import/VnlcImportedPackage.hpp"
-#include "scope/VnlcScope.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
+#include "diagnostic/VnlcDiagnostic.hpp"
+#include "semantic/scope/VnlcScope.hpp"
+#include "type/VnlcCustomizedType.hpp"
+#include "type/VnlcSemanticType.hpp"
+#include "vni/import/VnlcImportedPackage.hpp"
 #include <memory>
 #include <string>
 #include <string_view>

@@ -1,7 +1,7 @@
 #ifndef VNLC_EXPORT_DECLARATION_ITEM_HPP
 #define VNLC_EXPORT_DECLARATION_ITEM_HPP
 
-#include "../identifier/VnlcIdentifierNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
 #include <memory>
 #include <optional>
 

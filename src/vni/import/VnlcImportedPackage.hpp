@@ -1,8 +1,8 @@
 #ifndef VNLC_IMPORTED_PACKAGE_HPP
 #define VNLC_IMPORTED_PACKAGE_HPP
 
-#include "VnlcImportedItem.hpp"
-#include "VnlcImportedModule.hpp"
+#include "vni/import/VnlcImportedItem.hpp"
+#include "vni/import/VnlcImportedModule.hpp"
 #include <memory>
 #include <optional>
 #include <string>

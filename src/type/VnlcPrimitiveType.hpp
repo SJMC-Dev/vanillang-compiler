@@ -1,8 +1,8 @@
 #ifndef VNLC_PRIMITIVE_TYPE_HPP
 #define VNLC_PRIMITIVE_TYPE_HPP
 
-#include "VnlcPrimitiveTypeKind.hpp"
-#include "VnlcSemanticType.hpp"
+#include "type/VnlcPrimitiveTypeKind.hpp"
+#include "type/VnlcSemanticType.hpp"
 
 class VnlcPrimitiveType : public VnlcSemanticType {
 private:

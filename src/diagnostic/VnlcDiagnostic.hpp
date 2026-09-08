@@ -1,8 +1,8 @@
 #ifndef VNLC_DIAGNOSTIC_HPP
 #define VNLC_DIAGNOSTIC_HPP
 
-#include "VnlcDiagnosticPhase.hpp"
-#include "VnlcDiagnosticSeverity.hpp"
+#include "diagnostic/VnlcDiagnosticPhase.hpp"
+#include "diagnostic/VnlcDiagnosticSeverity.hpp"
 #include <string>
 #include <string_view>
 

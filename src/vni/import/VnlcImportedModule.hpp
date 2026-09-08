@@ -1,10 +1,10 @@
 #ifndef VNLC_IMPORTED_MODULE_HPP
 #define VNLC_IMPORTED_MODULE_HPP
 
-#include "VnlcImportedIdentifier.hpp"
-#include "VnlcImportedItem.hpp"
-#include <unordered_map>
+#include "vni/import/VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedItem.hpp"
 #include <memory>
+#include <unordered_map>
 
 class VnlcImportedModule : public VnlcImportedItem {
 private:

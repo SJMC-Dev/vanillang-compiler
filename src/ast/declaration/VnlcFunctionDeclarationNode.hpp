@@ -1,11 +1,11 @@
 #ifndef VNLC_FUNCTION_DECLARATION_NODE_HPP
 #define VNLC_FUNCTION_DECLARATION_NODE_HPP
 
-#include "../statement/VnlcBlockStatementNode.hpp"
-#include "../type/VnlcTypeNode.hpp"
-#include "VnlcDeclarationNode.hpp"
-#include "VnlcFunctionDeclarationType.hpp"
-#include "VnlcValueDeclarationNode.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationType.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/statement/VnlcBlockStatementNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 #include <optional>
 

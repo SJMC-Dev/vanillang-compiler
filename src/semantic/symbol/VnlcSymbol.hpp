@@ -1,9 +1,9 @@
 #ifndef VNLC_SYMBOL_HPP
 #define VNLC_SYMBOL_HPP
 
-#include "../../ast/VnlcAstNode.hpp"
-#include "VnlcSymbolKind.hpp"
-#include "VnlcSymbolOrigin.hpp"
+#include "ast/VnlcAstNode.hpp"
+#include "semantic/symbol/VnlcSymbolKind.hpp"
+#include "semantic/symbol/VnlcSymbolOrigin.hpp"
 #include <string>
 #include <string_view>
 

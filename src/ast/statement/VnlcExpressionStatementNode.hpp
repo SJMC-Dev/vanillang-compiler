@@ -1,8 +1,8 @@
 #ifndef VNLC_EXPRESSION_STATEMENT_NODE_HPP
 #define VNLC_EXPRESSION_STATEMENT_NODE_HPP
 
-#include "../expression/VnlcExpressionNode.hpp"
-#include "VnlcStatementNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/statement/VnlcStatementNode.hpp"
 #include <memory>
 
 class VnlcExpressionStatementNode : public VnlcStatementNode {

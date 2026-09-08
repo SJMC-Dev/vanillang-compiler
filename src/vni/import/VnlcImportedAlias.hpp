@@ -1,7 +1,7 @@
 #ifndef VNLC_IMPORTED_ALIAS_HPP
 #define VNLC_IMPORTED_ALIAS_HPP
 
-#include "VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 
 class VnlcImportedAlias : public VnlcImportedIdentifier {
 private:

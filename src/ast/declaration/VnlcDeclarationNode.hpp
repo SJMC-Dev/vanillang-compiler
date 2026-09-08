@@ -1,8 +1,8 @@
 #ifndef VNLC_DECLARATION_NODE_HPP
 #define VNLC_DECLARATION_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
-#include "VnlcDeclarationItem.hpp"
+#include "ast/VnlcAstNode.hpp"
+#include "ast/declaration/VnlcDeclarationItem.hpp"
 #include <vector>
 
 class VnlcDeclarationNode : public VnlcAstNode {

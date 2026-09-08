@@ -1,8 +1,8 @@
 #ifndef VNLC_SIMPLE_LITERAL_EXPRESSION_NODE_HPP
 #define VNLC_SIMPLE_LITERAL_EXPRESSION_NODE_HPP
 
-#include "VnlcLiteralExpressionNode.hpp"
-#include "VnlcSimpleLiteralExpressionType.hpp"
+#include "ast/expression/VnlcLiteralExpressionNode.hpp"
+#include "ast/expression/VnlcSimpleLiteralExpressionType.hpp"
 
 class VnlcSimpleLiteralExpressionNode : public VnlcLiteralExpressionNode {
 private:

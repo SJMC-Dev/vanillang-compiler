@@ -1,7 +1,7 @@
 #include "VnlcModuleInterfaceFileGenerator.hpp"
-#include "../../ast/declaration/VnlcClassDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcFunctionDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/declaration/VnlcClassDeclarationNode.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include <cassert>
 #include <filesystem>

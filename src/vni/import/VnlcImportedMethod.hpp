@@ -1,8 +1,8 @@
 #ifndef VNLC_IMPORTED_METHOD_HPP
 #define VNLC_IMPORTED_METHOD_HPP
 
-#include "VnlcImportedIdentifier.hpp"
-#include "VnlcImportedParameter.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedParameter.hpp"
 #include <memory>
 #include <unordered_map>
 

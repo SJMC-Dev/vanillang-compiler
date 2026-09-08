@@ -1,7 +1,7 @@
 #ifndef VNLC_LITERAL_EXPRESSION_NODE_HPP
 #define VNLC_LITERAL_EXPRESSION_NODE_HPP
 
-#include "VnlcPrimaryExpressionNode.hpp"
+#include "ast/expression/VnlcPrimaryExpressionNode.hpp"
 
 class VnlcLiteralExpressionNode : public VnlcPrimaryExpressionNode {
 private:

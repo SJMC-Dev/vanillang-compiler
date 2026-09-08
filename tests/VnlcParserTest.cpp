@@ -1,8 +1,8 @@
-#include "../src/parser/VnlcParser.hpp"
-#include "../src/ast/declaration/VnlcFunctionDeclarationNode.hpp"
-#include "../src/ast/statement/VnlcForStatementNode.hpp"
-#include "../src/ast/statement/VnlcVariableDeclarationStatementNode.hpp"
-#include "../src/config/VnlcConfig.hpp"
+#include "parser/VnlcParser.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/statement/VnlcForStatementNode.hpp"
+#include "ast/statement/VnlcVariableDeclarationStatementNode.hpp"
+#include "config/VnlcConfig.hpp"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>

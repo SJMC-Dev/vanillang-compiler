@@ -1,9 +1,9 @@
 #ifndef VNLC_SWITCH_STATEMENT_ITEM_HPP
 #define VNLC_SWITCH_STATEMENT_ITEM_HPP
 
-#include "../expression/VnlcExpressionNode.hpp"
-#include "../type/VnlcTypeNode.hpp"
-#include "VnlcStatementNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/statement/VnlcStatementNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 #include <optional>
 

@@ -1,7 +1,7 @@
 #ifndef VNLC_RELOAD_STATEMENT_NODE_HPP
 #define VNLC_RELOAD_STATEMENT_NODE_HPP
 
-#include "VnlcControlFlowStatementNode.hpp"
+#include "ast/statement/VnlcControlFlowStatementNode.hpp"
 
 class VnlcReloadStatementNode : public VnlcControlFlowStatementNode {
 private:

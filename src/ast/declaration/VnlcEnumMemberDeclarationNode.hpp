@@ -1,8 +1,8 @@
 #ifndef VNLC_ENUM_MEMBER_DECLARATION_NODE_HPP
 #define VNLC_ENUM_MEMBER_DECLARATION_NODE_HPP
 
-#include "VnlcDeclarationNode.hpp"
-#include "VnlcValueDeclarationNode.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
 #include <vector>
 
 class VnlcEnumMemberDeclarationNode : public VnlcDeclarationNode {

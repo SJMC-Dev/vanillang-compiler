@@ -1,7 +1,7 @@
 #ifndef VNLC_IMPORTED_ENUM_VALUE_HPP
 #define VNLC_IMPORTED_ENUM_VALUE_HPP
 
-#include "VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 #include <string>
 
 class VnlcImportedEnumValue : public VnlcImportedIdentifier {

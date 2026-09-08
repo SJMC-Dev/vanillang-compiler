@@ -1,8 +1,8 @@
 #ifndef VNLC_PROPERTY_DECLARATION_PARSING_CONTEXT_HPP
 #define VNLC_PROPERTY_DECLARATION_PARSING_CONTEXT_HPP
 
-#include "../../ast/declaration/VnlcDeclarationItem.hpp"
-#include "../../ast/declaration/VnlcPropertyDeclarationType.hpp"
+#include "ast/declaration/VnlcDeclarationItem.hpp"
+#include "ast/declaration/VnlcPropertyDeclarationType.hpp"
 #include <vector>
 
 struct VnlcPropertyDeclarationParsingContext {

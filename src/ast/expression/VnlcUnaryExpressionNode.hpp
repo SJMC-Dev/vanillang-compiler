@@ -1,8 +1,8 @@
 #ifndef VNLC_UNARY_EXPRESSION_NODE_HPP
 #define VNLC_UNARY_EXPRESSION_NODE_HPP
 
-#include "VnlcExpressionNode.hpp"
-#include "VnlcUnaryExpressionType.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcUnaryExpressionType.hpp"
 #include <memory>
 
 class VnlcUnaryExpressionNode : public VnlcExpressionNode {

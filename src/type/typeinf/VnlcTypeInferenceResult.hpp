@@ -1,7 +1,7 @@
 #ifndef VNLC_TYPE_INFERENCE_RESULT_HPP
 #define VNLC_TYPE_INFERENCE_RESULT_HPP
 
-#include "../VnlcSemanticType.hpp"
+#include "type/VnlcSemanticType.hpp"
 #include <memory>
 #include <optional>
 

@@ -1,7 +1,7 @@
 #ifndef VNLC_VOID_TYPE_HPP
 #define VNLC_VOID_TYPE_HPP
 
-#include "VnlcSemanticType.hpp"
+#include "type/VnlcSemanticType.hpp"
 
 class VnlcVoidType : public VnlcSemanticType {
 public:

@@ -1,7 +1,7 @@
 #ifndef VNLC_TOKEN_HPP
 #define VNLC_TOKEN_HPP
 
-#include "VnlcTokenType.hpp"
+#include "token/VnlcTokenType.hpp"
 
 #include <string>
 #include <string_view>

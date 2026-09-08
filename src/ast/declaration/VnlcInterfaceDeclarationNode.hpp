@@ -1,8 +1,8 @@
 #ifndef VNLC_INTERFACE_DECLARATION_NODE_HPP
 #define VNLC_INTERFACE_DECLARATION_NODE_HPP
 
-#include "VnlcFunctionDeclarationNode.hpp"
-#include "VnlcTypeDeclarationNode.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/declaration/VnlcTypeDeclarationNode.hpp"
 #include <memory>
 #include <vector>
 

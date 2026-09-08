@@ -1,8 +1,8 @@
 #ifndef VNLC_VARIABLE_DECLARATION_STATEMENT_NODE_HPP
 #define VNLC_VARIABLE_DECLARATION_STATEMENT_NODE_HPP
 
-#include "../declaration/VnlcValueDeclarationNode.hpp"
-#include "VnlcStatementNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/statement/VnlcStatementNode.hpp"
 #include <memory>
 
 class VnlcVariableDeclarationStatementNode : public VnlcStatementNode {

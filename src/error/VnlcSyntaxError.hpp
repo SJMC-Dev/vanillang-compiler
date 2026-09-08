@@ -1,7 +1,7 @@
 #ifndef VNLC_SYNTAX_ERROR_HPP
 #define VNLC_SYNTAX_ERROR_HPP
 
-#include "VnlcError.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcSyntaxError : public VnlcError {

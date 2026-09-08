@@ -1,8 +1,8 @@
 #ifndef VNLC_IMPORT_DECLARATION_NODE_HPP
 #define VNLC_IMPORT_DECLARATION_NODE_HPP
 
-#include "VnlcDeclarationNode.hpp"
-#include "VnlcImportDeclarationItem.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcImportDeclarationItem.hpp"
 
 class VnlcImportDeclarationNode : public VnlcDeclarationNode {
 private:

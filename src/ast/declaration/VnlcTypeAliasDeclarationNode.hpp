@@ -1,8 +1,8 @@
 #ifndef VNLC_TYPE_ALIAS_DECLARATION_NODE_HPP
 #define VNLC_TYPE_ALIAS_DECLARATION_NODE_HPP
 
-#include "../type/VnlcTypeNode.hpp"
-#include "VnlcTypeDeclarationNode.hpp"
+#include "ast/declaration/VnlcTypeDeclarationNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 #include <vector>
 

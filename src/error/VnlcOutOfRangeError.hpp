@@ -1,7 +1,7 @@
 #ifndef VNLC_OUT_OF_RANGE_ERROR_HPP
 #define VNLC_OUT_OF_RANGE_ERROR_HPP
 
-#include "VnlcError.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcOutOfRangeError : public VnlcError {

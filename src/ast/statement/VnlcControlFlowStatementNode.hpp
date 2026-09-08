@@ -1,7 +1,7 @@
 #ifndef VNLC_CONTROL_FLOW_STATEMENT_NODE_HPP
 #define VNLC_CONTROL_FLOW_STATEMENT_NODE_HPP
 
-#include "VnlcStatementNode.hpp"
+#include "ast/statement/VnlcStatementNode.hpp"
 
 class VnlcControlFlowStatementNode : public VnlcStatementNode {
 private:

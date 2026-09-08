@@ -1,7 +1,7 @@
 #ifndef VNLC_RUNNING_MODE_UTIL_HPP
 #define VNLC_RUNNING_MODE_UTIL_HPP
 
-#include "../config/VnlcRunningMode.hpp"
+#include "config/VnlcRunningMode.hpp"
 #include <string_view>
 
 namespace VnlcRunningModeUtil {

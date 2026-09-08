@@ -1,5 +1,5 @@
 #include "VnlcSemanticAnalysisResult.hpp"
-#include "../type/VnlcSemanticType.hpp"
+#include "type/VnlcSemanticType.hpp"
 #include <optional>
 
 VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(

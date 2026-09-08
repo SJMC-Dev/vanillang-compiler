@@ -1,7 +1,7 @@
 #ifndef VNLC_IMPORTED_PARAMETER_HPP
 #define VNLC_IMPORTED_PARAMETER_HPP
 
-#include "VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 
 class VnlcImportedParameter : public VnlcImportedIdentifier {
 private:

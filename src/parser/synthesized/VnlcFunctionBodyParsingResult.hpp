@@ -1,7 +1,7 @@
 #ifndef VNLC_FUNCTION_BODY_PARSING_RESULT_HPP
 #define VNLC_FUNCTION_BODY_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcBlockStatementNode.hpp"
+#include "ast/statement/VnlcBlockStatementNode.hpp"
 #include <memory>
 
 struct VnlcFunctionBodyParsingResult {

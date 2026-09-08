@@ -1,7 +1,7 @@
 #ifndef VNLC_BLOCK_STATEMENT_PARSING_RESULT_HPP
 #define VNLC_BLOCK_STATEMENT_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcBlockStatementNode.hpp"
+#include "ast/statement/VnlcBlockStatementNode.hpp"
 #include <memory>
 
 struct VnlcBlockStatementParsingResult {

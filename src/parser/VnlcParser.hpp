@@ -1,12 +1,12 @@
 #ifndef VNLC_PARSER_HPP
 #define VNLC_PARSER_HPP
 
-#include "../ast/module/VnlcModuleNode.hpp"
-#include "../config/VnlcConfig.hpp"
-#include "../lexer/VnlcLexer.hpp"
-#include "../token/VnlcToken.hpp"
-#include "inherited/VnlcParsingContexts.hpp"
-#include "synthesized/VnlcParsingResults.hpp"
+#include "ast/module/VnlcModuleNode.hpp"
+#include "config/VnlcConfig.hpp"
+#include "lexer/VnlcLexer.hpp"
+#include "parser/inherited/VnlcParsingContexts.hpp"
+#include "parser/synthesized/VnlcParsingResults.hpp"
+#include "token/VnlcToken.hpp"
 #include <memory>
 #include <unordered_set>
 #include <vector>

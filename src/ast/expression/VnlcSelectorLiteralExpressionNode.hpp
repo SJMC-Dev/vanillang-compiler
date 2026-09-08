@@ -1,8 +1,8 @@
 #ifndef VNLC_SELECTOR_LITERAL_EXPRESSION_NODE_HPP
 #define VNLC_SELECTOR_LITERAL_EXPRESSION_NODE_HPP
 
-#include "VnlcLiteralExpressionNode.hpp"
-#include "VnlcSelectorLiteralExpressionType.hpp"
+#include "ast/expression/VnlcLiteralExpressionNode.hpp"
+#include "ast/expression/VnlcSelectorLiteralExpressionType.hpp"
 #include <memory>
 #include <unordered_map>
 

@@ -1,7 +1,7 @@
 #ifndef VNLC_IF_STATEMENT_PARSING_RESULT_HPP
 #define VNLC_IF_STATEMENT_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcIfStatementNode.hpp"
+#include "ast/statement/VnlcIfStatementNode.hpp"
 #include <memory>
 
 struct VnlcIfStatementParsingResult {

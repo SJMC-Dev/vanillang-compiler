@@ -1,7 +1,7 @@
 #ifndef VNLC_RANGE_EXPRESSION_NODE_HPP
 #define VNLC_RANGE_EXPRESSION_NODE_HPP
 
-#include "VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 #include <optional>
 

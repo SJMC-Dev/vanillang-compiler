@@ -1,7 +1,7 @@
 #ifndef VNLC_INTERFACE_DECLARATION_PARSING_CONTEXT_HPP
 #define VNLC_INTERFACE_DECLARATION_PARSING_CONTEXT_HPP
 
-#include "../../ast/declaration/VnlcDeclarationItem.hpp"
+#include "ast/declaration/VnlcDeclarationItem.hpp"
 #include <vector>
 
 struct VnlcInterfaceDeclarationParsingContext {

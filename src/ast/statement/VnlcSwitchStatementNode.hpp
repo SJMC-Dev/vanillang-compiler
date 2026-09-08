@@ -1,9 +1,9 @@
 #ifndef VNLC_SWITCH_STATEMENT_NODE_HPP
 #define VNLC_SWITCH_STATEMENT_NODE_HPP
 
-#include "VnlcControlFlowStatementNode.hpp"
-#include "VnlcSwitchStatementItem.hpp"
-#include "VnlcSwitchStatementType.hpp"
+#include "ast/statement/VnlcControlFlowStatementNode.hpp"
+#include "ast/statement/VnlcSwitchStatementItem.hpp"
+#include "ast/statement/VnlcSwitchStatementType.hpp"
 #include <memory>
 #include <vector>
 

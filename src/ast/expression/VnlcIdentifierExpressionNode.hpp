@@ -1,8 +1,8 @@
 #ifndef VNLC_IDENTIFIER_EXPRESSION_NODE_HPP
 #define VNLC_IDENTIFIER_EXPRESSION_NODE_HPP
 
-#include "../identifier/VnlcIdentifierNode.hpp"
-#include "VnlcPrimaryExpressionNode.hpp"
+#include "ast/expression/VnlcPrimaryExpressionNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
 #include <memory>
 
 class VnlcIdentifierExpressionNode : public VnlcPrimaryExpressionNode {

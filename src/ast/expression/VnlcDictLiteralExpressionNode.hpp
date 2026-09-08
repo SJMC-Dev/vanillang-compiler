@@ -1,7 +1,7 @@
 #ifndef VNLC_DICT_LITERAL_EXPRESSION_NODE_HPP
 #define VNLC_DICT_LITERAL_EXPRESSION_NODE_HPP
 
-#include "VnlcLiteralExpressionNode.hpp"
+#include "ast/expression/VnlcLiteralExpressionNode.hpp"
 #include <memory>
 #include <unordered_map>
 

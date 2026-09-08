@@ -1,8 +1,8 @@
 #ifndef VNLC_SCOPE_HPP
 #define VNLC_SCOPE_HPP
 
-#include "../symbol/VnlcSymbol.hpp"
-#include "VnlcScopeKind.hpp"
+#include "semantic/scope/VnlcScopeKind.hpp"
+#include "semantic/symbol/VnlcSymbol.hpp"
 #include <optional>
 #include <string>
 #include <unordered_map>

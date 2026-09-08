@@ -1,10 +1,10 @@
 #ifndef VNLC_MODULE_NODE_HPP
 #define VNLC_MODULE_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
-#include "../declaration/VnlcDeclarationNode.hpp"
-#include "../declaration/VnlcExportDeclarationNode.hpp"
-#include "../declaration/VnlcImportDeclarationNode.hpp"
+#include "ast/VnlcAstNode.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcExportDeclarationNode.hpp"
+#include "ast/declaration/VnlcImportDeclarationNode.hpp"
 #include <memory>
 #include <vector>
 

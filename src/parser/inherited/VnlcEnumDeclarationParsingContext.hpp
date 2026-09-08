@@ -1,7 +1,7 @@
 #ifndef VNLC_ENUM_DECLARATION_PARSING_CONTEXT_HPP
 #define VNLC_ENUM_DECLARATION_PARSING_CONTEXT_HPP
 
-#include "../../ast/declaration/VnlcDeclarationItem.hpp"
+#include "ast/declaration/VnlcDeclarationItem.hpp"
 #include <vector>
 
 struct VnlcEnumDeclarationParsingContext {

@@ -1,7 +1,7 @@
 #ifndef VNLC_SELECTOR_ARGUMENT_LIST_PARSING_RESULT_HPP
 #define VNLC_SELECTOR_ARGUMENT_LIST_PARSING_RESULT_HPP
 
-#include "../../ast/expression/VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>

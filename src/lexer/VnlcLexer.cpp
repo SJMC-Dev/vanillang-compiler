@@ -1,5 +1,5 @@
 #include "VnlcLexer.hpp"
-#include "../error/VnlcOutOfRangeError.hpp"
+#include "error/VnlcOutOfRangeError.hpp"
 #include <string>
 #include <string_view>
 

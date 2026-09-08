@@ -1,8 +1,8 @@
 #ifndef VNLC_WHILE_STATEMENT_NODE_HPP
 #define VNLC_WHILE_STATEMENT_NODE_HPP
 
-#include "../expression/VnlcExpressionNode.hpp"
-#include "VnlcLoopStatementNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/statement/VnlcLoopStatementNode.hpp"
 #include <memory>
 
 class VnlcWhileStatementNode : public VnlcLoopStatementNode {

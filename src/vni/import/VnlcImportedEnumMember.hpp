@@ -1,8 +1,8 @@
 #ifndef VNLC_IMPORTED_ENUM_MEMBER_HPP
 #define VNLC_IMPORTED_ENUM_MEMBER_HPP
 
-#include "VnlcImportedEnumValue.hpp"
-#include "VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedEnumValue.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>

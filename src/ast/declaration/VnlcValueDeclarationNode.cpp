@@ -1,5 +1,5 @@
 #include "VnlcValueDeclarationNode.hpp"
-#include "VnlcValueDeclarationType.hpp"
+#include "ast/declaration/VnlcValueDeclarationType.hpp"
 
 VnlcValueDeclarationNode::VnlcValueDeclarationNode(
     VnlcValueDeclarationType::Kind kind,

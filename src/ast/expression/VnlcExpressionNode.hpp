@@ -1,7 +1,7 @@
 #ifndef VNLC_EXPRESSION_NODE_HPP
 #define VNLC_EXPRESSION_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
+#include "ast/VnlcAstNode.hpp"
 
 class VnlcExpressionNode : public VnlcAstNode {
 private:

@@ -1,9 +1,9 @@
 #ifndef VNLC_IMPORTED_CLASS_HPP
 #define VNLC_IMPORTED_CLASS_HPP
 
-#include "VnlcImportedIdentifier.hpp"
-#include "VnlcImportedMethod.hpp"
-#include "VnlcImportedProperty.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedMethod.hpp"
+#include "vni/import/VnlcImportedProperty.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>

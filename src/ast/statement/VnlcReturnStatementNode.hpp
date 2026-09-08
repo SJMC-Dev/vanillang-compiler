@@ -1,8 +1,8 @@
 #ifndef VNLC_RETURN_STATEMENT_NODE_HPP
 #define VNLC_RETURN_STATEMENT_NODE_HPP
 
-#include "../expression/VnlcExpressionNode.hpp"
-#include "VnlcControlFlowStatementNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/statement/VnlcControlFlowStatementNode.hpp"
 #include <memory>
 #include <optional>
 

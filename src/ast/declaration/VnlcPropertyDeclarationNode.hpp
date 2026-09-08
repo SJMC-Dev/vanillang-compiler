@@ -1,10 +1,10 @@
 #ifndef VNLC_PROPERTY_DECLARATION_NODE_HPP
 #define VNLC_PROPERTY_DECLARATION_NODE_HPP
 
-#include "../expression/VnlcExpressionNode.hpp"
-#include "../type/VnlcTypeNode.hpp"
-#include "VnlcDeclarationNode.hpp"
-#include "VnlcPropertyDeclarationType.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcPropertyDeclarationType.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 
 class VnlcPropertyDeclarationNode : public VnlcDeclarationNode {
 private:

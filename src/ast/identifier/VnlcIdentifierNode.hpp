@@ -1,7 +1,7 @@
 #ifndef VNLC_IDENTIFIER_NODE_HPP
 #define VNLC_IDENTIFIER_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
+#include "ast/VnlcAstNode.hpp"
 #include <string>
 #include <string_view>
 

@@ -1,11 +1,11 @@
 #ifndef VNLC_CUSTOMIZED_TYPE_HPP
 #define VNLC_CUSTOMIZED_TYPE_HPP
 
-#include "../ast/declaration/VnlcTypeDeclarationNode.hpp"
-#include "../vni/import/VnlcImportedIdentifier.hpp"
-#include "VnlcCustomizedTypeKind.hpp"
-#include "VnlcCustomizedTypeOrigin.hpp"
-#include "VnlcSemanticType.hpp"
+#include "ast/declaration/VnlcTypeDeclarationNode.hpp"
+#include "type/VnlcCustomizedTypeKind.hpp"
+#include "type/VnlcCustomizedTypeOrigin.hpp"
+#include "type/VnlcSemanticType.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 #include <string>
 #include <string_view>
 

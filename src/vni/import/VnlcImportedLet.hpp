@@ -1,7 +1,7 @@
 #ifndef VNLC_IMPORTED_LET_HPP
 #define VNLC_IMPORTED_LET_HPP
 
-#include "VnlcImportedIdentifier.hpp"
+#include "vni/import/VnlcImportedIdentifier.hpp"
 
 class VnlcImportedLet : public VnlcImportedIdentifier {
 private:

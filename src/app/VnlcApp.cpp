@@ -1,10 +1,10 @@
 #include "VnlcApp.hpp"
-#include "../config/VnlcConfig.hpp"
-#include "../error/VnlcIllegalInputError.hpp"
-#include "../error/VnlcPackageNameConflictError.hpp"
-#include "../log/VnlcLogger.hpp"
-#include "../session/VnlcSession.hpp"
-#include "../util/VnlcRunningModeUtil.hpp"
+#include "config/VnlcConfig.hpp"
+#include "error/VnlcIllegalInputError.hpp"
+#include "error/VnlcPackageNameConflictError.hpp"
+#include "log/VnlcLogger.hpp"
+#include "session/VnlcSession.hpp"
+#include "util/VnlcRunningModeUtil.hpp"
 #include <CLI/CLI.hpp>
 #include <cctype>
 #include <filesystem>

@@ -1,7 +1,7 @@
 #ifndef VNLC_ILLEGAL_MODULE_OR_PACKAGE_NAME_ERROR_HPP
 #define VNLC_ILLEGAL_MODULE_OR_PACKAGE_NAME_ERROR_HPP
 
-#include "VnlcError.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcIllegalModuleOrPackageNameError : public VnlcError {

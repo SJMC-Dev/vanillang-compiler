@@ -1,7 +1,7 @@
 #ifndef VNLC_TYPE_PARSING_RESULT_HPP
 #define VNLC_TYPE_PARSING_RESULT_HPP
 
-#include "../../ast/type/VnlcTypeNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 
 struct VnlcTypeParsingResult {

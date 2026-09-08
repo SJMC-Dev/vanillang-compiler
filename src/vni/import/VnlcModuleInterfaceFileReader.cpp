@@ -1,5 +1,5 @@
 #include "VnlcModuleInterfaceFileReader.hpp"
-#include "../../error/VnlcModuleInterfaceReaderError.hpp"
+#include "error/VnlcModuleInterfaceReaderError.hpp"
 #include <filesystem>
 #include <fmt/core.h>
 #include <fstream>

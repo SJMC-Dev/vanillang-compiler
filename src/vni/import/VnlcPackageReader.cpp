@@ -1,6 +1,6 @@
 #include "VnlcPackageReader.hpp"
-#include "../../error/VnlcPackageReaderError.hpp"
-#include "VnlcModuleInterfaceFileReader.hpp"
+#include "error/VnlcPackageReaderError.hpp"
+#include "vni/import/VnlcModuleInterfaceFileReader.hpp"
 #include <algorithm>
 
 VnlcPackageReader::VnlcPackageReader(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>& packages) : packages(packages) {}

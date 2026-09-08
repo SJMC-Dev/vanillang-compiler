@@ -1,9 +1,9 @@
 #ifndef VNLC_PACKAGE_READER_HPP
 #define VNLC_PACKAGE_READER_HPP
 
-#include "../../ast/declaration/VnlcImportDeclarationItem.hpp"
-#include "../../config/VnlcConfig.hpp"
-#include "VnlcImportedPackage.hpp"
+#include "ast/declaration/VnlcImportDeclarationItem.hpp"
+#include "config/VnlcConfig.hpp"
+#include "vni/import/VnlcImportedPackage.hpp"
 #include <filesystem>
 #include <memory>
 #include <unordered_map>

@@ -1,8 +1,8 @@
 #ifndef VNLC_BINARY_EXPRESSION_NODE_HPP
 #define VNLC_BINARY_EXPRESSION_NODE_HPP
 
-#include "VnlcBinaryExpressionType.hpp"
-#include "VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcBinaryExpressionType.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 
 class VnlcBinaryExpressionNode : public VnlcExpressionNode {

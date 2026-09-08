@@ -1,7 +1,7 @@
 #ifndef VNLC_CONFIG_HPP
 #define VNLC_CONFIG_HPP
 
-#include "VnlcRunningMode.hpp"
+#include "config/VnlcRunningMode.hpp"
 
 #include <filesystem>
 #include <optional>

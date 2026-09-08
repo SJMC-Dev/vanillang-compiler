@@ -1,5 +1,5 @@
 #include "VnlcTokenTypeUtil.hpp"
-#include "../lexer/VnlcLexer.hpp"
+#include "lexer/VnlcLexer.hpp"
 #include <string_view>
 
 std::string_view VnlcTokenTypeUtil::toString(VnlcTokenType type) {

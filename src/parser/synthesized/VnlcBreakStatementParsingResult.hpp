@@ -1,7 +1,7 @@
 #ifndef VNLC_BREAK_STATEMENT_PARSING_RESULT_HPP
 #define VNLC_BREAK_STATEMENT_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcBreakStatementNode.hpp"
+#include "ast/statement/VnlcBreakStatementNode.hpp"
 #include <memory>
 
 struct VnlcBreakStatementParsingResult {

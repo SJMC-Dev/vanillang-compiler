@@ -1,7 +1,7 @@
 #ifndef VNLC_SESSION_HPP
 #define VNLC_SESSION_HPP
 
-#include "../config/VnlcConfig.hpp"
+#include "config/VnlcConfig.hpp"
 
 class VnlcSession {
 private:

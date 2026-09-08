@@ -1,10 +1,10 @@
 #ifndef VNLC_LEXER_HPP
 #define VNLC_LEXER_HPP
 
-#include "../token/VnlcToken.hpp"
-#include "VnlcLexerMode.hpp"
+#include "lexer/VnlcLexerMode.hpp"
+#include "token/VnlcToken.hpp"
 
-#include "../util/VnlcTokenTypeUtil.hpp"
+#include "util/VnlcTokenTypeUtil.hpp"
 #include <istream>
 #include <stack>
 #include <string>

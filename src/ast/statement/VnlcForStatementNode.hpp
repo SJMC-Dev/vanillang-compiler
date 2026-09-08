@@ -1,9 +1,9 @@
 #ifndef VNLC_FOR_STATEMENT_NODE_HPP
 #define VNLC_FOR_STATEMENT_NODE_HPP
 
-#include "../declaration/VnlcValueDeclarationNode.hpp"
-#include "../expression/VnlcExpressionNode.hpp"
-#include "VnlcLoopStatementNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/statement/VnlcLoopStatementNode.hpp"
 #include <memory>
 
 class VnlcForStatementNode : public VnlcLoopStatementNode {

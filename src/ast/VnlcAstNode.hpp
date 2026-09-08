@@ -1,7 +1,7 @@
 #ifndef VNLC_AST_NODE_HPP
 #define VNLC_AST_NODE_HPP
 
-#include "../token/VnlcToken.hpp"
+#include "token/VnlcToken.hpp"
 #include <utility>
 
 class VnlcAstNode {

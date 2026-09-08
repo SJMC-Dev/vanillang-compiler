@@ -1,5 +1,5 @@
 #include "VnlcEnumDeclarationNode.hpp"
-#include "../identifier/VnlcIdentifierNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
 
 VnlcEnumDeclarationNode::VnlcEnumDeclarationNode(
     std::unique_ptr<VnlcIdentifierNode>&& name,

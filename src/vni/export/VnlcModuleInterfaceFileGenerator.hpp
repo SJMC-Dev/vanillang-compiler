@@ -1,15 +1,15 @@
 #ifndef VNLC_MODULE_INTERFACE_FILE_GENERATOR_HPP
 #define VNLC_MODULE_INTERFACE_FILE_GENERATOR_HPP
 
-#include "../../ast/declaration/VnlcClassDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcEnumDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcFunctionDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcInterfaceDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcTypeAliasDeclarationNode.hpp"
-#include "../../ast/declaration/VnlcValueDeclarationNode.hpp"
-#include "../../config/VnlcConfig.hpp"
-#include "../../semantic/VnlcSemanticAnalysisResult.hpp"
+#include "ast/declaration/VnlcClassDeclarationNode.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcEnumDeclarationNode.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/declaration/VnlcInterfaceDeclarationNode.hpp"
+#include "ast/declaration/VnlcTypeAliasDeclarationNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "config/VnlcConfig.hpp"
+#include "semantic/VnlcSemanticAnalysisResult.hpp"
 #include <nlohmann/json.hpp>
 #include <vector>
 

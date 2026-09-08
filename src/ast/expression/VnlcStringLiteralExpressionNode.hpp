@@ -1,8 +1,8 @@
 #ifndef VNLC_STRING_LITERAL_EXPRESSION_NODE_HPP
 #define VNLC_STRING_LITERAL_EXPRESSION_NODE_HPP
 
-#include "VnlcLiteralExpressionNode.hpp"
-#include "VnlcStringLiteralExpressionType.hpp"
+#include "ast/expression/VnlcLiteralExpressionNode.hpp"
+#include "ast/expression/VnlcStringLiteralExpressionType.hpp"
 #include <memory>
 #include <variant>
 #include <vector>

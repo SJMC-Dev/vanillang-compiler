@@ -1,7 +1,7 @@
 #ifndef VNLC_CLASS_BODY_PARSING_RESULT_HPP
 #define VNLC_CLASS_BODY_PARSING_RESULT_HPP
 
-#include "../../ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
 #include <memory>
 #include <vector>
 

@@ -1,7 +1,7 @@
 #ifndef VNLC_FOR_STATEMENT_PARSING_CONTEXT_HPP
 #define VNLC_FOR_STATEMENT_PARSING_CONTEXT_HPP
 
-#include "../../ast/identifier/VnlcIdentifierNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
 #include <memory>
 #include <optional>
 

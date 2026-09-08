@@ -1,7 +1,7 @@
 #ifndef VNLC_CONDITIONAL_EXPRESSION_NODE_HPP
 #define VNLC_CONDITIONAL_EXPRESSION_NODE_HPP
 
-#include "VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 
 class VnlcConditionalExpressionNode : public VnlcExpressionNode {

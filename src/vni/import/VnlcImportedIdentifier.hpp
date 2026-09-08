@@ -1,7 +1,7 @@
 #ifndef VNLC_IMPORTED_IDENTIFIER_HPP
 #define VNLC_IMPORTED_IDENTIFIER_HPP
 
-#include "VnlcImportedItem.hpp"
+#include "vni/import/VnlcImportedItem.hpp"
 #include <optional>
 #include <unordered_map>
 

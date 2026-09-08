@@ -1,7 +1,7 @@
 #ifndef VNLC_RETURN_STATEMENT_PARSING_RESULT_HPP
 #define VNLC_RETURN_STATEMENT_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcReturnStatementNode.hpp"
+#include "ast/statement/VnlcReturnStatementNode.hpp"
 #include <memory>
 
 struct VnlcReturnStatementParsingResult {

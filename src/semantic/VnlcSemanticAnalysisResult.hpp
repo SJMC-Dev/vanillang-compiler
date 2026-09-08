@@ -1,13 +1,13 @@
 #ifndef VNLC_SEMANTIC_ANALYSIS_RESULT_HPP
 #define VNLC_SEMANTIC_ANALYSIS_RESULT_HPP
 
-#include "../ast/declaration/VnlcFunctionDeclarationNode.hpp"
-#include "../ast/declaration/VnlcValueDeclarationNode.hpp"
-#include "../ast/type/VnlcTypeNode.hpp"
-#include "../diagnostic/VnlcDiagnostic.hpp"
-#include "../type/VnlcCustomizedType.hpp"
-#include "../type/VnlcSemanticType.hpp"
-#include "../vni/import/VnlcImportedPackage.hpp"
+#include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
+#include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
+#include "diagnostic/VnlcDiagnostic.hpp"
+#include "type/VnlcCustomizedType.hpp"
+#include "type/VnlcSemanticType.hpp"
+#include "vni/import/VnlcImportedPackage.hpp"
 #include <memory>
 #include <optional>
 #include <unordered_map>

@@ -1,7 +1,7 @@
 #ifndef VNLC_AST_CONSTRUCTION_ERROR_HPP
 #define VNLC_AST_CONSTRUCTION_ERROR_HPP
 
-#include "VnlcError.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcAstConstructionError : public VnlcError {

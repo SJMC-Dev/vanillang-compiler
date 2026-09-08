@@ -1,7 +1,7 @@
 #ifndef VNLC_ENUM_MEMBER_DECLARATION_PARSING_RESULT_HPP
 #define VNLC_ENUM_MEMBER_DECLARATION_PARSING_RESULT_HPP
 
-#include "../../ast/declaration/VnlcEnumMemberDeclarationNode.hpp"
+#include "ast/declaration/VnlcEnumMemberDeclarationNode.hpp"
 #include <memory>
 
 struct VnlcEnumMemberDeclarationParsingResult {

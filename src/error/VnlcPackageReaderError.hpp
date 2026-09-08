@@ -1,8 +1,8 @@
 #ifndef VNLC_PACKAGE_READER_ERROR_HPP
 #define VNLC_PACKAGE_READER_ERROR_HPP
 
-#include "../ast/identifier/VnlcIdentifierNode.hpp"
-#include "VnlcError.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcPackageReaderError : public VnlcError {

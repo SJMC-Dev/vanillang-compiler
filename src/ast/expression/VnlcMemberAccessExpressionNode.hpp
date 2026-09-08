@@ -1,9 +1,9 @@
 #ifndef VNLC_MEMBER_ACCESS_EXPRESSION_NODE_HPP
 #define VNLC_MEMBER_ACCESS_EXPRESSION_NODE_HPP
 
-#include "VnlcExpressionNode.hpp"
-#include "VnlcIdentifierExpressionNode.hpp"
-#include "VnlcMemberAccessExpressionType.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcIdentifierExpressionNode.hpp"
+#include "ast/expression/VnlcMemberAccessExpressionType.hpp"
 #include <memory>
 
 class VnlcMemberAccessExpressionNode : public VnlcExpressionNode {

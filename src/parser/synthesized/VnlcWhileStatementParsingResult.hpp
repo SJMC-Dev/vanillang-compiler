@@ -1,7 +1,7 @@
 #ifndef VNLC_WHILE_STATEMENT_PARSING_RESULT_HPP
 #define VNLC_WHILE_STATEMENT_PARSING_RESULT_HPP
 
-#include "../../ast/statement/VnlcWhileStatementNode.hpp"
+#include "ast/statement/VnlcWhileStatementNode.hpp"
 #include <memory>
 
 struct VnlcWhileStatementParsingResult {

@@ -1,7 +1,7 @@
 #ifndef VNLC_BLOCK_STATEMENT_NODE_HPP
 #define VNLC_BLOCK_STATEMENT_NODE_HPP
 
-#include "VnlcStatementNode.hpp"
+#include "ast/statement/VnlcStatementNode.hpp"
 #include <memory>
 #include <vector>
 

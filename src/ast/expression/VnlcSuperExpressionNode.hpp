@@ -1,7 +1,7 @@
 #ifndef VNLC_SUPER_EXPRESSION_NODE_HPP
 #define VNLC_SUPER_EXPRESSION_NODE_HPP
 
-#include "VnlcPrimaryExpressionNode.hpp"
+#include "ast/expression/VnlcPrimaryExpressionNode.hpp"
 
 class VnlcSuperExpressionNode : public VnlcPrimaryExpressionNode {
 private:

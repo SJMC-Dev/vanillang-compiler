@@ -1,7 +1,7 @@
 #ifndef VNLC_STRING_PARSING_RESULT_HPP
 #define VNLC_STRING_PARSING_RESULT_HPP
 
-#include "../../ast/expression/VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 
 struct VnlcStringParsingResult {

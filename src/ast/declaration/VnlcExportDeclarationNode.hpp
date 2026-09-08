@@ -1,8 +1,8 @@
 #ifndef VNLC_EXPORT_DECLARATION_NODE_HPP
 #define VNLC_EXPORT_DECLARATION_NODE_HPP
 
-#include "VnlcDeclarationNode.hpp"
-#include "VnlcExportDeclarationItem.hpp"
+#include "ast/declaration/VnlcDeclarationNode.hpp"
+#include "ast/declaration/VnlcExportDeclarationItem.hpp"
 #include <vector>
 
 class VnlcExportDeclarationNode : public VnlcDeclarationNode {

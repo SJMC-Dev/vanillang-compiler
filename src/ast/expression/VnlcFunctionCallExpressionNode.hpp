@@ -1,7 +1,7 @@
 #ifndef VNLC_FUNCTION_CALL_EXPRESSION_NODE_HPP
 #define VNLC_FUNCTION_CALL_EXPRESSION_NODE_HPP
 
-#include "VnlcExpressionNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include <memory>
 #include <optional>
 #include <vector>

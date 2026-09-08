@@ -1,8 +1,8 @@
 #ifndef VNLC_TYPE_NODE_HPP
 #define VNLC_TYPE_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
-#include "../identifier/VnlcIdentifierNode.hpp"
+#include "ast/VnlcAstNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
 #include <memory>
 #include <vector>
 

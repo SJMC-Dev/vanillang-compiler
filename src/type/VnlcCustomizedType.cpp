@@ -1,5 +1,5 @@
 #include "VnlcCustomizedType.hpp"
-#include "VnlcCustomizedTypeOrigin.hpp"
+#include "type/VnlcCustomizedTypeOrigin.hpp"
 
 VnlcCustomizedType::VnlcCustomizedType(VnlcCustomizedTypeKind customizedKind, std::string_view fullTypeName, const VnlcTypeDeclarationNode* localDeclarationNode)
     : VnlcSemanticType(),

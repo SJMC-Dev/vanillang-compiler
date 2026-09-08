@@ -1,7 +1,7 @@
 #ifndef VNLC_INTERFACE_DECLARATION_PARSING_RESULT_HPP
 #define VNLC_INTERFACE_DECLARATION_PARSING_RESULT_HPP
 
-#include "../../ast/declaration/VnlcInterfaceDeclarationNode.hpp"
+#include "ast/declaration/VnlcInterfaceDeclarationNode.hpp"
 #include <memory>
 
 struct VnlcInterfaceDeclarationParsingResult {

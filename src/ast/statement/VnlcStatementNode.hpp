@@ -1,7 +1,7 @@
 #ifndef VNLC_STATEMENT_NODE_HPP
 #define VNLC_STATEMENT_NODE_HPP
 
-#include "../VnlcAstNode.hpp"
+#include "ast/VnlcAstNode.hpp"
 
 class VnlcStatementNode : public VnlcAstNode {
 private:

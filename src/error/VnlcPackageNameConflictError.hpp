@@ -1,7 +1,7 @@
 #ifndef VNLC_PACKAGE_NAME_CONFLICT_ERROR_HPP
 #define VNLC_PACKAGE_NAME_CONFLICT_ERROR_HPP
 
-#include "VnlcError.hpp"
+#include "error/VnlcError.hpp"
 #include <fmt/core.h>
 
 class VnlcPackageNameConflictError : public VnlcError {

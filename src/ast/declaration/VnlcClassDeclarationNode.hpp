@@ -1,9 +1,9 @@
 #ifndef VNLC_CLASS_DECLARATION_NODE_HPP
 #define VNLC_CLASS_DECLARATION_NODE_HPP
 
-#include "../identifier/VnlcIdentifierNode.hpp"
-#include "../type/VnlcTypeNode.hpp"
-#include "VnlcTypeDeclarationNode.hpp"
+#include "ast/declaration/VnlcTypeDeclarationNode.hpp"
+#include "ast/identifier/VnlcIdentifierNode.hpp"
+#include "ast/type/VnlcTypeNode.hpp"
 #include <memory>
 #include <optional>
 #include <vector>
