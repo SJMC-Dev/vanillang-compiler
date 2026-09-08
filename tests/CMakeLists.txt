@@ -50,6 +50,24 @@ add_executable(
     VnlcSemanticAnalyzerTest.cpp
 )
 
+target_include_directories(
+    vnlctest_lexer
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
+target_include_directories(
+    vnlctest_parser
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
+target_include_directories(
+    vnlctest_semantic
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
 target_link_libraries(
     vnlctest_lexer
     PRIVATE

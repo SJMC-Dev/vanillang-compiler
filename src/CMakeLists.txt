@@ -90,6 +90,12 @@ add_executable(
     vni/export/VnlcModuleInterfaceFileGenerator.cpp
 )
 
+target_include_directories(
+    vnlc
+    PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 target_link_libraries(
     vnlc
     PRIVATE
