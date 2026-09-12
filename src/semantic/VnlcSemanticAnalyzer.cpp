@@ -1,5 +1,6 @@
 #include "VnlcSemanticAnalyzer.hpp"
 #include "ast/expression/VnlcIdentifierExpressionNode.hpp"
+#include "ast/expression/VnlcMemberAccessExpressionNode.hpp"
 #include "ast/statement/VnlcBlockStatementNode.hpp"
 #include "ast/statement/VnlcBreakStatementNode.hpp"
 #include "ast/statement/VnlcContinueStatementNode.hpp"
@@ -17,6 +18,7 @@
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
 #include <fmt/core.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -29,28 +31,67 @@ void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpr
     } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol.value()->getLocalDeclarationNode()) ||
                  dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol.value()->getLocalDeclarationNode()))) {
         context.reportError(exprNode, fmt::format("Identifier '{}' is not a variable or function", exprNode.getName().getIdentifierString()));
-    } else if (!checkAccessModifier(*symbol.value())) {
-        context.reportError(exprNode, fmt::format("Access to private member '{}' is not allowed", exprNode.getName().getIdentifierString()));
     }
 }
 
-bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcSymbol& symbol) {
-    if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PUBLIC) {
-        return true;
-    } else if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PROTECTED) {
-        // TODO: Implement protected member access checking.
-        return false;
-    } else if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PRIVATE) {
-        const VnlcScope* currentClass = context.currentClass();
-        if (currentClass == nullptr) {
-            return false;
-        }
+bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcMemberAccessExpressionNode& memberAccessNode) {
+    const auto& object = memberAccessNode.getObject();
+    const auto& member = memberAccessNode.getMember();
 
-        const auto declaredSymbol = currentClass->lookupLocal(symbol.getName());
-        return declaredSymbol.has_value() && declaredSymbol.value()->getLocalDeclarationNode() == symbol.getLocalDeclarationNode();
+    const auto objectType = context.getInferredExpressionType(&object);
+    const auto* customizedType = objectType.has_value() ? dynamic_cast<const VnlcCustomizedType*>(objectType.value()) : nullptr;
+    const auto* typeDeclaration = customizedType == nullptr ? nullptr : customizedType->getLocalDeclaration();
+    if (typeDeclaration == nullptr) {
+        return true;
     }
 
-    return true;
+    const std::string_view memberName = member.getName().getIdentifierString();
+    std::optional<VnlcSymbolAccessModifier> accessModifier;
+
+    if (const auto* classDecl = dynamic_cast<const VnlcClassDeclarationNode*>(typeDeclaration)) {
+        for (const auto& memberDecl : classDecl->getMemberDeclarations()) {
+            if (const auto* valueDecl = dynamic_cast<const VnlcValueDeclarationNode*>(memberDecl.get())) {
+                if (valueDecl->getName().getIdentifierString() == memberName) {
+                    accessModifier = static_cast<VnlcSymbolAccessModifier>(valueDecl->getAccessModifier());
+                    break;
+                }
+            } else if (const auto* funcDecl = dynamic_cast<const VnlcFunctionDeclarationNode*>(memberDecl.get())) {
+                if (funcDecl->getName().getIdentifierString() == memberName) {
+                    accessModifier = static_cast<VnlcSymbolAccessModifier>(funcDecl->getAccessModifier());
+                    break;
+                }
+            }
+        }
+    } else if (const auto* interfaceDecl = dynamic_cast<const VnlcInterfaceDeclarationNode*>(typeDeclaration)) {
+        for (const auto& methodDecl : interfaceDecl->getMethodDeclarations()) {
+            if (methodDecl->getName().getIdentifierString() == memberName) {
+                accessModifier = static_cast<VnlcSymbolAccessModifier>(methodDecl->getAccessModifier());
+                break;
+            }
+        }
+    } else if (const auto* enumDecl = dynamic_cast<const VnlcEnumDeclarationNode*>(typeDeclaration)) {
+        for (const auto& memberDecl : enumDecl->getMemberDeclarations()) {
+            if (memberDecl->getName().getIdentifierString() == memberName) {
+                accessModifier = VnlcSymbolAccessModifier::PUBLIC;
+                break;
+            }
+        }
+    }
+
+    if (!accessModifier.has_value() || accessModifier.value() == VnlcSymbolAccessModifier::PUBLIC) {
+        return true;
+    } else if (accessModifier.value() == VnlcSymbolAccessModifier::PROTECTED) {
+        // TODO: Implement protected member access checking.
+        return false;
+    }
+
+    // PRIVATE: accessible only when the object's type is the current class's type.
+    const VnlcScope* currentClass = context.currentClass();
+    if (currentClass == nullptr) {
+        return false;
+    }
+
+    return typeDeclaration == currentClass->getLocalDeclarationNode();
 }
 
 VnlcMetadataInfo VnlcSemanticAnalyzer::checkMetadata(const std::vector<VnlcDeclarationItem::MetadataTerm>& metadataTerms, const VnlcDeclarationNode& declNode) {
@@ -539,6 +580,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
     auto semanticTypes = context.takeSemanticTypeMap();
     auto inferredValueTypes = context.takeInferredValueTypeMap();
     auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
+    auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
     auto importedPackages = context.takeImportedPackages();
     return VnlcSemanticAnalysisResult(
         std::move(std::get<0>(diagnostics)),
@@ -548,6 +590,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
         std::move(semanticTypes),
         std::move(inferredValueTypes),
         std::move(inferredFunctionReturnTypes),
+        std::move(inferredExpressionTypes),
         std::move(importedPackages)
     );
 }

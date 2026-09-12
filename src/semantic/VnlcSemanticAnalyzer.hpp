@@ -11,6 +11,7 @@
 #include "ast/declaration/VnlcValueDeclarationNode.hpp"
 #include "ast/expression/VnlcExpressionNode.hpp"
 #include "ast/expression/VnlcIdentifierExpressionNode.hpp"
+#include "ast/expression/VnlcMemberAccessExpressionNode.hpp"
 #include "ast/module/VnlcModuleNode.hpp"
 #include "ast/statement/VnlcStatementNode.hpp"
 #include "ast/type/VnlcTypeNode.hpp"
@@ -18,7 +19,6 @@
 #include "semantic/VnlcSemanticAnalysisResult.hpp"
 #include "semantic/VnlcSemanticContext.hpp"
 #include "semantic/metadata/VnlcMetadataInfo.hpp"
-#include "semantic/symbol/VnlcSymbol.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
 #include <string>
 #include <string_view>
@@ -30,7 +30,7 @@ private:
 
     void checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
 
-    [[nodiscard]] bool checkAccessModifier(const VnlcSymbol& symbol);
+    [[nodiscard]] bool checkAccessModifier(const VnlcMemberAccessExpressionNode& memberAccessNode);
     [[nodiscard]] VnlcMetadataInfo checkMetadata(const std::vector<VnlcDeclarationItem::MetadataTerm>& metadataTerms, const VnlcDeclarationNode& declNode);
     [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const VnlcConfig& config) const;
     [[nodiscard]] bool isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName);

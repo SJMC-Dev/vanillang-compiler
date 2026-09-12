@@ -3,6 +3,7 @@
 
 #include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
 #include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include "ast/type/VnlcTypeNode.hpp"
 #include "diagnostic/VnlcDiagnostic.hpp"
 #include "type/VnlcCustomizedType.hpp"
@@ -24,6 +25,7 @@ private:
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> semanticTypeMap;
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> inferredValueTypeMap;
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*> inferredFunctionReturnTypeMap;
+    std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> inferredExpressionTypeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> importedPackages;
 
@@ -36,6 +38,7 @@ public:
         std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*>&& semanticTypeMap,
         std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
         std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
+        std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*>&& inferredExpressionTypeMap,
         std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages
     );
     VnlcSemanticAnalysisResult(const VnlcSemanticAnalysisResult&) = default;
@@ -55,6 +58,7 @@ public:
     [[nodiscard]] const std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view packageName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredValueType(const VnlcValueDeclarationNode* valueDeclaration) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration) const;
+    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
 };
 
 #endif // VNLC_SEMANTIC_ANALYSIS_RESULT_HPP

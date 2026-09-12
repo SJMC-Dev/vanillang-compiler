@@ -3,6 +3,7 @@
 
 #include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
 #include "ast/declaration/VnlcValueDeclarationNode.hpp"
+#include "ast/expression/VnlcExpressionNode.hpp"
 #include "ast/type/VnlcTypeNode.hpp"
 #include "diagnostic/VnlcDiagnostic.hpp"
 #include "semantic/scope/VnlcScope.hpp"
@@ -29,6 +30,7 @@ private:
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> semanticTypeMap;
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> inferredValueTypeMap;
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*> inferredFunctionReturnTypeMap;
+    std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> inferredExpressionTypeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> importedPackages;
 
@@ -53,11 +55,13 @@ public:
     void mapSemanticType(const VnlcTypeNode* typeNode, const VnlcSemanticType* semanticType);
     void mapInferredValueType(const VnlcValueDeclarationNode* valueDeclaration, const VnlcSemanticType* semanticType);
     void mapInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration, const VnlcSemanticType* semanticType);
+    void mapInferredExpressionType(const VnlcExpressionNode* expressionNode, const VnlcSemanticType* semanticType);
 
     void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages);
 
     [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
+    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
 
     [[nodiscard]] VnlcScope& currentScope();
 
@@ -83,6 +87,7 @@ public:
     [[nodiscard]] std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> takeSemanticTypeMap();
     [[nodiscard]] std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> takeInferredValueTypeMap();
     [[nodiscard]] std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*> takeInferredFunctionReturnTypeMap();
+    [[nodiscard]] std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> takeInferredExpressionTypeMap();
 };
 
 #endif // VNLC_SEMANTIC_CONTEXT_HPP

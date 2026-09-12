@@ -10,6 +10,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*>&& semanticTypeMap,
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
+    std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*>&& inferredExpressionTypeMap,
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages
 )
     : errors(std::move(errors)),
@@ -19,6 +20,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
       semanticTypeMap(std::move(semanticTypeMap)),
       inferredValueTypeMap(std::move(inferredValueTypeMap)),
       inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
+      inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)),
       importedPackages(std::move(importedPackages)) {}
 
 bool VnlcSemanticAnalysisResult::hasErrors() const {
@@ -81,6 +83,14 @@ const std::optional<const VnlcSemanticType*> VnlcSemanticAnalysisResult::getInfe
 const std::optional<const VnlcSemanticType*> VnlcSemanticAnalysisResult::getInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration) const {
     auto it = inferredFunctionReturnTypeMap.find(functionDeclaration);
     if (it != inferredFunctionReturnTypeMap.end()) {
+        return std::make_optional<const VnlcSemanticType*>(it->second);
+    }
+    return std::nullopt;
+}
+
+const std::optional<const VnlcSemanticType*> VnlcSemanticAnalysisResult::getInferredExpressionType(const VnlcExpressionNode* expressionNode) const {
+    auto it = inferredExpressionTypeMap.find(expressionNode);
+    if (it != inferredExpressionTypeMap.end()) {
         return std::make_optional<const VnlcSemanticType*>(it->second);
     }
     return std::nullopt;

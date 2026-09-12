@@ -38,6 +38,10 @@ void VnlcSemanticContext::mapInferredFunctionReturnType(const VnlcFunctionDeclar
     inferredFunctionReturnTypeMap.emplace(functionDeclaration, semanticType);
 }
 
+void VnlcSemanticContext::mapInferredExpressionType(const VnlcExpressionNode* expressionNode, const VnlcSemanticType* semanticType) {
+    inferredExpressionTypeMap.emplace(expressionNode, semanticType);
+}
+
 void VnlcSemanticContext::collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages) {
     this->importedPackages = std::move(importedPackages);
 }
@@ -53,6 +57,14 @@ const std::optional<const VnlcCustomizedType*> VnlcSemanticContext::getCustomize
 const std::optional<const VnlcSemanticType*> VnlcSemanticContext::getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const {
     auto it = semanticTypeMap.find(typeNode);
     if (it != semanticTypeMap.end()) {
+        return std::make_optional<const VnlcSemanticType*>(it->second);
+    }
+    return std::nullopt;
+}
+
+const std::optional<const VnlcSemanticType*> VnlcSemanticContext::getInferredExpressionType(const VnlcExpressionNode* expressionNode) const {
+    auto it = inferredExpressionTypeMap.find(expressionNode);
+    if (it != inferredExpressionTypeMap.end()) {
         return std::make_optional<const VnlcSemanticType*>(it->second);
     }
     return std::nullopt;
@@ -208,4 +220,8 @@ std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> Vnl
 
 std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*> VnlcSemanticContext::takeInferredFunctionReturnTypeMap() {
     return std::move(inferredFunctionReturnTypeMap);
+}
+
+std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> VnlcSemanticContext::takeInferredExpressionTypeMap() {
+    return std::move(inferredExpressionTypeMap);
 }
