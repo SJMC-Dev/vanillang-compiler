@@ -67,6 +67,7 @@ add_executable(
     type/VnlcPrimitiveType.cpp
     type/VnlcCustomizedType.cpp
     type/VnlcVoidType.cpp
+    type/VnlcTypeExpressionType.cpp
     type/typeinf/VnlcTypeInferenceResult.cpp
     semantic/metadata/VnlcMetadataInfo.cpp
     vni/import/VnlcImportedItem.cpp

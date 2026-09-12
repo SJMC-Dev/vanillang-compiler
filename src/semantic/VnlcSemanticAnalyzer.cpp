@@ -15,6 +15,8 @@
 #include "semantic/symbol/VnlcSymbolKind.hpp"
 #include "semantic/symbol/VnlcSymbolOrigin.hpp"
 #include "type/VnlcCustomizedType.hpp"
+#include "type/VnlcSemanticType.hpp"
+#include "type/VnlcTypeExpressionType.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
 #include <fmt/core.h>
 #include <memory>
@@ -35,11 +37,15 @@ void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpr
 }
 
 bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcMemberAccessExpressionNode& memberAccessNode) {
-    const auto& object = memberAccessNode.getObject();
+    const auto& prefix = memberAccessNode.getObject();
     const auto& member = memberAccessNode.getMember();
 
-    const auto objectType = context.getInferredExpressionType(&object);
-    const auto* customizedType = objectType.has_value() ? dynamic_cast<const VnlcCustomizedType*>(objectType.value()) : nullptr;
+    const VnlcSemanticType* prefixType = context.getInferredExpressionType(&prefix).value_or(nullptr);
+    if (const auto* typeExpression = dynamic_cast<const VnlcTypeExpressionType*>(prefixType)) {
+        prefixType = typeExpression->getExpressedType();
+    }
+
+    const auto* customizedType = dynamic_cast<const VnlcCustomizedType*>(prefixType);
     const auto* typeDeclaration = customizedType == nullptr ? nullptr : customizedType->getLocalDeclaration();
     if (typeDeclaration == nullptr) {
         return true;
