@@ -67,7 +67,7 @@ void VnlcSemanticAnalyzer::registerLocalCustomizedType(const VnlcTypeDeclaration
 }
 
 void VnlcSemanticAnalyzer::checkModule(const VnlcModuleNode& moduleNode, const VnlcConfig& config) {
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr, &moduleNode));
 
     for (const auto& importDecl : moduleNode.getImportDeclarations()) {
         checkImport(*importDecl, config);
@@ -192,7 +192,7 @@ void VnlcSemanticAnalyzer::checkValueDeclaration(const VnlcValueDeclarationNode&
 }
 
 void VnlcSemanticAnalyzer::checkFunctionDeclaration(const VnlcFunctionDeclarationNode& funcDecl, VnlcMetadataInfo metadataInfo) {
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::FUNCTION, &context.currentScope()));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::FUNCTION, &context.currentScope(), &funcDecl));
     for (const auto& param : funcDecl.getParameters()) {
         VnlcSymbol paramSymbol(VnlcSymbolKind::PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, param->getName().getIdentifierString(), param.get());
         if (!context.currentScope().declare(std::move(paramSymbol))) {
@@ -219,7 +219,7 @@ void VnlcSemanticAnalyzer::checkFunctionDeclaration(const VnlcFunctionDeclaratio
 
 void VnlcSemanticAnalyzer::checkClassDeclaration(const VnlcClassDeclarationNode& classDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo) {
     const std::size_t errorCount = context.getErrors().size();
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::CLASS, &context.currentScope()));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::CLASS, &context.currentScope(), &classDecl));
 
     for (const auto& member : classDecl.getMemberDeclarations()) {
         if (auto* varDecl = dynamic_cast<VnlcValueDeclarationNode*>(member.get())) {
@@ -275,7 +275,7 @@ void VnlcSemanticAnalyzer::checkClassDeclaration(const VnlcClassDeclarationNode&
 
 void VnlcSemanticAnalyzer::checkInterfaceDeclaration(const VnlcInterfaceDeclarationNode& interfaceDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo) {
     const std::size_t errorCount = context.getErrors().size();
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::INTERFACE, &context.currentScope()));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::INTERFACE, &context.currentScope(), &interfaceDecl));
 
     for (const auto& member : interfaceDecl.getMethodDeclarations()) {
         VnlcSymbol memberSymbol(
@@ -314,7 +314,7 @@ void VnlcSemanticAnalyzer::checkInterfaceDeclaration(const VnlcInterfaceDeclarat
 
 void VnlcSemanticAnalyzer::checkEnumDeclaration(const VnlcEnumDeclarationNode& enumDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo) {
     const std::size_t errorCount = context.getErrors().size();
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::ENUM, &context.currentScope()));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::ENUM, &context.currentScope(), &enumDecl));
 
     for (const auto& member : enumDecl.getMemberDeclarations()) {
         VnlcSymbol memberSymbol(VnlcSymbolKind::ENUM_MEMBER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, member->getName().getIdentifierString(), member.get());
@@ -331,7 +331,7 @@ void VnlcSemanticAnalyzer::checkEnumDeclaration(const VnlcEnumDeclarationNode& e
     }
 
     for (const auto& member : enumDecl.getMemberDeclarations()) {
-        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::ENUM_MEMBER, &context.currentScope()));
+        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::ENUM_MEMBER, &context.currentScope(), member.get()));
 
         for (auto& associatedValue : member->getAssociatedValues()) {
             VnlcSymbol associatedValueSymbol(
@@ -362,7 +362,7 @@ void VnlcSemanticAnalyzer::checkEnumDeclaration(const VnlcEnumDeclarationNode& e
 
 void VnlcSemanticAnalyzer::checkTypeAliasDeclaration(const VnlcTypeAliasDeclarationNode& typeAliasDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo) {
     const std::size_t errorCount = context.getErrors().size();
-    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::TYPE_ALIAS, &context.currentScope()));
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::TYPE_ALIAS, &context.currentScope(), &typeAliasDecl));
 
     for (const auto& genericParamName : typeAliasDecl.getGenericParameterNames()) {
         VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), nullptr);
@@ -382,7 +382,7 @@ void VnlcSemanticAnalyzer::checkTypeAliasDeclaration(const VnlcTypeAliasDeclarat
 
 void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
     if (auto* stmt = dynamic_cast<const VnlcBlockStatementNode*>(&statement)) {
-        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::BLOCK, &context.currentScope()));
+        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::BLOCK, &context.currentScope(), stmt));
 
         for (const auto& child : stmt->getStatements()) {
             checkStatement(*child);
@@ -420,7 +420,7 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
     } else if (auto* stmt = dynamic_cast<const VnlcExpressionStatementNode*>(&statement)) {
         checkExpression(stmt->getExpression());
     } else if (auto* stmt = dynamic_cast<const VnlcForStatementNode*>(&statement)) {
-        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::LOOP, &context.currentScope()));
+        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::LOOP, &context.currentScope(), stmt));
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
@@ -447,7 +447,7 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
             checkExpression(*stmt->getReturnValue().value());
         }
     } else if (auto* stmt = dynamic_cast<const VnlcSwitchStatementNode*>(&statement)) {
-        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::SWITCH, &context.currentScope()));
+        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::SWITCH, &context.currentScope(), stmt));
 
         checkExpression(stmt->getSwitchExpression());
 
@@ -470,7 +470,7 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
     } else if (auto* stmt = dynamic_cast<const VnlcVariableDeclarationStatementNode*>(&statement)) {
         checkValueDeclaration(stmt->getVariableDeclaration());
     } else if (auto* stmt = dynamic_cast<const VnlcWhileStatementNode*>(&statement)) {
-        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::LOOP, &context.currentScope()));
+        context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::LOOP, &context.currentScope(), stmt));
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
