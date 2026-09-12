@@ -19,6 +19,7 @@ Be sure that your working directory is the root directory of this project before
 - Use camelCase for customized variable and function names.
 - Follow `.clang-format` to format source code.
 - Format code after editing.
+- Do not add redundant comments if unnecessary.
 - Refer to existing code for other coding standards.
 
 ## Commits
