@@ -29,7 +29,28 @@ void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpr
     } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol.value()->getLocalDeclarationNode()) ||
                  dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol.value()->getLocalDeclarationNode()))) {
         context.reportError(exprNode, fmt::format("Identifier '{}' is not a variable or function", exprNode.getName().getIdentifierString()));
+    } else if (!checkAccessModifier(*symbol.value())) {
+        context.reportError(exprNode, fmt::format("Access to private member '{}' is not allowed", exprNode.getName().getIdentifierString()));
     }
+}
+
+bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcSymbol& symbol) {
+    if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PUBLIC) {
+        return true;
+    } else if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PROTECTED) {
+        // TODO: Implement protected member access checking.
+        return false;
+    } else if (symbol.getAccessModifier() == VnlcSymbolAccessModifier::PRIVATE) {
+        const VnlcScope* currentClass = context.currentClass();
+        if (currentClass == nullptr) {
+            return false;
+        }
+
+        const auto declaredSymbol = currentClass->lookupLocal(symbol.getName());
+        return declaredSymbol.has_value() && declaredSymbol.value()->getLocalDeclarationNode() == symbol.getLocalDeclarationNode();
+    }
+
+    return true;
 }
 
 VnlcMetadataInfo VnlcSemanticAnalyzer::checkMetadata(const std::vector<VnlcDeclarationItem::MetadataTerm>& metadataTerms, const VnlcDeclarationNode& declNode) {

@@ -18,6 +18,7 @@
 #include "semantic/VnlcSemanticAnalysisResult.hpp"
 #include "semantic/VnlcSemanticContext.hpp"
 #include "semantic/metadata/VnlcMetadataInfo.hpp"
+#include "semantic/symbol/VnlcSymbol.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
 #include <string>
 #include <string_view>
@@ -29,6 +30,7 @@ private:
 
     void checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
 
+    [[nodiscard]] bool checkAccessModifier(const VnlcSymbol& symbol);
     [[nodiscard]] VnlcMetadataInfo checkMetadata(const std::vector<VnlcDeclarationItem::MetadataTerm>& metadataTerms, const VnlcDeclarationNode& declNode);
     [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const VnlcConfig& config) const;
     [[nodiscard]] bool isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName);
