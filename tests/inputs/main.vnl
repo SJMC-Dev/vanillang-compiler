@@ -23,6 +23,8 @@ class VnlPlayer extends Entity implements Movable<Entity> {
     private name: string
     private health: int
 
+    static entityType: string = "player"
+
     init() {
         super.init()
         # implement the letructor
@@ -85,6 +87,7 @@ func onLoad() {
     world.showActionbar(add(Random.randint(), Random.randint()), @r, context={ as: @r, at: @p })
 
     world.print("Hello, Vanillang!", @a)
+    world.print(Player.entityType)
     return
 }
 
