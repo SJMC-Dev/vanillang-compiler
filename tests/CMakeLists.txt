@@ -27,6 +27,10 @@ file(GLOB_RECURSE TYPE_FILES CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/src/type/*.cpp
 )
 
+file(GLOB_RECURSE VNI_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/vni/*.cpp
+)
+
 add_executable(
     vnlctest_parser
     ${PROJECT_SOURCE_DIR}/src/lexer/VnlcLexer.cpp
@@ -50,6 +54,16 @@ add_executable(
     VnlcSemanticAnalyzerTest.cpp
 )
 
+add_executable(
+    vnlctest_vni
+    ${PROJECT_SOURCE_DIR}/src/token/VnlcToken.cpp
+    ${PROJECT_SOURCE_DIR}/src/semantic/VnlcSemanticAnalysisResult.cpp
+    ${AST_FILES}
+    ${TYPE_FILES}
+    ${VNI_FILES}
+    VnlcModuleInterfaceTest.cpp
+)
+
 target_include_directories(
     vnlctest_lexer
     PRIVATE
@@ -64,6 +78,12 @@ target_include_directories(
 
 target_include_directories(
     vnlctest_semantic
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
+target_include_directories(
+    vnlctest_vni
     PRIVATE
     "${PROJECT_SOURCE_DIR}/src"
 )
@@ -88,6 +108,15 @@ target_link_libraries(
 
 target_link_libraries(
     vnlctest_semantic
+    PRIVATE
+    GTest::gtest_main
+    fmt::fmt
+    nlohmann_json::nlohmann_json
+    CLI11::CLI11
+)
+
+target_link_libraries(
+    vnlctest_vni
     PRIVATE
     GTest::gtest_main
     fmt::fmt
@@ -105,3 +134,4 @@ include(GoogleTest)
 gtest_discover_tests(vnlctest_lexer)
 gtest_discover_tests(vnlctest_parser)
 gtest_discover_tests(vnlctest_semantic)
+gtest_discover_tests(vnlctest_vni)
