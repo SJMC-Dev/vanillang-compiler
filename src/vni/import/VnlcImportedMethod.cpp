@@ -4,31 +4,31 @@ VnlcImportedMethod::VnlcImportedMethod(
     std::string_view name,
     std::string_view returnType,
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedParameter>>&& parameters,
+    bool staticMethod,
     bool native,
-    bool isStatic,
     std::string_view accessModifier,
     std::unordered_map<std::string, std::optional<std::string>>&& metadata
 )
     : VnlcImportedIdentifier(name, std::move(metadata)),
       returnType(returnType),
       parameters(std::move(parameters)),
+      staticMethod(staticMethod),
       native(native),
-      staticMethod(isStatic),
       accessModifier(accessModifier) {}
 
 VnlcImportedMethod::VnlcImportedMethod(
     std::string_view name,
     std::string_view returnType,
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedParameter>>&& parameters,
+    bool staticMethod,
     bool native,
-    bool isStatic,
     std::string_view accessModifier
 )
     : VnlcImportedIdentifier(name),
       returnType(returnType),
       parameters(std::move(parameters)),
+      staticMethod(staticMethod),
       native(native),
-      staticMethod(isStatic),
       accessModifier(accessModifier) {}
 
 std::string_view VnlcImportedMethod::getReturnType() const {

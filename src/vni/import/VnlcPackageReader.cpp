@@ -40,8 +40,6 @@ void VnlcPackageReader::readRecursively(const VnlcImportDeclarationItem& importI
                 break;
             }
         }
-        currentPath /= candidateName;
-
         if (!foundCandidate) {
             throw VnlcPackageReaderError(fmt::format("Could not find package or module with name: {}", namePrefix), namePrefixNode.get());
         }

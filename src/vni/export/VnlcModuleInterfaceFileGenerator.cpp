@@ -208,7 +208,6 @@ nlohmann::json VnlcModuleInterfaceFileGenerator::stringifyEnumMember(const VnlcE
     memberObj.emplace("category", "enummember");
 
     nlohmann::json associatedValuesObj = nlohmann::json::object();
-    memberObj.emplace("associatedValues", associatedValuesObj);
     for (const auto& associatedValue : enumMemberNode->getAssociatedValues()) {
         nlohmann::json associatedValueObj = stringifyEnumValue(associatedValue.get());
         associatedValuesObj.emplace(associatedValue->getName().getIdentifierString(), associatedValueObj);
