@@ -2,13 +2,14 @@
 #include "error/VnlcPackageReaderError.hpp"
 #include "vni/import/VnlcModuleInterfaceFileReader.hpp"
 #include <algorithm>
+#include <filesystem>
 
 VnlcPackageReader::VnlcPackageReader(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>& packages) : packages(packages) {}
 
 void VnlcPackageReader::readPackage(const VnlcImportDeclarationItem& importItem, const VnlcConfig& config) {
     std::vector<std::filesystem::path> candidatePackages;
     std::transform(config.dependencyPackageRootPaths.begin(), config.dependencyPackageRootPaths.end(), std::back_inserter(candidatePackages), [&](const auto& package) {
-        return package.first;
+        return package.second;
     });
 
     readRecursively(importItem, candidatePackages, nullptr);
