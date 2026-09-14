@@ -24,6 +24,8 @@
 #include <string_view>
 
 class VnlcSemanticAnalyzer {
+    friend class VnlcSemanticAnalyzerAccessTest;
+
 private:
     const VnlcModuleNode& module;
     VnlcSemanticContext context;
