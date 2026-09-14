@@ -456,5 +456,5 @@ std::unique_ptr<VnlcImportedModule> VnlcModuleInterfaceFileReader::read() {
         }
     }
 
-    throw VnlcModuleInterfaceFileReaderError(fmt::format("Not implemented"));
+    return importedModule;
 }
