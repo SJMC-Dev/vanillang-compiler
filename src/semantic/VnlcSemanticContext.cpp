@@ -19,6 +19,7 @@ void VnlcSemanticContext::pushScope(std::unique_ptr<VnlcScope>&& scope) {
 }
 
 void VnlcSemanticContext::popScope() {
+    scopeMap.emplace(scopeStack.back()->getLocalDeclarationNode(), std::move(scopeStack.back()));
     scopeStack.pop_back();
 }
 
@@ -68,6 +69,20 @@ const std::optional<const VnlcSemanticType*> VnlcSemanticContext::getInferredExp
         return std::make_optional<const VnlcSemanticType*>(it->second);
     }
     return std::nullopt;
+}
+
+const VnlcScope* VnlcSemanticContext::getScopeByAstNode(const VnlcAstNode* astNode) const {
+    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
+        if ((*it)->getLocalDeclarationNode() == astNode) {
+            return it->get();
+        }
+    }
+
+    auto it = scopeMap.find(astNode);
+    if (it != scopeMap.end()) {
+        return it->second.get();
+    }
+    return nullptr;
 }
 
 VnlcScope& VnlcSemanticContext::currentScope() {

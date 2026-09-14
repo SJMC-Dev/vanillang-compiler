@@ -25,6 +25,7 @@ private:
     std::vector<VnlcDiagnostic> notes;
 
     std::vector<std::unique_ptr<VnlcScope>> scopeStack;
+    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> scopeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcCustomizedType>> customizedTypeRegistry;
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> semanticTypeMap;
@@ -62,6 +63,7 @@ public:
     [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
+    [[nodiscard]] const VnlcScope* getScopeByAstNode(const VnlcAstNode* astNode) const;
 
     [[nodiscard]] VnlcScope& currentScope();
 

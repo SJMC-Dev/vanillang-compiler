@@ -31,6 +31,8 @@ private:
     void checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
 
     [[nodiscard]] bool checkAccessModifier(const VnlcMemberAccessExpressionNode& memberAccessNode);
+    [[nodiscard]] bool checkAccessModifier(const VnlcIdentifierExpressionNode& identifierNode);
+    [[nodiscard]] bool checkMemberAccessModifier(const VnlcTypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
     [[nodiscard]] VnlcMetadataInfo checkMetadata(const std::vector<VnlcDeclarationItem::MetadataTerm>& metadataTerms, const VnlcDeclarationNode& declNode);
     [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const VnlcConfig& config) const;
     [[nodiscard]] bool isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName);
