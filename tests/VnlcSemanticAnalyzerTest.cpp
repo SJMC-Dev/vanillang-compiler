@@ -572,14 +572,22 @@ protected:
         VnlcSemanticAnalyzer analyzer(*module);
         return analyzer.analyze(config);
     }
+
+    const VnlcImportedItem* findImportedNode(const VnlcSemanticAnalysisResult& result, std::string_view name) const {
+        const auto scope = result.getScopeByAstNode(*module);
+        EXPECT_TRUE(scope.has_value());
+        if (!scope.has_value()) return nullptr;
+        const auto symbol = scope.value()->lookupLocal(name);
+        return symbol.has_value() ? symbol.value()->getImportedNode() : nullptr;
+    }
 };
 
 TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsItsModule) {
     const auto result = analyze("import pkg.api.value\nlet pkg = 0\nlet api = 0\nexport value\n");
 
     ASSERT_FALSE(result.hasErrors());
-    EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
-    EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+    EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
+    EXPECT_EQ(findImportedNode(result, "api"), nullptr);
     const auto package = result.getImportedPackageByName("pkg");
     ASSERT_TRUE(package.has_value());
     EXPECT_EQ(package.value()->getName(), "pkg");
@@ -588,7 +596,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsIt
     EXPECT_EQ(importedModule.value()->getName(), "api");
     const auto member = importedModule.value()->getIdentifierByName("value");
     ASSERT_TRUE(member.has_value());
-    EXPECT_EQ(result.getImportedBindingByName("value").value_or(nullptr), member.value());
+    EXPECT_EQ(findImportedNode(result, "value"), member.value());
     const auto* value = dynamic_cast<const VnlcImportedLet*>(member.value());
     ASSERT_NE(value, nullptr);
     EXPECT_EQ(value->getType(), "int");
@@ -609,9 +617,9 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalModule) {
     ASSERT_FALSE(result.hasErrors());
     const auto package = result.getImportedPackageByName("pkg");
     ASSERT_TRUE(package.has_value());
-    EXPECT_EQ(result.getImportedBindingByName("api").value_or(nullptr), package.value()->getModuleByName("api").value_or(nullptr));
-    EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
-    EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
+    EXPECT_EQ(findImportedNode(result, "api"), package.value()->getModuleByName("api").value_or(nullptr));
+    EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
+    EXPECT_EQ(findImportedNode(result, "value"), nullptr);
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, AliasesBindToTheirOriginalTargets) {
@@ -622,10 +630,10 @@ TEST_F(VnlcSemanticAnalyzerImportTest, AliasesBindToTheirOriginalTargets) {
     ASSERT_TRUE(package.has_value());
     const auto importedModule = package.value()->getModuleByName("api");
     ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(result.getImportedBindingByName("renamed").value_or(nullptr), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
-    EXPECT_EQ(result.getImportedBindingByName("library").value_or(nullptr), importedModule.value());
-    EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
-    EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+    EXPECT_EQ(findImportedNode(result, "renamed"), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
+    EXPECT_EQ(findImportedNode(result, "library"), importedModule.value());
+    EXPECT_EQ(findImportedNode(result, "value"), nullptr);
+    EXPECT_EQ(findImportedNode(result, "api"), nullptr);
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
@@ -638,10 +646,10 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
     ASSERT_TRUE(importedModule.has_value());
     const auto subPackage = package.value()->getSubPackageByName("sub");
     ASSERT_TRUE(subPackage.has_value());
-    EXPECT_EQ(result.getImportedBindingByName("m").value_or(nullptr), importedModule.value());
-    EXPECT_EQ(result.getImportedBindingByName("v").value_or(nullptr), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
-    EXPECT_EQ(result.getImportedBindingByName("other").value_or(nullptr), subPackage.value()->getModuleByName("other").value_or(nullptr));
-    EXPECT_FALSE(result.getImportedBindingByName("self").has_value());
+    EXPECT_EQ(findImportedNode(result, "m"), importedModule.value());
+    EXPECT_EQ(findImportedNode(result, "v"), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
+    EXPECT_EQ(findImportedNode(result, "other"), subPackage.value()->getModuleByName("other").value_or(nullptr));
+    EXPECT_EQ(findImportedNode(result, "self"), nullptr);
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, ExpandsModuleWildcardsAndCanImportTheModuleItself) {
@@ -650,10 +658,10 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ExpandsModuleWildcardsAndCanImportTheModu
         const auto result = analyze(source);
 
         ASSERT_FALSE(result.hasErrors());
-        EXPECT_TRUE(result.getImportedBindingByName("value").has_value());
-        EXPECT_TRUE(result.getImportedBindingByName("count").has_value());
-        EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
-        EXPECT_FALSE(result.getImportedBindingByName("*").has_value());
+        EXPECT_NE(findImportedNode(result, "value"), nullptr);
+        EXPECT_NE(findImportedNode(result, "count"), nullptr);
+        EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
+        EXPECT_EQ(findImportedNode(result, "*"), nullptr);
     }
 }
 
@@ -665,13 +673,13 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ImportsCompletePackagesAndPackageSelf) {
         ASSERT_FALSE(result.hasErrors());
         const auto package = result.getImportedPackageByName("pkg");
         ASSERT_TRUE(package.has_value());
-        EXPECT_EQ(result.getImportedBindingByName("library").value_or(nullptr), package.value());
+        EXPECT_EQ(findImportedNode(result, "library"), package.value());
         EXPECT_TRUE(package.value()->getModuleByName("api").has_value());
         const auto subPackage = package.value()->getSubPackageByName("sub");
         ASSERT_TRUE(subPackage.has_value());
         EXPECT_TRUE(subPackage.value()->getModuleByName("other").has_value());
         EXPECT_TRUE(subPackage.value()->getModuleByName("second").has_value());
-        EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+        EXPECT_EQ(findImportedNode(result, "api"), nullptr);
     }
 }
 
@@ -690,9 +698,9 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RetainsMultipleModulesAndPackagesAfterThe
     ASSERT_TRUE(extraPackage.has_value());
     EXPECT_TRUE(extraPackage.value()->getModuleByName("tools").has_value());
     for (const auto name : { "value", "flag", "caption", "enabled" }) {
-        const auto binding = result.getImportedBindingByName(name);
-        ASSERT_TRUE(binding.has_value());
-        EXPECT_EQ(binding.value()->getName(), name);
+        const auto* binding = findImportedNode(result, name);
+        ASSERT_NE(binding, nullptr);
+        EXPECT_EQ(binding->getName(), name);
     }
 }
 
@@ -714,8 +722,8 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsInvalidImportsWithoutRetainingPart
         ASSERT_TRUE(result->hasErrors());
         EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
         EXPECT_FALSE(result->getImportedPackageByName("absent").has_value());
-        EXPECT_FALSE(result->getImportedBindingByName("api").has_value());
-        EXPECT_FALSE(result->getImportedBindingByName("value").has_value());
+        EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
+        EXPECT_EQ(findImportedNode(*result, "value"), nullptr);
     }
 }
 
@@ -728,7 +736,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMalformedModuleInterfacesAsSemanti
 
         ASSERT_TRUE(result->hasErrors());
         EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
-        EXPECT_FALSE(result->getImportedBindingByName("broken").has_value());
+        EXPECT_EQ(findImportedNode(*result, "broken"), nullptr);
     }
 }
 
@@ -739,7 +747,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMissingDependencyDirectoriesAsSema
 
     ASSERT_TRUE(result->hasErrors());
     EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
-    EXPECT_FALSE(result->getImportedBindingByName("api").has_value());
+    EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImport) {
@@ -754,8 +762,8 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImport) 
 
         ASSERT_TRUE(result.hasErrors());
         EXPECT_FALSE(result.getImportedPackageByName("pkg").has_value());
-        EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
-        EXPECT_FALSE(result.getImportedBindingByName("same").has_value());
+        EXPECT_EQ(findImportedNode(result, "value"), nullptr);
+        EXPECT_EQ(findImportedNode(result, "same"), nullptr);
     }
 }
 
@@ -769,7 +777,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RejectsRedeclarationsAcrossImportsAndLoca
         const auto result = analyze(source);
 
         ASSERT_TRUE(result.hasErrors());
-        EXPECT_TRUE(result.getImportedBindingByName("value").has_value());
+        EXPECT_NE(findImportedNode(result, "value"), nullptr);
         EXPECT_TRUE(result.getImportedPackageByName("pkg").has_value());
     }
 }
@@ -783,9 +791,9 @@ TEST_F(VnlcSemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsAndDo
     ASSERT_TRUE(package.has_value());
     const auto importedModule = package.value()->getModuleByName("api");
     ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(result.getImportedBindingByName("kept").value_or(nullptr), importedModule.value());
+    EXPECT_EQ(findImportedNode(result, "kept"), importedModule.value());
     EXPECT_FALSE(package.value()->getSubPackageByName("sub").has_value());
-    EXPECT_FALSE(result.getImportedBindingByName("staged").has_value());
+    EXPECT_EQ(findImportedNode(result, "staged"), nullptr);
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, PreservesModuleNamesWhenReadingSymbolicLinks) {
@@ -804,8 +812,8 @@ TEST_F(VnlcSemanticAnalyzerImportTest, PreservesModuleNamesWhenReadingSymbolicLi
     const auto importedModule = package.value()->getModuleByName("linkedApi");
     ASSERT_TRUE(importedModule.has_value());
     EXPECT_EQ(importedModule.value()->getName(), "linkedApi");
-    EXPECT_EQ(result.getImportedBindingByName("linkedApi").value_or(nullptr), importedModule.value());
-    EXPECT_EQ(result.getImportedBindingByName("linked").value_or(nullptr), importedModule.value()->getIdentifierByName("linked").value_or(nullptr));
+    EXPECT_EQ(findImportedNode(result, "linkedApi"), importedModule.value());
+    EXPECT_EQ(findImportedNode(result, "linked"), importedModule.value()->getIdentifierByName("linked").value_or(nullptr));
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemanticErrors) {
@@ -820,5 +828,5 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemantic
 
     ASSERT_TRUE(result->hasErrors());
     EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
-    EXPECT_FALSE(result->getImportedBindingByName("pkg").has_value());
+    EXPECT_EQ(findImportedNode(*result, "pkg"), nullptr);
 }
