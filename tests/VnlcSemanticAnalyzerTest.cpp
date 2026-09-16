@@ -13,7 +13,9 @@
 #include "type/VnlcCustomizedTypeKind.hpp"
 #include "type/VnlcCustomizedTypeOrigin.hpp"
 #include "type/VnlcTypeExpressionType.hpp"
+#include "vni/import/VnlcImportedLet.hpp"
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <memory>
 #include <optional>
@@ -535,4 +537,290 @@ TEST(VnlcSemanticContextTest, RetainsPoppedScopesAndTheirParents) {
     const auto symbol = classScope->lookup("Sample");
     ASSERT_TRUE(symbol.has_value());
     EXPECT_EQ(symbol.value()->getLocalDeclarationNode(), classDeclaration);
+}
+
+class VnlcSemanticAnalyzerImportTest : public testing::Test {
+protected:
+    std::filesystem::path testDirectory;
+    VnlcConfig config = makeConfig("imports.vnl");
+    std::unique_ptr<VnlcModuleNode> module;
+
+    void SetUp() override {
+        const auto* testInfo = testing::UnitTest::GetInstance()->current_test_info();
+        testDirectory = std::filesystem::temp_directory_path() / ("vnlctest-import-" + std::string(testInfo->name()));
+        std::filesystem::remove_all(testDirectory);
+        config.dependencyPackageRootPaths.emplace("pkg", testDirectory / "dependency_source");
+        config.dependencyPackageRootPaths.emplace("extra", testDirectory / "another_source");
+        writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"count":{"category":"let","type":"int"}})");
+        writeFile("dependency_source/sub/other.vni", R"({"flag":{"category":"let","type":"bool"}})");
+        writeFile("dependency_source/sub/second.vni", R"({"caption":{"category":"let","type":"string"}})");
+        writeFile("another_source/tools.vni", R"({"enabled":{"category":"let","type":"bool"}})");
+    }
+
+    void TearDown() override {
+        std::error_code error;
+        std::filesystem::remove_all(testDirectory, error);
+    }
+
+    void writeFile(const std::filesystem::path& relativePath, std::string_view contents) const {
+        const auto path = testDirectory / relativePath;
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream output(path);
+        output << contents;
+    }
+
+    VnlcSemanticAnalysisResult analyze(std::string_view source) {
+        module = parseModule(source, config);
+        VnlcSemanticAnalyzer analyzer(*module);
+        return analyzer.analyze(config);
+    }
+};
+
+TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsItsModule) {
+    const auto result = analyze("import pkg.api.value\nlet pkg = 0\nlet api = 0\nexport value\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
+    EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    EXPECT_EQ(package.value()->getName(), "pkg");
+    const auto importedModule = package.value()->getModuleByName("api");
+    ASSERT_TRUE(importedModule.has_value());
+    EXPECT_EQ(importedModule.value()->getName(), "api");
+    const auto member = importedModule.value()->getIdentifierByName("value");
+    ASSERT_TRUE(member.has_value());
+    EXPECT_EQ(result.getImportedBindingByName("value").value_or(nullptr), member.value());
+    const auto* value = dynamic_cast<const VnlcImportedLet*>(member.value());
+    ASSERT_NE(value, nullptr);
+    EXPECT_EQ(value->getType(), "int");
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, DoesNotDeclarePathPrefixesInTheModuleScope) {
+    const auto result = analyze("import pkg.api.value\nexport pkg, api\n");
+
+    ASSERT_TRUE(result.hasErrors());
+    ASSERT_EQ(result.getErrors().size(), 2);
+    EXPECT_EQ(result.getErrors()[0].getMessage(), "Undefined symbol pkg");
+    EXPECT_EQ(result.getErrors()[1].getMessage(), "Undefined symbol api");
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalModule) {
+    const auto result = analyze("import pkg.api\nlet pkg = 0\nlet value = 0\nexport api\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    EXPECT_EQ(result.getImportedBindingByName("api").value_or(nullptr), package.value()->getModuleByName("api").value_or(nullptr));
+    EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
+    EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, AliasesBindToTheirOriginalTargets) {
+    const auto result = analyze("import pkg.api.value as renamed\nimport pkg.api as library\nlet value = 0\nlet api = 0\nlet pkg = 0\nexport renamed, library\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    const auto importedModule = package.value()->getModuleByName("api");
+    ASSERT_TRUE(importedModule.has_value());
+    EXPECT_EQ(result.getImportedBindingByName("renamed").value_or(nullptr), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
+    EXPECT_EQ(result.getImportedBindingByName("library").value_or(nullptr), importedModule.value());
+    EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
+    EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
+    const auto result = analyze("import pkg.{api.{self as m, value as v}, sub.other}\nlet pkg = 0\nlet api = 0\nlet sub = 0\nlet value = 0\nexport m, v, other\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    const auto importedModule = package.value()->getModuleByName("api");
+    ASSERT_TRUE(importedModule.has_value());
+    const auto subPackage = package.value()->getSubPackageByName("sub");
+    ASSERT_TRUE(subPackage.has_value());
+    EXPECT_EQ(result.getImportedBindingByName("m").value_or(nullptr), importedModule.value());
+    EXPECT_EQ(result.getImportedBindingByName("v").value_or(nullptr), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
+    EXPECT_EQ(result.getImportedBindingByName("other").value_or(nullptr), subPackage.value()->getModuleByName("other").value_or(nullptr));
+    EXPECT_FALSE(result.getImportedBindingByName("self").has_value());
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ExpandsModuleWildcardsAndCanImportTheModuleItself) {
+    for (const auto source : { "import pkg.api.*\nlet api = 0\nexport value, count\n", "import pkg.api.{*, self}\nexport api, value, count\n" }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_FALSE(result.hasErrors());
+        EXPECT_TRUE(result.getImportedBindingByName("value").has_value());
+        EXPECT_TRUE(result.getImportedBindingByName("count").has_value());
+        EXPECT_FALSE(result.getImportedBindingByName("pkg").has_value());
+        EXPECT_FALSE(result.getImportedBindingByName("*").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ImportsCompletePackagesAndPackageSelf) {
+    for (const auto source : { "import pkg as library\nexport library\n", "import pkg.{self as library}\nexport library\n" }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto package = result.getImportedPackageByName("pkg");
+        ASSERT_TRUE(package.has_value());
+        EXPECT_EQ(result.getImportedBindingByName("library").value_or(nullptr), package.value());
+        EXPECT_TRUE(package.value()->getModuleByName("api").has_value());
+        const auto subPackage = package.value()->getSubPackageByName("sub");
+        ASSERT_TRUE(subPackage.has_value());
+        EXPECT_TRUE(subPackage.value()->getModuleByName("other").has_value());
+        EXPECT_TRUE(subPackage.value()->getModuleByName("second").has_value());
+        EXPECT_FALSE(result.getImportedBindingByName("api").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, RetainsMultipleModulesAndPackagesAfterTheAnalyzerIsDestroyed) {
+    const auto result = analyze("import pkg.api.value\nimport pkg.sub.other.flag\nimport pkg.sub.second.caption\nimport extra.tools.enabled\nexport value, flag, caption, enabled\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    EXPECT_TRUE(package.value()->getModuleByName("api").has_value());
+    const auto subPackage = package.value()->getSubPackageByName("sub");
+    ASSERT_TRUE(subPackage.has_value());
+    EXPECT_TRUE(subPackage.value()->getModuleByName("other").has_value());
+    EXPECT_TRUE(subPackage.value()->getModuleByName("second").has_value());
+    const auto extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_TRUE(extraPackage.has_value());
+    EXPECT_TRUE(extraPackage.value()->getModuleByName("tools").has_value());
+    for (const auto name : { "value", "flag", "caption", "enabled" }) {
+        const auto binding = result.getImportedBindingByName(name);
+        ASSERT_TRUE(binding.has_value());
+        EXPECT_EQ(binding.value()->getName(), name);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReportsInvalidImportsWithoutRetainingPartialTrees) {
+    for (const auto source : {
+             "import absent.api\n",
+             "import pkg.absent\n",
+             "import pkg.api.absent\n",
+             "import pkg.api.value.member\n",
+             "import pkg.api.value.{self}\n",
+             "import pkg.*\n",
+             "import pkg.{api, absent}\n",
+             "import pkg.api.{value, absent}\n",
+         }) {
+        SCOPED_TRACE(source);
+        std::optional<VnlcSemanticAnalysisResult> result;
+        ASSERT_NO_THROW(result.emplace(analyze(source)));
+
+        ASSERT_TRUE(result->hasErrors());
+        EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+        EXPECT_FALSE(result->getImportedPackageByName("absent").has_value());
+        EXPECT_FALSE(result->getImportedBindingByName("api").has_value());
+        EXPECT_FALSE(result->getImportedBindingByName("value").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMalformedModuleInterfacesAsSemanticErrors) {
+    for (const auto contents : { "invalid json", "[]", R"({"value":{"category":"let","type":123}})", R"({"value":{"category":null}})" }) {
+        SCOPED_TRACE(contents);
+        writeFile("dependency_source/broken.vni", contents);
+        std::optional<VnlcSemanticAnalysisResult> result;
+        ASSERT_NO_THROW(result.emplace(analyze("import pkg.broken\n")));
+
+        ASSERT_TRUE(result->hasErrors());
+        EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+        EXPECT_FALSE(result->getImportedBindingByName("broken").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMissingDependencyDirectoriesAsSemanticErrors) {
+    std::filesystem::remove_all(testDirectory / "dependency_source");
+    std::optional<VnlcSemanticAnalysisResult> result;
+    ASSERT_NO_THROW(result.emplace(analyze("import pkg.api\n")));
+
+    ASSERT_TRUE(result->hasErrors());
+    EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+    EXPECT_FALSE(result->getImportedBindingByName("api").has_value());
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImport) {
+    for (const auto source : {
+             "import pkg.api.{value, value}\n",
+             "import pkg.{api.value as same, sub.other.flag as same}\n",
+             "import pkg.api.{*, value}\n",
+             "import pkg.api.{value, *}\n",
+         }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_TRUE(result.hasErrors());
+        EXPECT_FALSE(result.getImportedPackageByName("pkg").has_value());
+        EXPECT_FALSE(result.getImportedBindingByName("value").has_value());
+        EXPECT_FALSE(result.getImportedBindingByName("same").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, RejectsRedeclarationsAcrossImportsAndLocalDeclarations) {
+    for (const auto source : {
+             "import pkg.api.value\nimport pkg.api.value\n",
+             "import pkg.api.value\nimport pkg.sub.other.flag as value\n",
+             "import pkg.api.value\nlet value = 0\n",
+         }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_TRUE(result.hasErrors());
+        EXPECT_TRUE(result.getImportedBindingByName("value").has_value());
+        EXPECT_TRUE(result.getImportedPackageByName("pkg").has_value());
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsAndDoNotCommitNewBranches) {
+    const auto result = analyze("import pkg.api as kept\nimport pkg.sub.{other as staged, missing}\nlet staged = 0\nexport kept\n");
+
+    ASSERT_TRUE(result.hasErrors());
+    ASSERT_EQ(result.getErrors().size(), 1);
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    const auto importedModule = package.value()->getModuleByName("api");
+    ASSERT_TRUE(importedModule.has_value());
+    EXPECT_EQ(result.getImportedBindingByName("kept").value_or(nullptr), importedModule.value());
+    EXPECT_FALSE(package.value()->getSubPackageByName("sub").has_value());
+    EXPECT_FALSE(result.getImportedBindingByName("staged").has_value());
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, PreservesModuleNamesWhenReadingSymbolicLinks) {
+    writeFile("shared/original.vni", R"({"linked":{"category":"let","type":"int"}})");
+    std::error_code error;
+    std::filesystem::create_symlink(testDirectory / "shared/original.vni", testDirectory / "dependency_source/linkedApi.vni", error);
+    if (error) {
+        GTEST_SKIP() << error.message();
+    }
+
+    const auto result = analyze("import pkg.linkedApi.{self, linked}\nexport linkedApi, linked\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto package = result.getImportedPackageByName("pkg");
+    ASSERT_TRUE(package.has_value());
+    const auto importedModule = package.value()->getModuleByName("linkedApi");
+    ASSERT_TRUE(importedModule.has_value());
+    EXPECT_EQ(importedModule.value()->getName(), "linkedApi");
+    EXPECT_EQ(result.getImportedBindingByName("linkedApi").value_or(nullptr), importedModule.value());
+    EXPECT_EQ(result.getImportedBindingByName("linked").value_or(nullptr), importedModule.value()->getIdentifierByName("linked").value_or(nullptr));
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemanticErrors) {
+    std::error_code error;
+    std::filesystem::create_directory_symlink(testDirectory / "dependency_source", testDirectory / "dependency_source/loop", error);
+    if (error) {
+        GTEST_SKIP() << error.message();
+    }
+
+    std::optional<VnlcSemanticAnalysisResult> result;
+    ASSERT_NO_THROW(result.emplace(analyze("import pkg\n")));
+
+    ASSERT_TRUE(result->hasErrors());
+    EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+    EXPECT_FALSE(result->getImportedBindingByName("pkg").has_value());
 }

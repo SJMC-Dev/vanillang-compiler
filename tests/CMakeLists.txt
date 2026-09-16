@@ -31,6 +31,10 @@ file(GLOB_RECURSE VNI_FILES CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/src/vni/*.cpp
 )
 
+file(GLOB_RECURSE VNI_IMPORT_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/vni/import/*.cpp
+)
+
 add_executable(
     vnlctest_parser
     ${PROJECT_SOURCE_DIR}/src/lexer/VnlcLexer.cpp
@@ -51,6 +55,7 @@ add_executable(
     ${AST_FILES}
     ${SEMANTIC_FILES}
     ${TYPE_FILES}
+    ${VNI_IMPORT_FILES}
     VnlcSemanticAnalyzerTest.cpp
 )
 
