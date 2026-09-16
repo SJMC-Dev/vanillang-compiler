@@ -322,7 +322,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
     const auto& importItem = importDecl.getNamePartsListWithAliases();
     try {
         VnlcPackageReader reader(packages);
-        reader.readPackage(importItem, config);
+        reader.readPackageFromSource(importItem, config);
     } catch (const VnlcPackageReaderError& error) {
         context.reportError(error.locate() ? static_cast<const VnlcAstNode&>(*error.locate()) : importDecl, error.what());
         return;

@@ -1,7 +1,6 @@
 #ifndef VNLC_MODULE_INTERFACE_FILE_READER_HPP
 #define VNLC_MODULE_INTERFACE_FILE_READER_HPP
 
-#include "ast/declaration/VnlcImportDeclarationItem.hpp"
 #include "vni/import/VnlcImportedAlias.hpp"
 #include "vni/import/VnlcImportedClass.hpp"
 #include "vni/import/VnlcImportedEnum.hpp"
@@ -25,7 +24,6 @@ class VnlcModuleInterfaceFileReader {
 private:
     std::filesystem::path filePath;
     std::string moduleName;
-    const VnlcImportDeclarationItem& importItem;
 
     static std::array<std::string, 3> validAccessModifiers;
 
@@ -45,7 +43,7 @@ private:
     std::unique_ptr<VnlcImportedParameter> parseImportedParameter(std::string_view key, const nlohmann::json& value);
 
 public:
-    VnlcModuleInterfaceFileReader(std::filesystem::path filePath, const VnlcImportDeclarationItem& importItem);
+    VnlcModuleInterfaceFileReader(std::filesystem::path filePath);
 
     [[nodiscard]] std::unique_ptr<VnlcImportedModule> read();
 };

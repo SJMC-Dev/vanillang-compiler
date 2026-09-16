@@ -5,11 +5,11 @@
 
 VnlcPackageReader::VnlcPackageReader(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>& packages) : packages(packages) {}
 
-void VnlcPackageReader::readPackage(const VnlcImportDeclarationItem& importItem, const VnlcConfig& config) {
-    readRecursively(importItem, config.dependencyPackageRootPaths, {}, nullptr);
+void VnlcPackageReader::readPackageFromSource(const VnlcImportDeclarationItem& importItem, const VnlcConfig& config) {
+    readRecursivelyFromSource(importItem, config.dependencyPackageRootPaths, {}, nullptr);
 }
 
-void VnlcPackageReader::readRecursively(
+void VnlcPackageReader::readRecursivelyFromSource(
     const VnlcImportDeclarationItem& importItem,
     const std::unordered_map<std::string, std::filesystem::path>& rootPaths,
     std::filesystem::path currentPath,
@@ -18,7 +18,7 @@ void VnlcPackageReader::readRecursively(
     if (importItem.self) {
         if (currentPackage) {
             std::unordered_set<std::filesystem::path> activePackagePaths;
-            readPackageContents(currentPath, *currentPackage, importItem, activePackagePaths);
+            readPackageContents(currentPath, *currentPackage, activePackagePaths);
         }
         return;
     }
@@ -58,7 +58,7 @@ void VnlcPackageReader::readRecursively(
                     throw VnlcPackageReaderError(fmt::format("Could not find package or module with name: {}", namePrefix), namePrefixNode.get());
                 }
                 if (!currentPackage->getModules().contains(namePrefix)) {
-                    VnlcModuleInterfaceFileReader moduleReader(modulePath, importItem);
+                    VnlcModuleInterfaceFileReader moduleReader(modulePath);
                     currentPackage->addModule(moduleReader.read());
                 }
                 return;
@@ -80,20 +80,15 @@ void VnlcPackageReader::readRecursively(
 
     if (currentPackage && importItem.nameSuffixes.empty() && !importItem.wildcard) {
         std::unordered_set<std::filesystem::path> activePackagePaths;
-        readPackageContents(currentPath, *currentPackage, importItem, activePackagePaths);
+        readPackageContents(currentPath, *currentPackage, activePackagePaths);
     }
 
     for (const auto& suffix : importItem.nameSuffixes) {
-        readRecursively(*suffix, rootPaths, currentPath, currentPackage);
+        readRecursivelyFromSource(*suffix, rootPaths, currentPath, currentPackage);
     }
 }
 
-void VnlcPackageReader::readPackageContents(
-    const std::filesystem::path& packagePath,
-    VnlcImportedPackage& package,
-    const VnlcImportDeclarationItem& importItem,
-    std::unordered_set<std::filesystem::path>& activePackagePaths
-) {
+void VnlcPackageReader::readPackageContents(const std::filesystem::path& packagePath, VnlcImportedPackage& package, std::unordered_set<std::filesystem::path>& activePackagePaths) {
     std::filesystem::path canonicalPath = std::filesystem::canonical(packagePath);
     if (!activePackagePaths.insert(canonicalPath).second) {
         throw VnlcPackageReaderError(fmt::format("Package directory cycle detected at {}", packagePath.string()));
@@ -110,9 +105,9 @@ void VnlcPackageReader::readPackageContents(
                     )
                 );
             }
-            readPackageContents(entry.path(), *package.getSubPackages().at(name), importItem, activePackagePaths);
+            readPackageContents(entry.path(), *package.getSubPackages().at(name), activePackagePaths);
         } else if (entry.is_regular_file() && entry.path().extension() == ".vni" && !package.getModules().contains(entry.path().stem().string())) {
-            VnlcModuleInterfaceFileReader moduleReader(entry.path(), importItem);
+            VnlcModuleInterfaceFileReader moduleReader(entry.path());
             package.addModule(moduleReader.read());
         }
     }

@@ -4,10 +4,7 @@
 #include <fmt/core.h>
 #include <fstream>
 
-VnlcModuleInterfaceFileReader::VnlcModuleInterfaceFileReader(std::filesystem::path filePath, const VnlcImportDeclarationItem& importItem)
-    : filePath(std::filesystem::canonical(filePath)),
-      moduleName(filePath.stem().string()),
-      importItem(importItem) {}
+VnlcModuleInterfaceFileReader::VnlcModuleInterfaceFileReader(std::filesystem::path filePath) : filePath(std::filesystem::canonical(filePath)), moduleName(filePath.stem().string()) {}
 
 std::array<std::string, 3> VnlcModuleInterfaceFileReader::validAccessModifiers = { "public", "protected", "private" };
 
