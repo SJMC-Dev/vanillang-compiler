@@ -8,7 +8,7 @@
 
 struct VnlcImportDeclarationItem {
     std::vector<std::unique_ptr<VnlcIdentifierNode>> namePrefix;
-    std::vector<std::unique_ptr<VnlcImportDeclarationItem>> nameSuffices;
+    std::vector<std::unique_ptr<VnlcImportDeclarationItem>> nameSuffixes;
     std::optional<std::unique_ptr<VnlcIdentifierNode>> alias;
     bool self = false;
     bool wildcard = false;
