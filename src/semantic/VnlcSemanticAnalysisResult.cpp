@@ -11,8 +11,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
     std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*>&& inferredExpressionTypeMap,
-    std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages,
-    std::unordered_map<std::string, const VnlcImportedItem*>&& importedBindings
+    std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages
 )
     : errors(std::move(errors)),
       warnings(std::move(warnings)),
@@ -22,8 +21,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
       inferredValueTypeMap(std::move(inferredValueTypeMap)),
       inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
       inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)),
-      importedPackages(std::move(importedPackages)),
-      importedBindings(std::move(importedBindings)) {}
+      importedPackages(std::move(importedPackages)) {}
 
 bool VnlcSemanticAnalysisResult::hasErrors() const {
     return !errors.empty();
@@ -70,14 +68,6 @@ const std::optional<const VnlcImportedPackage*> VnlcSemanticAnalysisResult::getI
     auto it = importedPackages.find(std::string(packageName));
     if (it != importedPackages.end()) {
         return std::make_optional<const VnlcImportedPackage*>(it->second.get());
-    }
-    return std::nullopt;
-}
-
-std::optional<const VnlcImportedItem*> VnlcSemanticAnalysisResult::getImportedBindingByName(std::string_view name) const {
-    auto it = importedBindings.find(std::string(name));
-    if (it != importedBindings.end()) {
-        return it->second;
     }
     return std::nullopt;
 }

@@ -460,7 +460,6 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
         for (std::size_t index = 1; index < binding.path.size(); ++index) {
             target = findChild(target, binding.path[index]);
         }
-        context.mapImportedBinding(binding.name, target);
         context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolAccessModifier::PUBLIC, binding.name, target));
     }
 }
@@ -823,7 +822,6 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
     auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
     auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
     auto importedPackages = context.takeImportedPackages();
-    auto importedBindings = context.takeImportedBindings();
     return VnlcSemanticAnalysisResult(
         std::move(std::get<0>(diagnostics)),
         std::move(std::get<1>(diagnostics)),
@@ -833,7 +831,6 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
         std::move(inferredValueTypes),
         std::move(inferredFunctionReturnTypes),
         std::move(inferredExpressionTypes),
-        std::move(importedPackages),
-        std::move(importedBindings)
+        std::move(importedPackages)
     );
 }

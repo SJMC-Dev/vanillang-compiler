@@ -54,22 +54,10 @@ void VnlcSemanticContext::collectImportedPackages(std::unordered_map<std::string
     }
 }
 
-void VnlcSemanticContext::mapImportedBinding(std::string_view name, const VnlcImportedItem* item) {
-    importedBindings.emplace(std::string(name), item);
-}
-
 std::optional<const VnlcImportedPackage*> VnlcSemanticContext::getImportedPackageByName(std::string_view name) const {
     auto it = importedPackages.find(std::string(name));
     if (it != importedPackages.end()) {
         return it->second.get();
-    }
-    return std::nullopt;
-}
-
-std::optional<const VnlcImportedItem*> VnlcSemanticContext::getImportedBindingByName(std::string_view name) const {
-    auto it = importedBindings.find(std::string(name));
-    if (it != importedBindings.end()) {
-        return it->second;
     }
     return std::nullopt;
 }
@@ -238,10 +226,6 @@ std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector
 
 std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> VnlcSemanticContext::takeImportedPackages() {
     return std::move(importedPackages);
-}
-
-std::unordered_map<std::string, const VnlcImportedItem*> VnlcSemanticContext::takeImportedBindings() {
-    return std::move(importedBindings);
 }
 
 std::unordered_set<std::unique_ptr<VnlcCustomizedType>> VnlcSemanticContext::takeCustomizedTypeRegistry() {

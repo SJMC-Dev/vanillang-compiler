@@ -34,7 +34,6 @@ private:
     std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> inferredExpressionTypeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> importedPackages;
-    std::unordered_map<std::string, const VnlcImportedItem*> importedBindings;
 
     unsigned int loopDepth = 0;
     unsigned int switchDepth = 0;
@@ -60,10 +59,8 @@ public:
     void mapInferredExpressionType(const VnlcExpressionNode* expressionNode, const VnlcSemanticType* semanticType);
 
     void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages);
-    void mapImportedBinding(std::string_view name, const VnlcImportedItem* item);
 
     [[nodiscard]] std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view name) const;
-    [[nodiscard]] std::optional<const VnlcImportedItem*> getImportedBindingByName(std::string_view name) const;
 
     [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
@@ -90,7 +87,6 @@ public:
 
     [[nodiscard]] std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>> takeDiagnostics();
     [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> takeImportedPackages();
-    [[nodiscard]] std::unordered_map<std::string, const VnlcImportedItem*> takeImportedBindings();
     [[nodiscard]] std::unordered_set<std::unique_ptr<VnlcCustomizedType>> takeCustomizedTypeRegistry();
     [[nodiscard]] std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> takeSemanticTypeMap();
     [[nodiscard]] std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> takeInferredValueTypeMap();

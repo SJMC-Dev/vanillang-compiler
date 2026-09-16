@@ -28,7 +28,6 @@ private:
     std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*> inferredExpressionTypeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> importedPackages;
-    std::unordered_map<std::string, const VnlcImportedItem*> importedBindings;
 
 public:
     VnlcSemanticAnalysisResult(
@@ -40,8 +39,7 @@ public:
         std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
         std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
         std::unordered_map<const VnlcExpressionNode*, const VnlcSemanticType*>&& inferredExpressionTypeMap,
-        std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages,
-        std::unordered_map<std::string, const VnlcImportedItem*>&& importedBindings = {}
+        std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages
     );
     VnlcSemanticAnalysisResult(const VnlcSemanticAnalysisResult&) = default;
     VnlcSemanticAnalysisResult& operator=(const VnlcSemanticAnalysisResult&) = default;
@@ -58,7 +56,6 @@ public:
     [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
     [[nodiscard]] const std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view packageName) const;
-    [[nodiscard]] std::optional<const VnlcImportedItem*> getImportedBindingByName(std::string_view name) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredValueType(const VnlcValueDeclarationNode* valueDeclaration) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;

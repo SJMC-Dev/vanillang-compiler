@@ -563,7 +563,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderReadsModuleInterfaceFile) {
     );
 
     const auto importItem = makeImportItem({ "package", "api" });
-    VnlcModuleInterfaceFileReader reader(filePath, importItem);
+    VnlcModuleInterfaceFileReader reader(filePath);
     const auto module = reader.read();
 
     ASSERT_EQ(module->getName(), "api");
@@ -632,7 +632,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderReadsModuleInterfaceFile) {
 TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnEmptyFile) {
     const auto filePath = writeFile("empty.vni", "");
     const auto importItem = makeImportItem({ "module" });
-    VnlcModuleInterfaceFileReader reader(filePath, importItem);
+    VnlcModuleInterfaceFileReader reader(filePath);
 
     EXPECT_THROW(static_cast<void>(reader.read()), VnlcModuleInterfaceFileReaderError);
 }
@@ -641,7 +641,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnDirectory) {
     const auto directory = testDirectory / "directory.vni";
     std::filesystem::create_directories(directory);
     const auto importItem = makeImportItem({ "module" });
-    VnlcModuleInterfaceFileReader reader(directory, importItem);
+    VnlcModuleInterfaceFileReader reader(directory);
 
     EXPECT_THROW(static_cast<void>(reader.read()), VnlcModuleInterfaceFileReaderError);
 }
@@ -649,7 +649,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnDirectory) {
 TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnWrongExtension) {
     const auto filePath = writeFile("module.vnl", "{}");
     const auto importItem = makeImportItem({ "module" });
-    VnlcModuleInterfaceFileReader reader(filePath, importItem);
+    VnlcModuleInterfaceFileReader reader(filePath);
 
     EXPECT_THROW(static_cast<void>(reader.read()), VnlcModuleInterfaceFileReaderError);
 }
@@ -657,7 +657,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnWrongExtension) {
 TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnInvalidJson) {
     const auto filePath = writeFile("module.vni", "{");
     const auto importItem = makeImportItem({ "module" });
-    VnlcModuleInterfaceFileReader reader(filePath, importItem);
+    VnlcModuleInterfaceFileReader reader(filePath);
 
     EXPECT_THROW(static_cast<void>(reader.read()), VnlcModuleInterfaceFileReaderError);
 }
@@ -672,7 +672,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnUnknownCategory) {
 })"
     );
     const auto importItem = makeImportItem({ "module" });
-    VnlcModuleInterfaceFileReader reader(filePath, importItem);
+    VnlcModuleInterfaceFileReader reader(filePath);
 
     EXPECT_THROW(static_cast<void>(reader.read()), VnlcModuleInterfaceFileReaderError);
 }
@@ -680,7 +680,7 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnUnknownCategory) {
 TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderThrowsOnNonexistentFile) {
     const auto importItem = makeImportItem({ "module" });
 
-    EXPECT_THROW(VnlcModuleInterfaceFileReader(testDirectory / "missing.vni", importItem), std::filesystem::filesystem_error);
+    EXPECT_THROW(VnlcModuleInterfaceFileReader(testDirectory / "missing.vni"), std::filesystem::filesystem_error);
 }
 
 TEST_F(VnlcVniTest, VnlcPackageReaderThrowsOnMissingPackage) {
@@ -694,7 +694,7 @@ TEST_F(VnlcVniTest, VnlcPackageReaderThrowsOnMissingPackage) {
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> packages;
     VnlcPackageReader reader(packages);
 
-    EXPECT_THROW(reader.readPackage(importItem, config), VnlcPackageReaderError);
+    EXPECT_THROW(reader.readPackageFromSource(importItem, config), VnlcPackageReaderError);
 }
 
 TEST_F(VnlcVniTest, VnlcPackageReaderReadsModuleInsidePackage) {
@@ -717,7 +717,7 @@ TEST_F(VnlcVniTest, VnlcPackageReaderReadsModuleInsidePackage) {
     const auto importItem = makeImportItem({ "package", "api" });
     std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> packages;
     VnlcPackageReader reader(packages);
-    reader.readPackage(importItem, config);
+    reader.readPackageFromSource(importItem, config);
 
     const auto package = packages.find("package");
     ASSERT_NE(package, packages.end());
