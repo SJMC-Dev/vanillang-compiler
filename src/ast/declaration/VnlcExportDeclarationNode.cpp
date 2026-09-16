@@ -1,9 +1,9 @@
 #include "VnlcExportDeclarationNode.hpp"
 
-VnlcExportDeclarationNode::VnlcExportDeclarationNode(std::vector<VnlcExportDeclarationItem>&& namesListWithAliases, const VnlcToken& firstToken, const VnlcToken& lastToken) noexcept
+VnlcExportDeclarationNode::VnlcExportDeclarationNode(std::vector<VnlcExportDeclarationItem>&& nameList, const VnlcToken& firstToken, const VnlcToken& lastToken) noexcept
     : VnlcDeclarationNode(firstToken, lastToken),
-      namesListWithAliases(std::move(namesListWithAliases)) {}
+      nameList(std::move(nameList)) {}
 
-const std::vector<VnlcExportDeclarationItem>& VnlcExportDeclarationNode::getNamesListWithAliases() const noexcept {
-    return namesListWithAliases;
+const std::vector<VnlcExportDeclarationItem>& VnlcExportDeclarationNode::getNameList() const noexcept {
+    return nameList;
 }

@@ -1032,20 +1032,7 @@ VnlcExportListParsingResult VnlcParser::parseExportList() {
             name = std::move(constructCurrentIdentifierNode());
         }
 
-        if (match(VnlcTokenType::AS)) {
-            if (!check(VnlcTokenType::IDENTIFIER)) {
-                throw VnlcSyntaxError("Expected identifier after 'as' keyword in export list", peek().getLine(), peek().getColumn());
-            } else {
-                alias = std::make_optional<std::unique_ptr<VnlcIdentifierNode>>(std::move(constructCurrentIdentifierNode()));
-            }
-        }
-
-        items.emplace_back(
-            VnlcExportDeclarationItem{
-                .name = std::move(name),
-                .alias = std::move(alias),
-            }
-        );
+        items.emplace_back(VnlcExportDeclarationItem{ .name = std::move(name) });
     } while (match(VnlcTokenType::COMMA));
 
     return VnlcExportListParsingResult{

@@ -463,17 +463,9 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
 }
 
 void VnlcSemanticAnalyzer::checkExport(const VnlcExportDeclarationNode& exportDecl) {
-    for (auto& item : exportDecl.getNamesListWithAliases()) {
+    for (auto& item : exportDecl.getNameList()) {
         if (!context.currentScope().lookup(item.name->getIdentifierString()).has_value()) {
             context.reportError(exportDecl, fmt::format("Undefined symbol {}", item.name->getIdentifierString()));
-        }
-
-        if (item.alias.has_value()) {
-            VnlcSymbol aliasSymbol(VnlcSymbolKind::EXPORT_ALIAS, VnlcSymbolAccessModifier::PUBLIC, item.alias.value()->getIdentifierString(), &exportDecl);
-
-            if (!context.currentScope().declare(std::move(aliasSymbol))) {
-                context.reportError(exportDecl, fmt::format("Redeclaration of symbol {}", item.alias.value()->getIdentifierString()));
-            }
         }
     }
 }

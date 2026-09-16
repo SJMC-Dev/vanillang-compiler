@@ -9,12 +9,12 @@ class VnlcExportDeclarationNode : public VnlcDeclarationNode {
 private:
     VnlcExportDeclarationNode() = delete;
 
-    std::vector<VnlcExportDeclarationItem> namesListWithAliases;
+    std::vector<VnlcExportDeclarationItem> nameList;
 
 public:
-    VnlcExportDeclarationNode(std::vector<VnlcExportDeclarationItem>&& namesListWithAliases, const VnlcToken& firstToken, const VnlcToken& lastToken) noexcept;
+    VnlcExportDeclarationNode(std::vector<VnlcExportDeclarationItem>&& nameList, const VnlcToken& firstToken, const VnlcToken& lastToken) noexcept;
 
-    [[nodiscard]] const std::vector<VnlcExportDeclarationItem>& getNamesListWithAliases() const noexcept;
+    [[nodiscard]] const std::vector<VnlcExportDeclarationItem>& getNameList() const noexcept;
 };
 
 #endif // VNLC_EXPORT_DECLARATION_NODE_HPP
