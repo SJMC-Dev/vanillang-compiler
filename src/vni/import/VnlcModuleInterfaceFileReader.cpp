@@ -6,7 +6,7 @@
 
 VnlcModuleInterfaceFileReader::VnlcModuleInterfaceFileReader(std::filesystem::path filePath, const VnlcImportDeclarationItem& importItem)
     : filePath(std::filesystem::canonical(filePath)),
-      importItem(importItem) {}
+      moduleName(filePath.stem().string()) {}
 
 std::array<std::string, 3> VnlcModuleInterfaceFileReader::validAccessModifiers = { "public", "protected", "private" };
 
@@ -414,6 +414,9 @@ std::unique_ptr<VnlcImportedModule> VnlcModuleInterfaceFileReader::read() {
 
     nlohmann::json json;
     std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw VnlcModuleInterfaceFileReaderError(fmt::format("Could not open module interface file {}", filePath.string()));
+    }
 
     try {
         json = nlohmann::json::parse(file);
@@ -421,8 +424,11 @@ std::unique_ptr<VnlcImportedModule> VnlcModuleInterfaceFileReader::read() {
         throw VnlcModuleInterfaceFileReaderError(e.what());
     }
 
-    std::unique_ptr<VnlcImportedModule> importedModule =
-        std::make_unique<VnlcImportedModule>(importItem.namePrefix.back()->getIdentifierString(), std::unordered_map<std::string, std::unique_ptr<VnlcImportedIdentifier>>());
+    if (!json.is_object()) {
+        throw VnlcModuleInterfaceFileReaderError("Invalid module interface file");
+    }
+
+    std::unique_ptr<VnlcImportedModule> importedModule = std::make_unique<VnlcImportedModule>(moduleName, std::unordered_map<std::string, std::unique_ptr<VnlcImportedIdentifier>>());
 
     for (auto& [key, value] : json.items()) {
         if (!value.is_object() || value.find("category") == value.end() || !value["category"].is_string()) {

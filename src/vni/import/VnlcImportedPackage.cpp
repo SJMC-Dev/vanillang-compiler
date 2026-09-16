@@ -44,3 +44,17 @@ void VnlcImportedPackage::addModule(std::unique_ptr<VnlcImportedModule>&& module
         modules.emplace(module->getName(), std::move(module));
     }
 }
+
+void VnlcImportedPackage::merge(VnlcImportedPackage&& package) {
+    for (auto& [name, subPackage] : package.subPackages) {
+        auto existing = subPackages.find(name);
+        if (existing == subPackages.end()) {
+            subPackages.emplace(name, std::move(subPackage));
+        } else {
+            existing->second->merge(std::move(*subPackage));
+        }
+    }
+    for (auto& [name, module] : package.modules) {
+        addModule(std::move(module));
+    }
+}

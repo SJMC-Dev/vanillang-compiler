@@ -19,11 +19,12 @@
 #include <filesystem>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <string>
 
 class VnlcModuleInterfaceFileReader {
 private:
     std::filesystem::path filePath;
-    const VnlcImportDeclarationItem& importItem;
+    std::string moduleName;
 
     static std::array<std::string, 3> validAccessModifiers;
 

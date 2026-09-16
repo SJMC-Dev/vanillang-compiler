@@ -12,6 +12,8 @@
 #include "ast/statement/VnlcSwitchStatementNode.hpp"
 #include "ast/statement/VnlcVariableDeclarationStatementNode.hpp"
 #include "ast/statement/VnlcWhileStatementNode.hpp"
+#include "error/VnlcModuleInterfaceReaderError.hpp"
+#include "error/VnlcPackageReaderError.hpp"
 #include "semantic/symbol/VnlcSymbolAccessModifier.hpp"
 #include "semantic/symbol/VnlcSymbolKind.hpp"
 #include "semantic/symbol/VnlcSymbolOrigin.hpp"
@@ -20,8 +22,22 @@
 #include "type/VnlcSemanticType.hpp"
 #include "type/VnlcTypeExpressionType.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
+#include "vni/import/VnlcImportedClass.hpp"
+#include "vni/import/VnlcImportedEnum.hpp"
+#include "vni/import/VnlcImportedEnumMember.hpp"
+#include "vni/import/VnlcImportedFunc.hpp"
+#include "vni/import/VnlcImportedInterface.hpp"
+#include "vni/import/VnlcImportedLet.hpp"
+#include "vni/import/VnlcImportedMethod.hpp"
+#include "vni/import/VnlcImportedParameter.hpp"
+#include "vni/import/VnlcImportedProperty.hpp"
+#include "vni/import/VnlcImportedTypeAlias.hpp"
+#include "vni/import/VnlcPackageReader.hpp"
+#include <algorithm>
 #include <fmt/core.h>
+#include <functional>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -315,7 +331,149 @@ void VnlcSemanticAnalyzer::checkModule(const VnlcModuleNode& moduleNode, const V
 }
 
 void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDecl, const VnlcConfig& config) {
-    // TODO: Implement import checking logic
+    std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> packages;
+    const auto& importItem = importDecl.getNamePartsListWithAliases();
+    try {
+        VnlcPackageReader reader(packages);
+        reader.readPackage(importItem, config);
+    } catch (const VnlcPackageReaderError& error) {
+        context.reportError(error.locate() ? static_cast<const VnlcAstNode&>(*error.locate()) : importDecl, error.what());
+        return;
+    } catch (const VnlcModuleInterfaceFileReaderError& error) {
+        context.reportError(importDecl, error.what());
+        return;
+    } catch (const std::filesystem::filesystem_error& error) {
+        context.reportError(importDecl, error.what());
+        return;
+    } catch (const nlohmann::json::exception& error) {
+        context.reportError(importDecl, error.what());
+        return;
+    }
+
+    struct VnlcImportBinding {
+        std::string name;
+        std::vector<std::string> path;
+        VnlcSymbolKind kind;
+    };
+
+    std::vector<VnlcImportBinding> bindings;
+    std::unordered_set<std::string> names;
+    const auto errorCount = context.getErrors().size();
+
+    const auto findChild = [](const VnlcImportedItem* parent, std::string_view name) -> const VnlcImportedItem* {
+        if (const auto* package = dynamic_cast<const VnlcImportedPackage*>(parent)) {
+            if (auto subPackage = package->getSubPackageByName(name)) {
+                return subPackage.value();
+            }
+            return package->getModuleByName(name).value_or(nullptr);
+        }
+        if (const auto* module = dynamic_cast<const VnlcImportedModule*>(parent)) {
+            return module->getIdentifierByName(name).value_or(nullptr);
+        }
+        return nullptr;
+    };
+
+    const auto getKind = [](const VnlcImportedItem* item) {
+        if (dynamic_cast<const VnlcImportedPackage*>(item)) return VnlcSymbolKind::PACKAGE;
+        if (dynamic_cast<const VnlcImportedModule*>(item)) return VnlcSymbolKind::MODULE;
+        if (dynamic_cast<const VnlcImportedLet*>(item)) return VnlcSymbolKind::VARIABLE;
+        if (dynamic_cast<const VnlcImportedFunc*>(item)) return VnlcSymbolKind::FUNCTION;
+        if (dynamic_cast<const VnlcImportedClass*>(item)) return VnlcSymbolKind::CLASS;
+        if (dynamic_cast<const VnlcImportedInterface*>(item)) return VnlcSymbolKind::INTERFACE;
+        if (dynamic_cast<const VnlcImportedEnum*>(item)) return VnlcSymbolKind::ENUM;
+        if (dynamic_cast<const VnlcImportedTypeAlias*>(item)) return VnlcSymbolKind::TYPE_ALIAS;
+        if (dynamic_cast<const VnlcImportedEnumMember*>(item)) return VnlcSymbolKind::ENUM_MEMBER;
+        if (dynamic_cast<const VnlcImportedProperty*>(item)) return VnlcSymbolKind::PROPERTY;
+        if (dynamic_cast<const VnlcImportedMethod*>(item)) return VnlcSymbolKind::METHOD;
+        if (dynamic_cast<const VnlcImportedParameter*>(item)) return VnlcSymbolKind::PARAMETER;
+        return VnlcSymbolKind::IMPORT_ALIAS;
+    };
+
+    const auto bind = [&](const VnlcImportedItem* target, const std::vector<std::string>& path, const VnlcIdentifierNode* alias, const VnlcAstNode& location) {
+        const std::string name(alias ? alias->getIdentifierString() : target->getName());
+        if (context.currentScope().lookupLocal(name).has_value() || !names.insert(name).second) {
+            context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
+            return;
+        }
+        bindings.push_back({ name, path, alias ? VnlcSymbolKind::IMPORT_ALIAS : getKind(target) });
+    };
+
+    std::function<void(const VnlcImportDeclarationItem&, const VnlcImportedItem*, std::vector<std::string>)> checkItem;
+    checkItem = [&](const VnlcImportDeclarationItem& item, const VnlcImportedItem* parent, std::vector<std::string> path) {
+        const VnlcAstNode& location = item.namePrefix.empty() ? static_cast<const VnlcAstNode&>(importDecl) : *item.namePrefix.back();
+        const VnlcImportedItem* target = parent;
+        if (!item.self) {
+            for (const auto& part : item.namePrefix) {
+                const auto name = part->getIdentifierString();
+                if (item.wildcard && name == "*") {
+                    continue;
+                }
+                if (target == nullptr) {
+                    auto package = packages.find(std::string(name));
+                    target = package == packages.end() ? nullptr : package->second.get();
+                } else {
+                    target = findChild(target, name);
+                }
+                if (target == nullptr) {
+                    context.reportError(*part, fmt::format("Could not find imported package, module or identifier '{}'", name));
+                    return;
+                }
+                path.emplace_back(name);
+            }
+        }
+
+        if (target == nullptr) {
+            context.reportError(location, "Import path must name a package, module or identifier");
+            return;
+        }
+        if (item.self && !dynamic_cast<const VnlcImportedPackage*>(target) && !dynamic_cast<const VnlcImportedModule*>(target)) {
+            context.reportError(location, "Self imports can only refer to packages or modules");
+            return;
+        }
+        if (item.wildcard) {
+            const auto* importedModule = dynamic_cast<const VnlcImportedModule*>(target);
+            if (importedModule == nullptr) {
+                context.reportError(location, "Wildcard imports can only be used for modules");
+                return;
+            }
+            if (item.alias.has_value()) {
+                context.reportError(*item.alias.value(), "Wildcard imports cannot have aliases");
+                return;
+            }
+            std::vector<std::string> identifierNames;
+            for (const auto& [name, identifier] : importedModule->getIdentifiers()) {
+                identifierNames.push_back(name);
+            }
+            std::sort(identifierNames.begin(), identifierNames.end());
+            for (const auto& name : identifierNames) {
+                path.push_back(name);
+                bind(importedModule->getIdentifierByName(name).value(), path, nullptr, location);
+                path.pop_back();
+            }
+        } else if (!item.nameSuffixes.empty()) {
+            for (const auto& suffix : item.nameSuffixes) {
+                checkItem(*suffix, target, path);
+            }
+        } else {
+            const auto* alias = item.alias.has_value() ? item.alias.value().get() : nullptr;
+            bind(target, path, alias, alias ? *alias : location);
+        }
+    };
+
+    checkItem(importItem, nullptr, {});
+    if (context.getErrors().size() != errorCount) {
+        return;
+    }
+
+    context.collectImportedPackages(std::move(packages));
+    for (const auto& binding : bindings) {
+        const VnlcImportedItem* target = context.getImportedPackageByName(binding.path.front()).value();
+        for (std::size_t index = 1; index < binding.path.size(); ++index) {
+            target = findChild(target, binding.path[index]);
+        }
+        context.mapImportedBinding(binding.name, target);
+        context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolOrigin::IMPORTED, VnlcSymbolAccessModifier::PUBLIC, binding.name, nullptr));
+    }
 }
 
 void VnlcSemanticAnalyzer::checkExport(const VnlcExportDeclarationNode& exportDecl) {
@@ -684,6 +842,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
     auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
     auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
     auto importedPackages = context.takeImportedPackages();
+    auto importedBindings = context.takeImportedBindings();
     return VnlcSemanticAnalysisResult(
         std::move(std::get<0>(diagnostics)),
         std::move(std::get<1>(diagnostics)),
@@ -693,6 +852,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
         std::move(inferredValueTypes),
         std::move(inferredFunctionReturnTypes),
         std::move(inferredExpressionTypes),
-        std::move(importedPackages)
+        std::move(importedPackages),
+        std::move(importedBindings)
     );
 }

@@ -28,6 +28,7 @@ public:
 
     void addSubPackage(std::unique_ptr<VnlcImportedPackage>&& subPackage);
     void addModule(std::unique_ptr<VnlcImportedModule>&& module);
+    void merge(VnlcImportedPackage&& package);
 };
 
 #endif // VNLC_IMPORTED_PACKAGE_HPP
