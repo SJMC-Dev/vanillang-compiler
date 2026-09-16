@@ -144,14 +144,6 @@ std::string_view VnlcTokenTypeUtil::toString(VnlcTokenType type) {
             return "VnlcTokenType::DECORATOR";
         case VnlcTokenType::DECORATE:
             return "VnlcTokenType::DECORATE";
-        case VnlcTokenType::TRY:
-            return "VnlcTokenType::TRY";
-        case VnlcTokenType::CATCH:
-            return "VnlcTokenType::CATCH";
-        case VnlcTokenType::FINALLY:
-            return "VnlcTokenType::FINALLY";
-        case VnlcTokenType::THROW:
-            return "VnlcTokenType::THROW";
         case VnlcTokenType::PANIC:
             return "VnlcTokenType::PANIC";
         case VnlcTokenType::ASSERT:
