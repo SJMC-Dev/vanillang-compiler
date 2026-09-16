@@ -48,8 +48,7 @@ void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpr
     auto symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
     if (!symbol.has_value()) {
         context.reportError(exprNode, fmt::format("Use of undeclared identifier '{}'", exprNode.getName().getIdentifierString()));
-    } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol.value()->getLocalDeclarationNode()) ||
-                 dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol.value()->getLocalDeclarationNode()))) {
+    } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol.value()->getLocalNode()) || dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol.value()->getLocalNode()))) {
         context.reportError(exprNode, fmt::format("Identifier '{}' is not a variable or function", exprNode.getName().getIdentifierString()));
     }
 }
@@ -72,7 +71,7 @@ bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcMemberAccessExpressionN
         return true;
     }
 
-    return checkMemberAccessModifier(customizedType->getLocalDeclaration(), member.getName().getIdentifierString(), dynamic_cast<const VnlcSuperExpressionNode*>(&prefix) != nullptr);
+    return checkMemberAccessModifier(customizedType->getLocalNode(), member.getName().getIdentifierString(), dynamic_cast<const VnlcSuperExpressionNode*>(&prefix) != nullptr);
 }
 
 bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcIdentifierExpressionNode& identifierNode) {
@@ -93,7 +92,7 @@ bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcIdentifierExpressionNod
         return true;
     }
 
-    return checkMemberAccessModifier(dynamic_cast<const VnlcClassDeclarationNode*>(currentClass->getLocalDeclarationNode()), memberName);
+    return checkMemberAccessModifier(dynamic_cast<const VnlcClassDeclarationNode*>(currentClass->getLocalNode()), memberName);
 }
 
 bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess) {
@@ -120,7 +119,7 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
             return nullptr;
         }
 
-        return dynamic_cast<const VnlcClassDeclarationNode*>(baseCustomizedType->getLocalDeclaration());
+        return dynamic_cast<const VnlcClassDeclarationNode*>(baseCustomizedType->getLocalNode());
     };
 
     std::unordered_set<const VnlcTypeDeclarationNode*> visitedClasses;
@@ -131,7 +130,7 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
             if (symbol.has_value() &&
                 (symbol.value()->getKind() == VnlcSymbolKind::PROPERTY || symbol.value()->getKind() == VnlcSymbolKind::METHOD || symbol.value()->getKind() == VnlcSymbolKind::ENUM_MEMBER)) {
                 accessModifier = symbol.value()->getAccessModifier();
-                memberDeclaration = symbol.value()->getLocalDeclarationNode();
+                memberDeclaration = symbol.value()->getLocalNode();
             }
         } else if (const auto* classDecl = dynamic_cast<const VnlcClassDeclarationNode*>(typeDeclaration)) {
             for (const auto& memberDecl : classDecl->getMemberDeclarations()) {
@@ -176,7 +175,7 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
     }
 
     if (accessModifier.value() == VnlcSymbolAccessModifier::PRIVATE) {
-        return typeDeclaration == currentClass->getLocalDeclarationNode();
+        return typeDeclaration == currentClass->getLocalNode();
     }
 
     const auto isSameOrDerivedFrom = [&getBaseClass](const VnlcClassDeclarationNode* classDecl, const VnlcTypeDeclarationNode* baseDecl) {
@@ -192,7 +191,7 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
         return false;
     };
 
-    const auto* currentClassDeclaration = dynamic_cast<const VnlcClassDeclarationNode*>(currentClass->getLocalDeclarationNode());
+    const auto* currentClassDeclaration = dynamic_cast<const VnlcClassDeclarationNode*>(currentClass->getLocalNode());
     if (!isSameOrDerivedFrom(currentClassDeclaration, typeDeclaration)) {
         return false;
     }
@@ -237,7 +236,7 @@ std::string VnlcSemanticAnalyzer::getFullTypeName(std::string_view typeName, con
 
 bool VnlcSemanticAnalyzer::isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName) {
     const auto symbol = context.currentScope().lookupLocal(typeName);
-    return symbol.has_value() && symbol.value()->getLocalDeclarationNode() == &typeDecl;
+    return symbol.has_value() && symbol.value()->getLocalNode() == &typeDecl;
 }
 
 void VnlcSemanticAnalyzer::registerLocalCustomizedType(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName, VnlcCustomizedTypeKind kind, const VnlcConfig& config) {

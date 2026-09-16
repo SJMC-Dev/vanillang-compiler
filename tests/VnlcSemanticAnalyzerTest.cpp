@@ -63,8 +63,8 @@ namespace {
         EXPECT_EQ(customizedType.value()->getFullTypeName(), fullTypeName);
         EXPECT_EQ(customizedType.value()->getCustomizedKind(), expectedKind);
         EXPECT_EQ(customizedType.value()->getOrigin(), VnlcCustomizedTypeOrigin::LOCAL);
-        EXPECT_EQ(customizedType.value()->getLocalDeclaration(), expectedDeclaration);
-        EXPECT_EQ(customizedType.value()->getImportedDeclaration(), nullptr);
+        EXPECT_EQ(customizedType.value()->getLocalNode(), expectedDeclaration);
+        EXPECT_EQ(customizedType.value()->getImportedNode(), nullptr);
     }
 
 } // namespace
@@ -246,7 +246,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
         const auto& statement = dynamic_cast<const VnlcExpressionStatementNode&>(*function.getBody().value()->getStatements().front());
         const auto& access = dynamic_cast<const VnlcMemberAccessExpressionNode&>(statement.getExpression());
         auto& context = analyzer->context;
-        const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const VnlcAstNode*>(module.get()) : findType(accessor)->getLocalDeclaration());
+        const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const VnlcAstNode*>(module.get()) : findType(accessor)->getLocalNode());
         context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::FUNCTION, parent, &function));
         const VnlcSemanticType* receiverType = findType(receiver);
         if (typeExpression) {
@@ -534,7 +534,7 @@ TEST(VnlcSemanticContextTest, RetainsPoppedScopesAndTheirParents) {
     EXPECT_EQ(classScope->findParent(), moduleScope);
     const auto symbol = classScope->lookup("Sample");
     ASSERT_TRUE(symbol.has_value());
-    EXPECT_EQ(symbol.value()->getLocalDeclarationNode(), classDeclaration);
+    EXPECT_EQ(symbol.value()->getLocalNode(), classDeclaration);
 }
 
 class VnlcSemanticAnalyzerImportTest : public testing::Test {

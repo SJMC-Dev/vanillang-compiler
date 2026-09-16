@@ -1,6 +1,6 @@
 #include "VnlcScope.hpp"
 
-VnlcScope::VnlcScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcAstNode* localDeclarationNode) noexcept : kind(kind), parent(parent), localDeclarationNode(localDeclarationNode) {}
+VnlcScope::VnlcScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcAstNode* localNode) noexcept : kind(kind), parent(parent), localNode(localNode) {}
 
 bool VnlcScope::declare(VnlcSymbol&& symbol) {
     auto existingSymbolIterator = symbols.find(std::string(symbol.getName()));
@@ -41,6 +41,6 @@ const VnlcScope* VnlcScope::findParent() const noexcept {
     return parent;
 }
 
-const VnlcAstNode* VnlcScope::getLocalDeclarationNode() const noexcept {
-    return localDeclarationNode;
+const VnlcAstNode* VnlcScope::getLocalNode() const noexcept {
+    return localNode;
 }

@@ -1,21 +1,21 @@
 #include "VnlcCustomizedType.hpp"
 #include "type/VnlcCustomizedTypeOrigin.hpp"
 
-VnlcCustomizedType::VnlcCustomizedType(VnlcCustomizedTypeKind customizedKind, std::string_view fullTypeName, const VnlcTypeDeclarationNode* localDeclarationNode)
+VnlcCustomizedType::VnlcCustomizedType(VnlcCustomizedTypeKind customizedKind, std::string_view fullTypeName, const VnlcTypeDeclarationNode* localNode)
     : VnlcSemanticType(),
       customizedKind(customizedKind),
       origin(VnlcCustomizedTypeOrigin::LOCAL),
       fullTypeName(fullTypeName),
-      localDeclarationNode(localDeclarationNode),
-      importedDeclarationNode(nullptr) {}
+      localNode(localNode),
+      importedNode(nullptr) {}
 
-VnlcCustomizedType::VnlcCustomizedType(VnlcCustomizedTypeKind customizedKind, std::string_view fullTypeName, const VnlcImportedIdentifier* importedDeclarationNode)
+VnlcCustomizedType::VnlcCustomizedType(VnlcCustomizedTypeKind customizedKind, std::string_view fullTypeName, const VnlcImportedIdentifier* importedNode)
     : VnlcSemanticType(),
       customizedKind(customizedKind),
       origin(VnlcCustomizedTypeOrigin::IMPORTED),
       fullTypeName(fullTypeName),
-      localDeclarationNode(nullptr),
-      importedDeclarationNode(importedDeclarationNode) {}
+      localNode(nullptr),
+      importedNode(importedNode) {}
 
 VnlcCustomizedTypeKind VnlcCustomizedType::getCustomizedKind() const noexcept {
     return customizedKind;
@@ -29,10 +29,10 @@ std::string_view VnlcCustomizedType::getFullTypeName() const noexcept {
     return fullTypeName;
 }
 
-const VnlcTypeDeclarationNode* VnlcCustomizedType::getLocalDeclaration() const noexcept {
-    return localDeclarationNode;
+const VnlcTypeDeclarationNode* VnlcCustomizedType::getLocalNode() const noexcept {
+    return localNode;
 }
 
-const VnlcImportedIdentifier* VnlcCustomizedType::getImportedDeclaration() const noexcept {
-    return importedDeclarationNode;
+const VnlcImportedIdentifier* VnlcCustomizedType::getImportedNode() const noexcept {
+    return importedNode;
 }
