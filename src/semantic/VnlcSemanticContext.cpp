@@ -224,6 +224,10 @@ std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector
     return std::make_tuple(std::move(errors), std::move(warnings), std::move(notes));
 }
 
+std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> VnlcSemanticContext::takeScopeMap() {
+    return std::move(scopeMap);
+}
+
 std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> VnlcSemanticContext::takeImportedPackages() {
     return std::move(importedPackages);
 }

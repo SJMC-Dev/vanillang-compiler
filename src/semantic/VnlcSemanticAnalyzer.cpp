@@ -817,6 +817,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
 
     auto diagnostics = context.takeDiagnostics();
     auto customizedTypes = context.takeCustomizedTypeRegistry();
+    auto scopes = context.takeScopeMap();
     auto semanticTypes = context.takeSemanticTypeMap();
     auto inferredValueTypes = context.takeInferredValueTypeMap();
     auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
@@ -827,6 +828,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
         std::move(std::get<1>(diagnostics)),
         std::move(std::get<2>(diagnostics)),
         std::move(customizedTypes),
+        std::move(scopes),
         std::move(semanticTypes),
         std::move(inferredValueTypes),
         std::move(inferredFunctionReturnTypes),

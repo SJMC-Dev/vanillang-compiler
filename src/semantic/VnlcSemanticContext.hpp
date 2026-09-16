@@ -1,6 +1,7 @@
 #ifndef VNLC_SEMANTIC_CONTEXT_HPP
 #define VNLC_SEMANTIC_CONTEXT_HPP
 
+#include "ast/VnlcAstNode.hpp"
 #include "ast/declaration/VnlcFunctionDeclarationNode.hpp"
 #include "ast/declaration/VnlcValueDeclarationNode.hpp"
 #include "ast/expression/VnlcExpressionNode.hpp"
@@ -61,7 +62,6 @@ public:
     void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages);
 
     [[nodiscard]] std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view name) const;
-
     [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
     [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
@@ -86,6 +86,7 @@ public:
     [[nodiscard]] unsigned int getSwitchDepth() const noexcept;
 
     [[nodiscard]] std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>> takeDiagnostics();
+    [[nodiscard]] std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> takeScopeMap();
     [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> takeImportedPackages();
     [[nodiscard]] std::unordered_set<std::unique_ptr<VnlcCustomizedType>> takeCustomizedTypeRegistry();
     [[nodiscard]] std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> takeSemanticTypeMap();

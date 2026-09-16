@@ -162,7 +162,7 @@ namespace {
 
     VnlcSemanticAnalysisResult
     makeSemanticResult(TypeMap&& semanticTypeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
-        return VnlcSemanticAnalysisResult({}, {}, {}, {}, std::move(semanticTypeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {}, {});
+        return VnlcSemanticAnalysisResult({}, {}, {}, {}, {}, std::move(semanticTypeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {}, {});
     }
 
     VnlcImportDeclarationItem makeImportItem(std::initializer_list<std::string_view> prefix) {

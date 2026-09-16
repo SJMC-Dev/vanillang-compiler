@@ -1,4 +1,5 @@
 #include "VnlcSemanticAnalysisResult.hpp"
+#include "scope/VnlcScope.hpp"
 #include "type/VnlcSemanticType.hpp"
 #include <optional>
 
@@ -7,6 +8,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
     std::vector<VnlcDiagnostic>&& warnings,
     std::vector<VnlcDiagnostic>&& notes,
     std::unordered_set<std::unique_ptr<VnlcCustomizedType>>&& customizedTypes,
+    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>>&& scopeMap,
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*>&& semanticTypeMap,
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
@@ -17,6 +19,7 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
       warnings(std::move(warnings)),
       notes(std::move(notes)),
       customizedTypes(std::move(customizedTypes)),
+      scopeMap(std::move(scopeMap)),
       semanticTypeMap(std::move(semanticTypeMap)),
       inferredValueTypeMap(std::move(inferredValueTypeMap)),
       inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
@@ -52,6 +55,14 @@ const std::optional<const VnlcCustomizedType*> VnlcSemanticAnalysisResult::getCu
         if (customizedType->getFullTypeName() == fullTypeName) {
             return std::make_optional<const VnlcCustomizedType*>(customizedType.get());
         }
+    }
+    return std::nullopt;
+}
+
+const std::optional<const VnlcScope*> VnlcSemanticAnalysisResult::getScopeByAstNode(const VnlcAstNode& node) const {
+    auto it = scopeMap.find(&node);
+    if (it != scopeMap.end()) {
+        return std::make_optional<const VnlcScope*>(it->second.get());
     }
     return std::nullopt;
 }
