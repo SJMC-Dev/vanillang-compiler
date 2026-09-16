@@ -21,6 +21,7 @@
 #include "type/VnlcSemanticType.hpp"
 #include "type/VnlcTypeExpressionType.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
+#include "vni/import/VnlcImportedAlias.hpp"
 #include "vni/import/VnlcImportedClass.hpp"
 #include "vni/import/VnlcImportedEnum.hpp"
 #include "vni/import/VnlcImportedEnumMember.hpp"
@@ -372,7 +373,9 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
         if (dynamic_cast<const VnlcImportedProperty*>(item)) return VnlcSymbolKind::PROPERTY;
         if (dynamic_cast<const VnlcImportedMethod*>(item)) return VnlcSymbolKind::METHOD;
         if (dynamic_cast<const VnlcImportedParameter*>(item)) return VnlcSymbolKind::PARAMETER;
-        return VnlcSymbolKind::IMPORT_ALIAS;
+        if (dynamic_cast<const VnlcImportedAlias*>(item)) return VnlcSymbolKind::IMPORT_ALIAS;
+
+        return VnlcSymbolKind::IMPORT_ALIAS; // should never reach here
     };
 
     const auto bind = [&](const VnlcImportedItem* target, const std::vector<std::string>& path, const VnlcIdentifierNode* alias, const VnlcAstNode& location) {
@@ -381,7 +384,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
             context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
             return;
         }
-        bindings.push_back({ name, path, alias ? VnlcSymbolKind::IMPORT_ALIAS : getKind(target) });
+        bindings.push_back({ name, path, getKind(target) });
     };
 
     std::function<void(const VnlcImportDeclarationItem&, const VnlcImportedItem*, std::vector<std::string>)> checkItem;
