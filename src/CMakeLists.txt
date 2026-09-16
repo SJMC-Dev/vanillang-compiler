@@ -58,18 +58,18 @@ add_executable(
     ast/identifier/VnlcIdentifierNode.cpp
     parser/VnlcParser.cpp
     diagnostic/VnlcDiagnostic.cpp
-    semantic/symbol/VnlcSymbol.cpp
+    symbol/VnlcSymbol.cpp
     semantic/VnlcSemanticContext.cpp
     semantic/VnlcSemanticAnalysisResult.cpp
     semantic/VnlcSemanticAnalyzer.cpp
-    semantic/scope/VnlcScope.cpp
+    scope/VnlcScope.cpp
     type/VnlcSemanticType.cpp
     type/VnlcPrimitiveType.cpp
     type/VnlcCustomizedType.cpp
     type/VnlcVoidType.cpp
     type/VnlcTypeExpressionType.cpp
     type/typeinf/VnlcTypeInferenceResult.cpp
-    semantic/metadata/VnlcMetadataInfo.cpp
+    metadata/VnlcMetadataInfo.cpp
     vni/import/VnlcImportedItem.cpp
     vni/import/VnlcImportedPackage.cpp
     vni/import/VnlcImportedModule.cpp

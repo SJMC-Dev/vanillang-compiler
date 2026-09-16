@@ -6,7 +6,7 @@
 #include "ast/expression/VnlcExpressionNode.hpp"
 #include "ast/type/VnlcTypeNode.hpp"
 #include "diagnostic/VnlcDiagnostic.hpp"
-#include "semantic/scope/VnlcScope.hpp"
+#include "scope/VnlcScope.hpp"
 #include "type/VnlcCustomizedType.hpp"
 #include "type/VnlcSemanticType.hpp"
 #include "vni/import/VnlcImportedPackage.hpp"

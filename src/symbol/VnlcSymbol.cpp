@@ -1,5 +1,5 @@
 #include "VnlcSymbol.hpp"
-#include "semantic/symbol/VnlcSymbolOrigin.hpp"
+#include "symbol/VnlcSymbolOrigin.hpp"
 #include "vni/import/VnlcImportedItem.hpp"
 
 VnlcSymbol::VnlcSymbol(VnlcSymbolKind kind, VnlcSymbolAccessModifier accessModifier, std::string_view name, const VnlcAstNode* localNode)

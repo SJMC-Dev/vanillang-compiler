@@ -2,8 +2,8 @@
 #define VNLC_SCOPE_HPP
 
 #include "ast/VnlcAstNode.hpp"
-#include "semantic/scope/VnlcScopeKind.hpp"
-#include "semantic/symbol/VnlcSymbol.hpp"
+#include "scope/VnlcScopeKind.hpp"
+#include "symbol/VnlcSymbol.hpp"
 #include <optional>
 #include <string>
 #include <unordered_map>

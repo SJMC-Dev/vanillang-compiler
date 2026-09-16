@@ -2,9 +2,9 @@
 #define VNLC_SYMBOL_HPP
 
 #include "ast/VnlcAstNode.hpp"
-#include "semantic/symbol/VnlcSymbolAccessModifier.hpp"
-#include "semantic/symbol/VnlcSymbolKind.hpp"
-#include "semantic/symbol/VnlcSymbolOrigin.hpp"
+#include "symbol/VnlcSymbolAccessModifier.hpp"
+#include "symbol/VnlcSymbolKind.hpp"
+#include "symbol/VnlcSymbolOrigin.hpp"
 #include "vni/import/VnlcImportedItem.hpp"
 #include <string>
 #include <string_view>

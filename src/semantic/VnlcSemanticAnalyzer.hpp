@@ -16,9 +16,9 @@
 #include "ast/statement/VnlcStatementNode.hpp"
 #include "ast/type/VnlcTypeNode.hpp"
 #include "config/VnlcConfig.hpp"
+#include "metadata/VnlcMetadataInfo.hpp"
 #include "semantic/VnlcSemanticAnalysisResult.hpp"
 #include "semantic/VnlcSemanticContext.hpp"
-#include "semantic/metadata/VnlcMetadataInfo.hpp"
 #include "type/typeinf/VnlcTypeInferenceResult.hpp"
 #include <string>
 #include <string_view>

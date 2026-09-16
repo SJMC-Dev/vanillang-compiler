@@ -27,6 +27,18 @@ file(GLOB_RECURSE TYPE_FILES CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/src/type/*.cpp
 )
 
+file(GLOB_RECURSE SCOPE_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/scope/*.cpp
+)
+
+file(GLOB_RECURSE SYMBOL_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/symbol/*.cpp
+)
+
+file(GLOB_RECURSE METADATA_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/metadata/*.cpp
+)
+
 file(GLOB_RECURSE VNI_FILES CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/src/vni/*.cpp
 )
@@ -54,6 +66,9 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/util/VnlcTokenTypeUtil.cpp
     ${AST_FILES}
     ${SEMANTIC_FILES}
+    ${SCOPE_FILES}
+    ${SYMBOL_FILES}
+    ${METADATA_FILES}
     ${TYPE_FILES}
     ${VNI_IMPORT_FILES}
     VnlcSemanticAnalyzerTest.cpp
