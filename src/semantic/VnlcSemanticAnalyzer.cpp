@@ -16,7 +16,6 @@
 #include "error/VnlcPackageReaderError.hpp"
 #include "semantic/symbol/VnlcSymbolAccessModifier.hpp"
 #include "semantic/symbol/VnlcSymbolKind.hpp"
-#include "semantic/symbol/VnlcSymbolOrigin.hpp"
 #include "type/VnlcCustomizedType.hpp"
 #include "type/VnlcCustomizedTypeOrigin.hpp"
 #include "type/VnlcSemanticType.hpp"
@@ -257,44 +256,32 @@ void VnlcSemanticAnalyzer::checkModule(const VnlcModuleNode& moduleNode, const V
         VnlcDeclarationNode* declNode = topIdentifierDecl.get();
 
         if (auto* varDecl = dynamic_cast<VnlcValueDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(
-                VnlcSymbolKind::VARIABLE,
-                VnlcSymbolOrigin::LOCAL,
-                static_cast<VnlcSymbolAccessModifier>(varDecl->getAccessModifier()),
-                varDecl->getName().getIdentifierString(),
-                varDecl
-            );
+            VnlcSymbol symbol(VnlcSymbolKind::VARIABLE, static_cast<VnlcSymbolAccessModifier>(varDecl->getAccessModifier()), varDecl->getName().getIdentifierString(), varDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*varDecl, fmt::format("Redeclaration of symbol '{}'", varDecl->getName().getIdentifierString()));
             }
         } else if (auto* funcDecl = dynamic_cast<VnlcFunctionDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(
-                VnlcSymbolKind::FUNCTION,
-                VnlcSymbolOrigin::LOCAL,
-                static_cast<VnlcSymbolAccessModifier>(funcDecl->getAccessModifier()),
-                funcDecl->getName().getIdentifierString(),
-                funcDecl
-            );
+            VnlcSymbol symbol(VnlcSymbolKind::FUNCTION, static_cast<VnlcSymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*funcDecl, fmt::format("Redeclaration of symbol '{}'", funcDecl->getName().getIdentifierString()));
             }
         } else if (auto* classDecl = dynamic_cast<VnlcClassDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(VnlcSymbolKind::CLASS, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl);
+            VnlcSymbol symbol(VnlcSymbolKind::CLASS, VnlcSymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*classDecl, fmt::format("Redeclaration of symbol '{}'", classDecl->getName().getIdentifierString()));
             }
         } else if (auto* interfaceDecl = dynamic_cast<VnlcInterfaceDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(VnlcSymbolKind::INTERFACE, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl);
+            VnlcSymbol symbol(VnlcSymbolKind::INTERFACE, VnlcSymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*interfaceDecl, fmt::format("Redeclaration of symbol '{}'", interfaceDecl->getName().getIdentifierString()));
             }
         } else if (auto* enumDecl = dynamic_cast<VnlcEnumDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(VnlcSymbolKind::ENUM, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl);
+            VnlcSymbol symbol(VnlcSymbolKind::ENUM, VnlcSymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*enumDecl, fmt::format("Redeclaration of symbol '{}'", enumDecl->getName().getIdentifierString()));
             }
         } else if (auto* typeAliasDecl = dynamic_cast<VnlcTypeAliasDeclarationNode*>(declNode)) {
-            VnlcSymbol symbol(VnlcSymbolKind::TYPE_ALIAS, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl);
+            VnlcSymbol symbol(VnlcSymbolKind::TYPE_ALIAS, VnlcSymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl);
             if (!context.currentScope().declare(std::move(symbol))) {
                 context.reportError(*typeAliasDecl, fmt::format("Redeclaration of symbol '{}'", typeAliasDecl->getAliasName().getIdentifierString()));
             }
@@ -472,7 +459,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
             target = findChild(target, binding.path[index]);
         }
         context.mapImportedBinding(binding.name, target);
-        context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolOrigin::IMPORTED, VnlcSymbolAccessModifier::PUBLIC, binding.name, nullptr));
+        context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolAccessModifier::PUBLIC, binding.name, target));
     }
 }
 
@@ -483,7 +470,7 @@ void VnlcSemanticAnalyzer::checkExport(const VnlcExportDeclarationNode& exportDe
         }
 
         if (item.alias.has_value()) {
-            VnlcSymbol aliasSymbol(VnlcSymbolKind::EXPORT_ALIAS, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, item.alias.value()->getIdentifierString(), &exportDecl);
+            VnlcSymbol aliasSymbol(VnlcSymbolKind::EXPORT_ALIAS, VnlcSymbolAccessModifier::PUBLIC, item.alias.value()->getIdentifierString(), &exportDecl);
 
             if (!context.currentScope().declare(std::move(aliasSymbol))) {
                 context.reportError(exportDecl, fmt::format("Redeclaration of symbol {}", item.alias.value()->getIdentifierString()));
@@ -516,7 +503,7 @@ void VnlcSemanticAnalyzer::checkValueDeclaration(const VnlcValueDeclarationNode&
 void VnlcSemanticAnalyzer::checkFunctionDeclaration(const VnlcFunctionDeclarationNode& funcDecl, VnlcMetadataInfo metadataInfo) {
     context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::FUNCTION, &context.currentScope(), &funcDecl));
     for (const auto& param : funcDecl.getParameters()) {
-        VnlcSymbol paramSymbol(VnlcSymbolKind::PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, param->getName().getIdentifierString(), param.get());
+        VnlcSymbol paramSymbol(VnlcSymbolKind::PARAMETER, VnlcSymbolAccessModifier::PUBLIC, param->getName().getIdentifierString(), param.get());
         if (!context.currentScope().declare(std::move(paramSymbol))) {
             context.reportError(*param, fmt::format("Redeclaration of parameter '{}'", param->getName().getIdentifierString()));
         }
@@ -547,7 +534,7 @@ void VnlcSemanticAnalyzer::checkClassDeclaration(const VnlcClassDeclarationNode&
         if (auto* varDecl = dynamic_cast<VnlcValueDeclarationNode*>(member.get())) {
             VnlcSymbol memberSymbol(
                 VnlcSymbolKind::PROPERTY,
-                VnlcSymbolOrigin::LOCAL,
+
                 static_cast<VnlcSymbolAccessModifier>(varDecl->getAccessModifier()),
                 varDecl->getName().getIdentifierString(),
                 varDecl
@@ -558,7 +545,7 @@ void VnlcSemanticAnalyzer::checkClassDeclaration(const VnlcClassDeclarationNode&
         } else if (auto* funcDecl = dynamic_cast<VnlcFunctionDeclarationNode*>(member.get())) {
             VnlcSymbol memberSymbol(
                 VnlcSymbolKind::METHOD,
-                VnlcSymbolOrigin::LOCAL,
+
                 static_cast<VnlcSymbolAccessModifier>(funcDecl->getAccessModifier()),
                 funcDecl->getName().getIdentifierString(),
                 funcDecl
@@ -572,7 +559,7 @@ void VnlcSemanticAnalyzer::checkClassDeclaration(const VnlcClassDeclarationNode&
     }
 
     for (const auto& genericParamName : classDecl.getGenericParameterNames()) {
-        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), nullptr);
+        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), &classDecl);
         if (!context.currentScope().declare(std::move(genericParamSymbol))) {
             context.reportError(classDecl, fmt::format("Redeclaration of generic parameter '{}'", genericParamName->getIdentifierString()));
         }
@@ -602,7 +589,7 @@ void VnlcSemanticAnalyzer::checkInterfaceDeclaration(const VnlcInterfaceDeclarat
     for (const auto& member : interfaceDecl.getMethodDeclarations()) {
         VnlcSymbol memberSymbol(
             VnlcSymbolKind::METHOD,
-            VnlcSymbolOrigin::LOCAL,
+
             static_cast<VnlcSymbolAccessModifier>(member->getAccessModifier()),
             member->getName().getIdentifierString(),
             member.get()
@@ -613,7 +600,7 @@ void VnlcSemanticAnalyzer::checkInterfaceDeclaration(const VnlcInterfaceDeclarat
     }
 
     for (const auto& genericParamName : interfaceDecl.getGenericParameterNames()) {
-        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), nullptr);
+        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), &interfaceDecl);
         if (!context.currentScope().declare(std::move(genericParamSymbol))) {
             context.reportError(interfaceDecl, fmt::format("Redeclaration of generic parameter '{}'", genericParamName->getIdentifierString()));
         }
@@ -639,14 +626,14 @@ void VnlcSemanticAnalyzer::checkEnumDeclaration(const VnlcEnumDeclarationNode& e
     context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::ENUM, &context.currentScope(), &enumDecl));
 
     for (const auto& member : enumDecl.getMemberDeclarations()) {
-        VnlcSymbol memberSymbol(VnlcSymbolKind::ENUM_MEMBER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, member->getName().getIdentifierString(), member.get());
+        VnlcSymbol memberSymbol(VnlcSymbolKind::ENUM_MEMBER, VnlcSymbolAccessModifier::PUBLIC, member->getName().getIdentifierString(), member.get());
         if (!context.currentScope().declare(std::move(memberSymbol))) {
             context.reportError(*member, fmt::format("Redeclaration of enum member '{}'", member->getName().getIdentifierString()));
         }
     }
 
     for (const auto& genericParamName : enumDecl.getGenericParameterNames()) {
-        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), nullptr);
+        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), &enumDecl);
         if (!context.currentScope().declare(std::move(genericParamSymbol))) {
             context.reportError(enumDecl, fmt::format("Redeclaration of generic parameter '{}'", genericParamName->getIdentifierString()));
         }
@@ -658,7 +645,7 @@ void VnlcSemanticAnalyzer::checkEnumDeclaration(const VnlcEnumDeclarationNode& e
         for (auto& associatedValue : member->getAssociatedValues()) {
             VnlcSymbol associatedValueSymbol(
                 VnlcSymbolKind::PROPERTY,
-                VnlcSymbolOrigin::LOCAL,
+
                 VnlcSymbolAccessModifier::PUBLIC,
                 associatedValue->getName().getIdentifierString(),
                 associatedValue.get()
@@ -687,7 +674,7 @@ void VnlcSemanticAnalyzer::checkTypeAliasDeclaration(const VnlcTypeAliasDeclarat
     context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::TYPE_ALIAS, &context.currentScope(), &typeAliasDecl));
 
     for (const auto& genericParamName : typeAliasDecl.getGenericParameterNames()) {
-        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), nullptr);
+        VnlcSymbol genericParamSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolAccessModifier::PUBLIC, genericParamName->getIdentifierString(), &typeAliasDecl);
         if (!context.currentScope().declare(std::move(genericParamSymbol))) {
             context.reportError(typeAliasDecl, fmt::format("Redeclaration of generic parameter '{}'", genericParamName->getIdentifierString()));
         }
@@ -746,7 +733,7 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
-            VnlcSymbol labelSymbol(VnlcSymbolKind::LOOP_LABEL, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, label.value()->getIdentifierString(), nullptr);
+            VnlcSymbol labelSymbol(VnlcSymbolKind::LOOP_LABEL, VnlcSymbolAccessModifier::PUBLIC, label.value()->getIdentifierString(), stmt);
 
             if (!context.currentScope().declare(std::move(labelSymbol))) {
                 context.reportError(*stmt, fmt::format("Redeclaration of identifier '{}'", label.value()->getIdentifierString()));
@@ -796,7 +783,7 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
-            VnlcSymbol labelSymbol(VnlcSymbolKind::LOOP_LABEL, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, label.value()->getIdentifierString(), nullptr);
+            VnlcSymbol labelSymbol(VnlcSymbolKind::LOOP_LABEL, VnlcSymbolAccessModifier::PUBLIC, label.value()->getIdentifierString(), stmt);
 
             if (!context.currentScope().declare(std::move(labelSymbol))) {
                 context.reportError(*stmt, fmt::format("Redeclaration of identifier '{}'", label.value()->getIdentifierString()));

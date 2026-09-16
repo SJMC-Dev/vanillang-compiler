@@ -25,6 +25,7 @@ class VnlcModuleInterfaceFileReader {
 private:
     std::filesystem::path filePath;
     std::string moduleName;
+    const VnlcImportDeclarationItem& importItem;
 
     static std::array<std::string, 3> validAccessModifiers;
 

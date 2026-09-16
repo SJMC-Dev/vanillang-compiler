@@ -1,11 +1,22 @@
 #include "VnlcSymbol.hpp"
+#include "semantic/symbol/VnlcSymbolOrigin.hpp"
+#include "vni/import/VnlcImportedItem.hpp"
 
-VnlcSymbol::VnlcSymbol(VnlcSymbolKind kind, VnlcSymbolOrigin origin, VnlcSymbolAccessModifier accessModifier, std::string_view name, const VnlcAstNode* localDeclarationNode)
+VnlcSymbol::VnlcSymbol(VnlcSymbolKind kind, VnlcSymbolAccessModifier accessModifier, std::string_view name, const VnlcAstNode* localNode)
     : kind(kind),
-      origin(origin),
+      origin(VnlcSymbolOrigin::LOCAL),
       accessModifier(accessModifier),
       name(std::move(name)),
-      localDeclarationNode(localDeclarationNode) {}
+      localNode(localNode),
+      importedNode(nullptr) {}
+
+VnlcSymbol::VnlcSymbol(VnlcSymbolKind kind, VnlcSymbolAccessModifier accessModifier, std::string_view name, const VnlcImportedItem* importedNode)
+    : kind(kind),
+      origin(VnlcSymbolOrigin::IMPORTED),
+      accessModifier(accessModifier),
+      name(std::move(name)),
+      localNode(nullptr),
+      importedNode(importedNode) {}
 
 VnlcSymbolKind VnlcSymbol::getKind() const noexcept {
     return kind;
@@ -23,6 +34,10 @@ std::string_view VnlcSymbol::getName() const noexcept {
     return name;
 }
 
-const VnlcAstNode* VnlcSymbol::getLocalDeclarationNode() const noexcept {
-    return localDeclarationNode;
+const VnlcAstNode* VnlcSymbol::getLocalNode() const noexcept {
+    return localNode;
+}
+
+const VnlcImportedItem* VnlcSymbol::getImportedNode() const noexcept {
+    return importedNode;
 }

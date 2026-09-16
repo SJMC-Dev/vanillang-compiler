@@ -6,7 +6,8 @@
 
 VnlcModuleInterfaceFileReader::VnlcModuleInterfaceFileReader(std::filesystem::path filePath, const VnlcImportDeclarationItem& importItem)
     : filePath(std::filesystem::canonical(filePath)),
-      moduleName(filePath.stem().string()) {}
+      moduleName(filePath.stem().string()),
+      importItem(importItem) {}
 
 std::array<std::string, 3> VnlcModuleInterfaceFileReader::validAccessModifiers = { "public", "protected", "private" };
 

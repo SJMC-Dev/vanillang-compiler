@@ -4,7 +4,6 @@
 enum class VnlcSymbolOrigin {
     LOCAL,
     IMPORTED,
-    BUILTIN,
 };
 
 #endif // VNLC_SYMBOL_ORIGIN_HPP

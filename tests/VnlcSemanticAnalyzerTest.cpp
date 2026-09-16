@@ -176,13 +176,13 @@ class GenericPrivateShadow<privateMember> extends Base {}
             classes.push_back(&dynamic_cast<const VnlcClassDeclarationNode&>(*declaration));
         }
         for (const auto* classDeclaration : classes) {
-            ASSERT_TRUE(context.currentScope().declare(
-                VnlcSymbol(VnlcSymbolKind::CLASS, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration)
-            ));
+            ASSERT_TRUE(
+                context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::CLASS, VnlcSymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration))
+            );
         }
         accessModules.push_back(parseModule("let privateMember = 0\n", config));
         ASSERT_TRUE(context.currentScope().declare(
-            VnlcSymbol(VnlcSymbolKind::VARIABLE, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, "privateMember", accessModules.back()->getTopIdentifierDeclarations().front().get())
+            VnlcSymbol(VnlcSymbolKind::VARIABLE, VnlcSymbolAccessModifier::PUBLIC, "privateMember", accessModules.back()->getTopIdentifierDeclarations().front().get())
         ));
         for (const auto* classDeclaration : classes) {
             analyzer->checkClassDeclaration(*classDeclaration, config);
@@ -273,14 +273,12 @@ class GenericPrivateShadow<privateMember> extends Base {}
         const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const VnlcAstNode*>(module.get()) : findClass(accessor));
         context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::FUNCTION, parent, &function));
         if (localSymbolKind == VnlcSymbolKind::PARAMETER) {
-            EXPECT_TRUE(context.currentScope().declare(
-                VnlcSymbol(VnlcSymbolKind::PARAMETER, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, identifier, function.getParameters().front().get())
-            ));
+            EXPECT_TRUE(context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::PARAMETER, VnlcSymbolAccessModifier::PUBLIC, identifier, function.getParameters().front().get())));
         }
         if (nestedBlock) context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::BLOCK, &context.currentScope(), &block));
         if (localSymbolKind == VnlcSymbolKind::VARIABLE) {
             const auto& declaration = dynamic_cast<const VnlcVariableDeclarationStatementNode&>(*block.getStatements().front()).getVariableDeclaration();
-            EXPECT_TRUE(context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::VARIABLE, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, identifier, &declaration)));
+            EXPECT_TRUE(context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::VARIABLE, VnlcSymbolAccessModifier::PUBLIC, identifier, &declaration)));
         }
         const bool allowed = analyzer->checkAccessModifier(expression);
         if (nestedBlock) context.popScope();
@@ -518,7 +516,7 @@ TEST(VnlcSemanticContextTest, RetainsPoppedScopesAndTheirParents) {
 
     context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr, module.get()));
     const auto* moduleScope = &context.currentScope();
-    ASSERT_TRUE(context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::CLASS, VnlcSymbolOrigin::LOCAL, VnlcSymbolAccessModifier::PUBLIC, "Sample", classDeclaration)));
+    ASSERT_TRUE(context.currentScope().declare(VnlcSymbol(VnlcSymbolKind::CLASS, VnlcSymbolAccessModifier::PUBLIC, "Sample", classDeclaration)));
     context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::CLASS, moduleScope, classDeclaration));
     const auto* classScope = &context.currentScope();
 
