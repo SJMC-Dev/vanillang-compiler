@@ -17,20 +17,20 @@ const std::unordered_map<std::string, std::unique_ptr<VnlcImportedModule>>& Vnlc
     return modules;
 }
 
-std::optional<const VnlcImportedPackage*> VnlcImportedPackage::getSubPackageByName(std::string_view name) const {
+const VnlcImportedPackage* VnlcImportedPackage::getSubPackageByName(std::string_view name) const {
     auto it = subPackages.find(std::string(name));
     if (it != subPackages.end()) {
-        return std::make_optional<const VnlcImportedPackage*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<const VnlcImportedModule*> VnlcImportedPackage::getModuleByName(std::string_view name) const {
+const VnlcImportedModule* VnlcImportedPackage::getModuleByName(std::string_view name) const {
     auto it = modules.find(std::string(name));
     if (it != modules.end()) {
-        return std::make_optional<const VnlcImportedModule*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 void VnlcImportedPackage::addSubPackage(std::unique_ptr<VnlcImportedPackage>&& subPackage) {

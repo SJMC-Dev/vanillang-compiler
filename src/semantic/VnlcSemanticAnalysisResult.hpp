@@ -12,7 +12,6 @@
 #include "type/VnlcSemanticType.hpp"
 #include "vni/import/VnlcImportedPackage.hpp"
 #include <memory>
-#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -57,13 +56,13 @@ public:
     [[nodiscard]] const std::vector<VnlcDiagnostic>& getWarnings() const;
     [[nodiscard]] const std::vector<VnlcDiagnostic>& getNotes() const;
 
-    [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
-    [[nodiscard]] const std::optional<const VnlcScope*> getScopeByAstNode(const VnlcAstNode& node) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
-    [[nodiscard]] const std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view packageName) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredValueType(const VnlcValueDeclarationNode* valueDeclaration) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
+    [[nodiscard]] const VnlcCustomizedType* getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
+    [[nodiscard]] const VnlcScope* getScopeByAstNode(const VnlcAstNode& node) const;
+    [[nodiscard]] const VnlcSemanticType* getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
+    [[nodiscard]] const VnlcImportedPackage* getImportedPackageByName(std::string_view packageName) const;
+    [[nodiscard]] const VnlcSemanticType* getInferredValueType(const VnlcValueDeclarationNode* valueDeclaration) const;
+    [[nodiscard]] const VnlcSemanticType* getInferredFunctionReturnType(const VnlcFunctionDeclarationNode* functionDeclaration) const;
+    [[nodiscard]] const VnlcSemanticType* getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
 };
 
 #endif // VNLC_SEMANTIC_ANALYSIS_RESULT_HPP

@@ -40,7 +40,7 @@ public:
     [[nodiscard]] bool isNative() const;
     [[nodiscard]] std::string_view getAccessModifier() const;
 
-    [[nodiscard]] std::optional<const VnlcImportedParameter*> getParameterByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedParameter* getParameterByName(std::string_view name) const;
 };
 
 #endif // VNLC_IMPORTED_METHOD_HPP

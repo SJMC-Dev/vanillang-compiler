@@ -46,8 +46,8 @@ public:
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedProperty>>& getProperties() const;
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedMethod>>& getMethods() const;
 
-    [[nodiscard]] std::optional<const VnlcImportedProperty*> getPropertyByName(std::string_view name) const;
-    [[nodiscard]] std::optional<const VnlcImportedMethod*> getMethodByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedProperty* getPropertyByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedMethod* getMethodByName(std::string_view name) const;
 };
 
 #endif // VNLC_IMPORTED_CLASS_HPP

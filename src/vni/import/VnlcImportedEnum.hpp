@@ -25,7 +25,7 @@ public:
     [[nodiscard]] const std::vector<std::string>& getGenericParameters() const;
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedEnumMember>>& getMembers() const;
 
-    [[nodiscard]] std::optional<const VnlcImportedEnumMember*> getMemberByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedEnumMember* getMemberByName(std::string_view name) const;
 };
 
 #endif // VNLC_IMPORTED_ENUM_HPP

@@ -8,12 +8,12 @@ const std::unordered_map<std::string, std::unique_ptr<VnlcImportedIdentifier>>& 
     return identifiers;
 }
 
-std::optional<const VnlcImportedIdentifier*> VnlcImportedModule::getIdentifierByName(std::string_view name) const {
+const VnlcImportedIdentifier* VnlcImportedModule::getIdentifierByName(std::string_view name) const {
     auto it = identifiers.find(std::string(name));
     if (it != identifiers.end()) {
-        return std::make_optional<const VnlcImportedIdentifier*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 void VnlcImportedModule::addIdentifier(std::unique_ptr<VnlcImportedIdentifier>&& identifier) {

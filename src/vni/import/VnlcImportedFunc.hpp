@@ -27,7 +27,7 @@ public:
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedParameter>>& getParameters() const;
     [[nodiscard]] bool isNative() const;
 
-    [[nodiscard]] std::optional<const VnlcImportedParameter*> getParameterByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedParameter* getParameterByName(std::string_view name) const;
 };
 
 #endif // VNLC_IMPORTED_FUNC_HPP

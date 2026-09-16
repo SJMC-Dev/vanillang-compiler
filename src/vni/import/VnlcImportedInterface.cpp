@@ -27,10 +27,10 @@ const std::unordered_map<std::string, std::unique_ptr<VnlcImportedMethod>>& Vnlc
     return methods;
 }
 
-std::optional<const VnlcImportedMethod*> VnlcImportedInterface::getMethodByName(std::string_view name) const {
+const VnlcImportedMethod* VnlcImportedInterface::getMethodByName(std::string_view name) const {
     auto it = methods.find(std::string(name));
     if (it != methods.end()) {
-        return std::make_optional<const VnlcImportedMethod*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }

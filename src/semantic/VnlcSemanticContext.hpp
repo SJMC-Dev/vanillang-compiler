@@ -61,10 +61,10 @@ public:
 
     void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>&& importedPackages);
 
-    [[nodiscard]] std::optional<const VnlcImportedPackage*> getImportedPackageByName(std::string_view name) const;
-    [[nodiscard]] const std::optional<const VnlcCustomizedType*> getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
-    [[nodiscard]] const std::optional<const VnlcSemanticType*> getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
+    [[nodiscard]] const VnlcImportedPackage* getImportedPackageByName(std::string_view name) const;
+    [[nodiscard]] const VnlcCustomizedType* getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
+    [[nodiscard]] const VnlcSemanticType* getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
+    [[nodiscard]] const VnlcSemanticType* getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
     [[nodiscard]] const VnlcScope* getScopeByAstNode(const VnlcAstNode* astNode) const;
 
     [[nodiscard]] VnlcScope& currentScope();

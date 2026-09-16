@@ -46,10 +46,10 @@
 VnlcSemanticAnalyzer::VnlcSemanticAnalyzer(const VnlcModuleNode& module) : module(module) {}
 
 void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo) {
-    auto symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
-    if (!symbol.has_value()) {
+    const VnlcSymbol* symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
+    if (symbol == nullptr) {
         context.reportError(exprNode, fmt::format("Use of undeclared identifier '{}'", exprNode.getName().getIdentifierString()));
-    } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol.value()->getLocalNode()) || dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol.value()->getLocalNode()))) {
+    } else if (!(dynamic_cast<const VnlcValueDeclarationNode*>(symbol->getLocalNode()) || dynamic_cast<const VnlcFunctionDeclarationNode*>(symbol->getLocalNode()))) {
         context.reportError(exprNode, fmt::format("Identifier '{}' is not a variable or function", exprNode.getName().getIdentifierString()));
     }
 }
@@ -58,7 +58,7 @@ bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcMemberAccessExpressionN
     const auto& prefix = memberAccessNode.getObject();
     const auto& member = memberAccessNode.getMember();
 
-    const VnlcSemanticType* prefixType = context.getInferredExpressionType(&prefix).value_or(nullptr);
+    const VnlcSemanticType* prefixType = context.getInferredExpressionType(&prefix);
     if (const auto* typeExpression = dynamic_cast<const VnlcTypeExpressionType*>(prefixType)) {
         prefixType = typeExpression->getExpressedType();
     }
@@ -83,13 +83,13 @@ bool VnlcSemanticAnalyzer::checkAccessModifier(const VnlcIdentifierExpressionNod
 
     const auto memberName = identifierNode.getName().getIdentifierString();
     for (const auto* scope = &context.currentScope(); scope != nullptr && scope != currentClass; scope = scope->findParent()) {
-        if (scope->lookupLocal(memberName).has_value()) {
+        if (scope->lookupLocal(memberName) != nullptr) {
             return true;
         }
     }
 
-    const auto symbol = currentClass->lookupLocal(memberName);
-    if (symbol.has_value() && symbol.value()->getKind() != VnlcSymbolKind::PROPERTY && symbol.value()->getKind() != VnlcSymbolKind::METHOD) {
+    const VnlcSymbol* symbol = currentClass->lookupLocal(memberName);
+    if (symbol != nullptr && symbol->getKind() != VnlcSymbolKind::PROPERTY && symbol->getKind() != VnlcSymbolKind::METHOD) {
         return true;
     }
 
@@ -110,7 +110,7 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
             return nullptr;
         }
 
-        const auto* baseType = context.getSemanticTypeByTypeNode(classDecl->getBaseClass().value().get()).value_or(nullptr);
+        const auto* baseType = context.getSemanticTypeByTypeNode(classDecl->getBaseClass().value().get());
         const auto* baseCustomizedType = dynamic_cast<const VnlcCustomizedType*>(baseType);
         if (baseCustomizedType == nullptr) {
             return nullptr;
@@ -127,11 +127,10 @@ bool VnlcSemanticAnalyzer::checkMemberAccessModifier(const VnlcTypeDeclarationNo
     while (typeDeclaration != nullptr && visitedClasses.insert(typeDeclaration).second) {
         const auto* scope = context.getScopeByAstNode(typeDeclaration);
         if (scope != nullptr) {
-            const auto symbol = scope->lookupLocal(memberName);
-            if (symbol.has_value() &&
-                (symbol.value()->getKind() == VnlcSymbolKind::PROPERTY || symbol.value()->getKind() == VnlcSymbolKind::METHOD || symbol.value()->getKind() == VnlcSymbolKind::ENUM_MEMBER)) {
-                accessModifier = symbol.value()->getAccessModifier();
-                memberDeclaration = symbol.value()->getLocalNode();
+            const VnlcSymbol* symbol = scope->lookupLocal(memberName);
+            if (symbol != nullptr && (symbol->getKind() == VnlcSymbolKind::PROPERTY || symbol->getKind() == VnlcSymbolKind::METHOD || symbol->getKind() == VnlcSymbolKind::ENUM_MEMBER)) {
+                accessModifier = symbol->getAccessModifier();
+                memberDeclaration = symbol->getLocalNode();
             }
         } else if (const auto* classDecl = dynamic_cast<const VnlcClassDeclarationNode*>(typeDeclaration)) {
             for (const auto& memberDecl : classDecl->getMemberDeclarations()) {
@@ -236,8 +235,8 @@ std::string VnlcSemanticAnalyzer::getFullTypeName(std::string_view typeName, con
 }
 
 bool VnlcSemanticAnalyzer::isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName) {
-    const auto symbol = context.currentScope().lookupLocal(typeName);
-    return symbol.has_value() && symbol.value()->getLocalNode() == &typeDecl;
+    const VnlcSymbol* symbol = context.currentScope().lookupLocal(typeName);
+    return symbol != nullptr && symbol->getLocalNode() == &typeDecl;
 }
 
 void VnlcSemanticAnalyzer::registerLocalCustomizedType(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName, VnlcCustomizedTypeKind kind, const VnlcConfig& config) {
@@ -350,12 +349,12 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
     const auto findChild = [](const VnlcImportedItem* parent, std::string_view name) -> const VnlcImportedItem* {
         if (const auto* package = dynamic_cast<const VnlcImportedPackage*>(parent)) {
             if (auto subPackage = package->getSubPackageByName(name)) {
-                return subPackage.value();
+                return subPackage;
             }
-            return package->getModuleByName(name).value_or(nullptr);
+            return package->getModuleByName(name);
         }
         if (const auto* module = dynamic_cast<const VnlcImportedModule*>(parent)) {
-            return module->getIdentifierByName(name).value_or(nullptr);
+            return module->getIdentifierByName(name);
         }
         return nullptr;
     };
@@ -380,7 +379,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
 
     const auto bind = [&](const VnlcImportedItem* target, const std::vector<std::string>& path, const VnlcIdentifierNode* alias, const VnlcAstNode& location) {
         const std::string name(alias ? alias->getIdentifierString() : target->getName());
-        if (context.currentScope().lookupLocal(name).has_value() || !names.insert(name).second) {
+        if (context.currentScope().lookupLocal(name) != nullptr || !names.insert(name).second) {
             context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
             return;
         }
@@ -436,7 +435,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
             std::sort(identifierNames.begin(), identifierNames.end());
             for (const auto& name : identifierNames) {
                 path.push_back(name);
-                bind(importedModule->getIdentifierByName(name).value(), path, nullptr, location);
+                bind(importedModule->getIdentifierByName(name), path, nullptr, location);
                 path.pop_back();
             }
         } else if (!item.nameSuffixes.empty()) {
@@ -456,7 +455,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
 
     context.collectImportedPackages(std::move(packages));
     for (const auto& binding : bindings) {
-        const VnlcImportedItem* target = context.getImportedPackageByName(binding.path.front()).value();
+        const VnlcImportedItem* target = context.getImportedPackageByName(binding.path.front());
         for (std::size_t index = 1; index < binding.path.size(); ++index) {
             target = findChild(target, binding.path[index]);
         }
@@ -466,7 +465,7 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
 
 void VnlcSemanticAnalyzer::checkExport(const VnlcExportDeclarationNode& exportDecl) {
     for (auto& item : exportDecl.getNameList()) {
-        if (!context.currentScope().lookup(item.name->getIdentifierString()).has_value()) {
+        if (context.currentScope().lookup(item.name->getIdentifierString()) == nullptr) {
             context.reportError(exportDecl, fmt::format("Undefined symbol {}", item.name->getIdentifierString()));
         }
     }
@@ -698,10 +697,10 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
-            const auto& labelSymbol = context.currentScope().lookup(label.value()->getIdentifierString());
-            if (!labelSymbol.has_value()) {
+            const VnlcSymbol* labelSymbol = context.currentScope().lookup(label.value()->getIdentifierString());
+            if (labelSymbol == nullptr) {
                 context.reportError(*stmt, fmt::format("Label '{}' does not exist", label.value()->getIdentifierString()));
-            } else if (labelSymbol.value()->getKind() != VnlcSymbolKind::LOOP_LABEL) {
+            } else if (labelSymbol->getKind() != VnlcSymbolKind::LOOP_LABEL) {
                 context.reportError(*stmt, fmt::format("Identifier '{}' is not a loop label", label.value()->getIdentifierString()));
             }
         }
@@ -712,10 +711,10 @@ void VnlcSemanticAnalyzer::checkStatement(const VnlcStatementNode& statement) {
 
         const auto& label = stmt->getLabel();
         if (label.has_value()) {
-            const auto& labelSymbol = context.currentScope().lookup(label.value()->getIdentifierString());
-            if (!labelSymbol.has_value()) {
+            const VnlcSymbol* labelSymbol = context.currentScope().lookup(label.value()->getIdentifierString());
+            if (labelSymbol == nullptr) {
                 context.reportError(*stmt, fmt::format("Label '{}' does not exist", label.value()->getIdentifierString()));
-            } else if (labelSymbol.value()->getKind() != VnlcSymbolKind::LOOP_LABEL) {
+            } else if (labelSymbol->getKind() != VnlcSymbolKind::LOOP_LABEL) {
                 context.reportError(*stmt, fmt::format("Identifier '{}' is not a loop label", label.value()->getIdentifierString()));
             }
         }

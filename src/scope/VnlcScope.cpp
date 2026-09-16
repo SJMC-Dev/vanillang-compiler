@@ -13,24 +13,24 @@ bool VnlcScope::declare(VnlcSymbol&& symbol) {
     }
 }
 
-std::optional<const VnlcSymbol*> VnlcScope::lookupLocal(std::string_view name) const {
+const VnlcSymbol* VnlcScope::lookupLocal(std::string_view name) const {
     auto it = symbols.find(std::string(name));
     if (it != symbols.end()) {
-        return std::optional<const VnlcSymbol*>(&(it->second));
+        return &(it->second);
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<const VnlcSymbol*> VnlcScope::lookup(std::string_view name) const {
+const VnlcSymbol* VnlcScope::lookup(std::string_view name) const {
     const VnlcScope* current = this;
     while (current != nullptr) {
         auto it = current->symbols.find(std::string(name));
         if (it != current->symbols.end()) {
-            return std::optional<const VnlcSymbol*>(&(it->second));
+            return &(it->second);
         }
         current = current->parent;
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 VnlcScopeKind VnlcScope::getKind() const noexcept {

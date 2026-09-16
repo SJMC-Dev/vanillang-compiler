@@ -57,14 +57,13 @@ namespace {
     ) {
         SCOPED_TRACE(fullTypeName);
 
-        const auto customizedType = result.getCustomizedTypeByFullTypeName(fullTypeName);
-        ASSERT_TRUE(customizedType.has_value());
-        ASSERT_NE(customizedType.value(), nullptr);
-        EXPECT_EQ(customizedType.value()->getFullTypeName(), fullTypeName);
-        EXPECT_EQ(customizedType.value()->getCustomizedKind(), expectedKind);
-        EXPECT_EQ(customizedType.value()->getOrigin(), VnlcCustomizedTypeOrigin::LOCAL);
-        EXPECT_EQ(customizedType.value()->getLocalNode(), expectedDeclaration);
-        EXPECT_EQ(customizedType.value()->getImportedNode(), nullptr);
+        const auto* customizedType = result.getCustomizedTypeByFullTypeName(fullTypeName);
+        ASSERT_NE(customizedType, nullptr);
+        EXPECT_EQ(customizedType->getFullTypeName(), fullTypeName);
+        EXPECT_EQ(customizedType->getCustomizedKind(), expectedKind);
+        EXPECT_EQ(customizedType->getOrigin(), VnlcCustomizedTypeOrigin::LOCAL);
+        EXPECT_EQ(customizedType->getLocalNode(), expectedDeclaration);
+        EXPECT_EQ(customizedType->getImportedNode(), nullptr);
     }
 
 } // namespace
@@ -199,7 +198,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
     }
 
     const VnlcCustomizedType* findType(std::string_view name) const {
-        return analyzer->context.getCustomizedTypeByFullTypeName(std::string(module->getFullName()) + "." + std::string(name)).value_or(nullptr);
+        return analyzer->context.getCustomizedTypeByFullTypeName(std::string(module->getFullName()) + "." + std::string(name));
     }
 
     const VnlcClassDeclarationNode* findClass(std::string_view name) const {
@@ -499,7 +498,7 @@ interface ValidInterface {}
     ASSERT_TRUE(result.hasErrors());
     ASSERT_EQ(result.getErrors().size(), 1);
     EXPECT_EQ(result.getErrors().front().getMessage(), "Redeclaration of class member 'duplicated'");
-    EXPECT_FALSE(result.getCustomizedTypeByFullTypeName("semantic_test_package.models.registration_errors.InvalidClass").has_value());
+    EXPECT_EQ(result.getCustomizedTypeByFullTypeName("semantic_test_package.models.registration_errors.InvalidClass"), nullptr);
 
     const auto& declarations = module->getTopIdentifierDeclarations();
     ASSERT_EQ(declarations.size(), 2);
@@ -532,9 +531,9 @@ TEST(VnlcSemanticContextTest, RetainsPoppedScopesAndTheirParents) {
     ASSERT_EQ(context.getScopeByAstNode(module.get()), moduleScope);
     ASSERT_EQ(context.getScopeByAstNode(classDeclaration), classScope);
     EXPECT_EQ(classScope->findParent(), moduleScope);
-    const auto symbol = classScope->lookup("Sample");
-    ASSERT_TRUE(symbol.has_value());
-    EXPECT_EQ(symbol.value()->getLocalNode(), classDeclaration);
+    const auto* symbol = classScope->lookup("Sample");
+    ASSERT_NE(symbol, nullptr);
+    EXPECT_EQ(symbol->getLocalNode(), classDeclaration);
 }
 
 class VnlcSemanticAnalyzerImportTest : public testing::Test {
@@ -574,11 +573,11 @@ protected:
     }
 
     const VnlcImportedItem* findImportedNode(const VnlcSemanticAnalysisResult& result, std::string_view name) const {
-        const auto scope = result.getScopeByAstNode(*module);
-        EXPECT_TRUE(scope.has_value());
-        if (!scope.has_value()) return nullptr;
-        const auto symbol = scope.value()->lookupLocal(name);
-        return symbol.has_value() ? symbol.value()->getImportedNode() : nullptr;
+        const auto* scope = result.getScopeByAstNode(*module);
+        EXPECT_NE(scope, nullptr);
+        if (scope == nullptr) return nullptr;
+        const auto* symbol = scope->lookupLocal(name);
+        return symbol != nullptr ? symbol->getImportedNode() : nullptr;
     }
 };
 
@@ -588,16 +587,16 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsIt
     ASSERT_FALSE(result.hasErrors());
     EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
     EXPECT_EQ(findImportedNode(result, "api"), nullptr);
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    EXPECT_EQ(package.value()->getName(), "pkg");
-    const auto importedModule = package.value()->getModuleByName("api");
-    ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(importedModule.value()->getName(), "api");
-    const auto member = importedModule.value()->getIdentifierByName("value");
-    ASSERT_TRUE(member.has_value());
-    EXPECT_EQ(findImportedNode(result, "value"), member.value());
-    const auto* value = dynamic_cast<const VnlcImportedLet*>(member.value());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    EXPECT_EQ(package->getName(), "pkg");
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(importedModule->getName(), "api");
+    const auto* member = importedModule->getIdentifierByName("value");
+    ASSERT_NE(member, nullptr);
+    EXPECT_EQ(findImportedNode(result, "value"), member);
+    const auto* value = dynamic_cast<const VnlcImportedLet*>(member);
     ASSERT_NE(value, nullptr);
     EXPECT_EQ(value->getType(), "int");
 }
@@ -615,9 +614,9 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalModule) {
     const auto result = analyze("import pkg.api\nlet pkg = 0\nlet value = 0\nexport api\n");
 
     ASSERT_FALSE(result.hasErrors());
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    EXPECT_EQ(findImportedNode(result, "api"), package.value()->getModuleByName("api").value_or(nullptr));
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    EXPECT_EQ(findImportedNode(result, "api"), package->getModuleByName("api"));
     EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
     EXPECT_EQ(findImportedNode(result, "value"), nullptr);
 }
@@ -626,12 +625,12 @@ TEST_F(VnlcSemanticAnalyzerImportTest, AliasesBindToTheirOriginalTargets) {
     const auto result = analyze("import pkg.api.value as renamed\nimport pkg.api as library\nlet value = 0\nlet api = 0\nlet pkg = 0\nexport renamed, library\n");
 
     ASSERT_FALSE(result.hasErrors());
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    const auto importedModule = package.value()->getModuleByName("api");
-    ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(findImportedNode(result, "renamed"), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
-    EXPECT_EQ(findImportedNode(result, "library"), importedModule.value());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(findImportedNode(result, "renamed"), importedModule->getIdentifierByName("value"));
+    EXPECT_EQ(findImportedNode(result, "library"), importedModule);
     EXPECT_EQ(findImportedNode(result, "value"), nullptr);
     EXPECT_EQ(findImportedNode(result, "api"), nullptr);
 }
@@ -640,15 +639,15 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
     const auto result = analyze("import pkg.{api.{self as m, value as v}, sub.other}\nlet pkg = 0\nlet api = 0\nlet sub = 0\nlet value = 0\nexport m, v, other\n");
 
     ASSERT_FALSE(result.hasErrors());
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    const auto importedModule = package.value()->getModuleByName("api");
-    ASSERT_TRUE(importedModule.has_value());
-    const auto subPackage = package.value()->getSubPackageByName("sub");
-    ASSERT_TRUE(subPackage.has_value());
-    EXPECT_EQ(findImportedNode(result, "m"), importedModule.value());
-    EXPECT_EQ(findImportedNode(result, "v"), importedModule.value()->getIdentifierByName("value").value_or(nullptr));
-    EXPECT_EQ(findImportedNode(result, "other"), subPackage.value()->getModuleByName("other").value_or(nullptr));
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    const auto* subPackage = package->getSubPackageByName("sub");
+    ASSERT_NE(subPackage, nullptr);
+    EXPECT_EQ(findImportedNode(result, "m"), importedModule);
+    EXPECT_EQ(findImportedNode(result, "v"), importedModule->getIdentifierByName("value"));
+    EXPECT_EQ(findImportedNode(result, "other"), subPackage->getModuleByName("other"));
     EXPECT_EQ(findImportedNode(result, "self"), nullptr);
 }
 
@@ -671,14 +670,14 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ImportsCompletePackagesAndPackageSelf) {
         const auto result = analyze(source);
 
         ASSERT_FALSE(result.hasErrors());
-        const auto package = result.getImportedPackageByName("pkg");
-        ASSERT_TRUE(package.has_value());
-        EXPECT_EQ(findImportedNode(result, "library"), package.value());
-        EXPECT_TRUE(package.value()->getModuleByName("api").has_value());
-        const auto subPackage = package.value()->getSubPackageByName("sub");
-        ASSERT_TRUE(subPackage.has_value());
-        EXPECT_TRUE(subPackage.value()->getModuleByName("other").has_value());
-        EXPECT_TRUE(subPackage.value()->getModuleByName("second").has_value());
+        const auto* package = result.getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        EXPECT_EQ(findImportedNode(result, "library"), package);
+        EXPECT_NE(package->getModuleByName("api"), nullptr);
+        const auto* subPackage = package->getSubPackageByName("sub");
+        ASSERT_NE(subPackage, nullptr);
+        EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
+        EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
         EXPECT_EQ(findImportedNode(result, "api"), nullptr);
     }
 }
@@ -687,16 +686,16 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RetainsMultipleModulesAndPackagesAfterThe
     const auto result = analyze("import pkg.api.value\nimport pkg.sub.other.flag\nimport pkg.sub.second.caption\nimport extra.tools.enabled\nexport value, flag, caption, enabled\n");
 
     ASSERT_FALSE(result.hasErrors());
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    EXPECT_TRUE(package.value()->getModuleByName("api").has_value());
-    const auto subPackage = package.value()->getSubPackageByName("sub");
-    ASSERT_TRUE(subPackage.has_value());
-    EXPECT_TRUE(subPackage.value()->getModuleByName("other").has_value());
-    EXPECT_TRUE(subPackage.value()->getModuleByName("second").has_value());
-    const auto extraPackage = result.getImportedPackageByName("extra");
-    ASSERT_TRUE(extraPackage.has_value());
-    EXPECT_TRUE(extraPackage.value()->getModuleByName("tools").has_value());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    EXPECT_NE(package->getModuleByName("api"), nullptr);
+    const auto* subPackage = package->getSubPackageByName("sub");
+    ASSERT_NE(subPackage, nullptr);
+    EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
+    EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
+    const auto* extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_NE(extraPackage, nullptr);
+    EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
     for (const auto name : { "value", "flag", "caption", "enabled" }) {
         const auto* binding = findImportedNode(result, name);
         ASSERT_NE(binding, nullptr);
@@ -720,8 +719,8 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsInvalidImportsWithoutRetainingPart
         ASSERT_NO_THROW(result.emplace(analyze(source)));
 
         ASSERT_TRUE(result->hasErrors());
-        EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
-        EXPECT_FALSE(result->getImportedPackageByName("absent").has_value());
+        EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
+        EXPECT_EQ(result->getImportedPackageByName("absent"), nullptr);
         EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
         EXPECT_EQ(findImportedNode(*result, "value"), nullptr);
     }
@@ -735,7 +734,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMalformedModuleInterfacesAsSemanti
         ASSERT_NO_THROW(result.emplace(analyze("import pkg.broken\n")));
 
         ASSERT_TRUE(result->hasErrors());
-        EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+        EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
         EXPECT_EQ(findImportedNode(*result, "broken"), nullptr);
     }
 }
@@ -746,7 +745,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMissingDependencyDirectoriesAsSema
     ASSERT_NO_THROW(result.emplace(analyze("import pkg.api\n")));
 
     ASSERT_TRUE(result->hasErrors());
-    EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+    EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
     EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
 }
 
@@ -761,7 +760,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImport) 
         const auto result = analyze(source);
 
         ASSERT_TRUE(result.hasErrors());
-        EXPECT_FALSE(result.getImportedPackageByName("pkg").has_value());
+        EXPECT_EQ(result.getImportedPackageByName("pkg"), nullptr);
         EXPECT_EQ(findImportedNode(result, "value"), nullptr);
         EXPECT_EQ(findImportedNode(result, "same"), nullptr);
     }
@@ -778,7 +777,7 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RejectsRedeclarationsAcrossImportsAndLoca
 
         ASSERT_TRUE(result.hasErrors());
         EXPECT_NE(findImportedNode(result, "value"), nullptr);
-        EXPECT_TRUE(result.getImportedPackageByName("pkg").has_value());
+        EXPECT_NE(result.getImportedPackageByName("pkg"), nullptr);
     }
 }
 
@@ -787,12 +786,12 @@ TEST_F(VnlcSemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsAndDo
 
     ASSERT_TRUE(result.hasErrors());
     ASSERT_EQ(result.getErrors().size(), 1);
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    const auto importedModule = package.value()->getModuleByName("api");
-    ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(findImportedNode(result, "kept"), importedModule.value());
-    EXPECT_FALSE(package.value()->getSubPackageByName("sub").has_value());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(findImportedNode(result, "kept"), importedModule);
+    EXPECT_EQ(package->getSubPackageByName("sub"), nullptr);
     EXPECT_EQ(findImportedNode(result, "staged"), nullptr);
 }
 
@@ -807,13 +806,13 @@ TEST_F(VnlcSemanticAnalyzerImportTest, PreservesModuleNamesWhenReadingSymbolicLi
     const auto result = analyze("import pkg.linkedApi.{self, linked}\nexport linkedApi, linked\n");
 
     ASSERT_FALSE(result.hasErrors());
-    const auto package = result.getImportedPackageByName("pkg");
-    ASSERT_TRUE(package.has_value());
-    const auto importedModule = package.value()->getModuleByName("linkedApi");
-    ASSERT_TRUE(importedModule.has_value());
-    EXPECT_EQ(importedModule.value()->getName(), "linkedApi");
-    EXPECT_EQ(findImportedNode(result, "linkedApi"), importedModule.value());
-    EXPECT_EQ(findImportedNode(result, "linked"), importedModule.value()->getIdentifierByName("linked").value_or(nullptr));
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("linkedApi");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(importedModule->getName(), "linkedApi");
+    EXPECT_EQ(findImportedNode(result, "linkedApi"), importedModule);
+    EXPECT_EQ(findImportedNode(result, "linked"), importedModule->getIdentifierByName("linked"));
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemanticErrors) {
@@ -827,6 +826,6 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemantic
     ASSERT_NO_THROW(result.emplace(analyze("import pkg\n")));
 
     ASSERT_TRUE(result->hasErrors());
-    EXPECT_FALSE(result->getImportedPackageByName("pkg").has_value());
+    EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
     EXPECT_EQ(findImportedNode(*result, "pkg"), nullptr);
 }

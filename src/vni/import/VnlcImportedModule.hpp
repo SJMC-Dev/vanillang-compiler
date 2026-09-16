@@ -14,7 +14,7 @@ public:
     VnlcImportedModule(std::string_view name, std::unordered_map<std::string, std::unique_ptr<VnlcImportedIdentifier>>&& identifiers);
 
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedIdentifier>>& getIdentifiers() const;
-    [[nodiscard]] std::optional<const VnlcImportedIdentifier*> getIdentifierByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedIdentifier* getIdentifierByName(std::string_view name) const;
 
     void addIdentifier(std::unique_ptr<VnlcImportedIdentifier>&& identifier);
 };

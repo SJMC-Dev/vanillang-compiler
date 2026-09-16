@@ -321,10 +321,10 @@ TEST_F(VnlcVniTest, VnlcImportedFuncStoresReturnTypeNativeFlagAndParameters) {
     EXPECT_EQ(function.getReturnType(), "int");
     EXPECT_TRUE(function.isNative());
     ASSERT_EQ(function.getParameters().size(), 1);
-    const auto parameter = function.getParameterByName("amount");
-    ASSERT_TRUE(parameter.has_value());
-    EXPECT_EQ(parameter.value()->getType(), "int");
-    EXPECT_FALSE(function.getParameterByName("missing").has_value());
+    const auto* parameter = function.getParameterByName("amount");
+    ASSERT_NE(parameter, nullptr);
+    EXPECT_EQ(parameter->getType(), "int");
+    EXPECT_EQ(function.getParameterByName("missing"), nullptr);
 }
 
 TEST_F(VnlcVniTest, VnlcImportedMethodDistinguishesStaticFromNative) {
@@ -351,16 +351,16 @@ TEST_F(VnlcVniTest, VnlcImportedClassStoresBaseClassInterfacesAndMembers) {
     EXPECT_TRUE(importedClass.isFinal());
     EXPECT_EQ(importedClass.getGenericParameters(), std::vector<std::string>({ "T" }));
 
-    const auto property = importedClass.getPropertyByName("count");
-    ASSERT_TRUE(property.has_value());
-    EXPECT_EQ(property.value()->getType(), "int");
-    EXPECT_TRUE(property.value()->isStatic());
+    const auto* property = importedClass.getPropertyByName("count");
+    ASSERT_NE(property, nullptr);
+    EXPECT_EQ(property->getType(), "int");
+    EXPECT_TRUE(property->isStatic());
 
-    const auto method = importedClass.getMethodByName("read");
-    ASSERT_TRUE(method.has_value());
-    EXPECT_EQ(method.value()->getReturnType(), "string");
-    EXPECT_FALSE(method.value()->isStatic());
-    EXPECT_FALSE(method.value()->isNative());
+    const auto* method = importedClass.getMethodByName("read");
+    ASSERT_NE(method, nullptr);
+    EXPECT_EQ(method->getReturnType(), "string");
+    EXPECT_FALSE(method->isStatic());
+    EXPECT_FALSE(method->isNative());
 }
 
 TEST_F(VnlcVniTest, VnlcImportedClassAllowsNoBaseClassAndEmptyMembers) {
@@ -382,9 +382,9 @@ TEST_F(VnlcVniTest, VnlcImportedInterfaceStoresGenericParametersAndMethods) {
     const VnlcImportedInterface importedInterface("Readable", { "T" }, std::move(methods));
 
     EXPECT_EQ(importedInterface.getGenericParameters(), std::vector<std::string>({ "T" }));
-    const auto method = importedInterface.getMethodByName("read");
-    ASSERT_TRUE(method.has_value());
-    EXPECT_EQ(method.value()->getReturnType(), "string");
+    const auto* method = importedInterface.getMethodByName("read");
+    ASSERT_NE(method, nullptr);
+    EXPECT_EQ(method->getReturnType(), "string");
 }
 
 TEST_F(VnlcVniTest, VnlcImportedEnumStoresGenericParametersAndMembers) {
@@ -397,10 +397,10 @@ TEST_F(VnlcVniTest, VnlcImportedEnumStoresGenericParametersAndMembers) {
     const VnlcImportedEnum importedEnum("State", { "T" }, std::move(members));
 
     EXPECT_EQ(importedEnum.getGenericParameters(), std::vector<std::string>({ "T" }));
-    const auto member = importedEnum.getMemberByName("Ready");
-    ASSERT_TRUE(member.has_value());
-    ASSERT_EQ(member.value()->getAssociatedValues().size(), 1);
-    EXPECT_EQ(member.value()->getAssociatedValues().at("code")->getType(), "int");
+    const auto* member = importedEnum.getMemberByName("Ready");
+    ASSERT_NE(member, nullptr);
+    ASSERT_EQ(member->getAssociatedValues().size(), 1);
+    EXPECT_EQ(member->getAssociatedValues().at("code")->getType(), "int");
 }
 
 TEST_F(VnlcVniTest, VnlcImportedModuleExposesNameAndIdentifiers) {
@@ -410,10 +410,10 @@ TEST_F(VnlcVniTest, VnlcImportedModuleExposesNameAndIdentifiers) {
     const VnlcImportedModule module("module", std::move(identifiers));
 
     EXPECT_EQ(module.getName(), "module");
-    const auto identifier = module.getIdentifierByName("value");
-    ASSERT_TRUE(identifier.has_value());
-    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(identifier.value())->getType(), "int");
-    EXPECT_FALSE(module.getIdentifierByName("missing").has_value());
+    const auto* identifier = module.getIdentifierByName("value");
+    ASSERT_NE(identifier, nullptr);
+    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(identifier)->getType(), "int");
+    EXPECT_EQ(module.getIdentifierByName("missing"), nullptr);
 }
 
 TEST_F(VnlcVniTest, VnlcImportedModuleDoesNotOverwriteExistingIdentifier) {
@@ -423,9 +423,9 @@ TEST_F(VnlcVniTest, VnlcImportedModuleDoesNotOverwriteExistingIdentifier) {
     module.addIdentifier(std::make_unique<VnlcImportedLet>("value", "string"));
 
     ASSERT_EQ(module.getIdentifiers().size(), 1);
-    const auto identifier = module.getIdentifierByName("value");
-    ASSERT_TRUE(identifier.has_value());
-    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(identifier.value())->getType(), "int");
+    const auto* identifier = module.getIdentifierByName("value");
+    ASSERT_NE(identifier, nullptr);
+    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(identifier)->getType(), "int");
 }
 
 TEST_F(VnlcVniTest, VnlcImportedPackageExposesSubPackagesAndModules) {
@@ -434,11 +434,11 @@ TEST_F(VnlcVniTest, VnlcImportedPackageExposesSubPackagesAndModules) {
 
     const VnlcImportedPackage package("package", {}, std::move(modules));
 
-    const auto module = package.getModuleByName("api");
-    ASSERT_TRUE(module.has_value());
-    EXPECT_EQ(module.value()->getName(), "api");
-    EXPECT_FALSE(package.getModuleByName("missing").has_value());
-    EXPECT_FALSE(package.getSubPackageByName("missing").has_value());
+    const auto* module = package.getModuleByName("api");
+    ASSERT_NE(module, nullptr);
+    EXPECT_EQ(module->getName(), "api");
+    EXPECT_EQ(package.getModuleByName("missing"), nullptr);
+    EXPECT_EQ(package.getSubPackageByName("missing"), nullptr);
 }
 
 TEST_F(VnlcVniTest, VnlcImportedPackageDoesNotOverwriteExistingModule) {
@@ -569,62 +569,62 @@ TEST_F(VnlcVniTest, VnlcModuleInterfaceFileReaderReadsModuleInterfaceFile) {
     ASSERT_EQ(module->getName(), "api");
     ASSERT_EQ(module->getIdentifiers().size(), 10);
 
-    const auto value = module->getIdentifierByName("value");
-    ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(value.value())->getType(), "int");
+    const auto* value = module->getIdentifierByName("value");
+    ASSERT_NE(value, nullptr);
+    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(value)->getType(), "int");
 
-    const auto function = module->getIdentifierByName("run");
-    ASSERT_TRUE(function.has_value());
-    const auto* importedFunction = dynamic_cast<const VnlcImportedFunc*>(function.value());
+    const auto* function = module->getIdentifierByName("run");
+    ASSERT_NE(function, nullptr);
+    const auto* importedFunction = dynamic_cast<const VnlcImportedFunc*>(function);
     ASSERT_NE(importedFunction, nullptr);
     EXPECT_EQ(importedFunction->getReturnType(), "void");
     EXPECT_TRUE(importedFunction->isNative());
-    const auto parameter = importedFunction->getParameterByName("amount");
-    ASSERT_TRUE(parameter.has_value());
-    EXPECT_EQ(parameter.value()->getType(), "int");
+    const auto* parameter = importedFunction->getParameterByName("amount");
+    ASSERT_NE(parameter, nullptr);
+    EXPECT_EQ(parameter->getType(), "int");
 
-    const auto importedClassIdentifier = module->getIdentifierByName("Box");
-    ASSERT_TRUE(importedClassIdentifier.has_value());
-    const auto* importedClass = dynamic_cast<const VnlcImportedClass*>(importedClassIdentifier.value());
+    const auto* importedClassIdentifier = module->getIdentifierByName("Box");
+    ASSERT_NE(importedClassIdentifier, nullptr);
+    const auto* importedClass = dynamic_cast<const VnlcImportedClass*>(importedClassIdentifier);
     ASSERT_NE(importedClass, nullptr);
     ASSERT_TRUE(importedClass->getBaseClass().has_value());
     EXPECT_EQ(importedClass->getBaseClass().value(), "Base");
     EXPECT_EQ(importedClass->getImplementedInterfaces(), std::vector<std::string>({ "Readable" }));
     EXPECT_TRUE(importedClass->isFinal());
-    const auto property = importedClass->getPropertyByName("count");
-    ASSERT_TRUE(property.has_value());
-    EXPECT_TRUE(property.value()->isStatic());
-    EXPECT_EQ(property.value()->getAccessModifier(), "protected");
-    const auto method = importedClass->getMethodByName("read");
-    ASSERT_TRUE(method.has_value());
-    EXPECT_EQ(method.value()->getReturnType(), "T");
-    EXPECT_FALSE(method.value()->isStatic());
-    EXPECT_FALSE(method.value()->isNative());
+    const auto* property = importedClass->getPropertyByName("count");
+    ASSERT_NE(property, nullptr);
+    EXPECT_TRUE(property->isStatic());
+    EXPECT_EQ(property->getAccessModifier(), "protected");
+    const auto* method = importedClass->getMethodByName("read");
+    ASSERT_NE(method, nullptr);
+    EXPECT_EQ(method->getReturnType(), "T");
+    EXPECT_FALSE(method->isStatic());
+    EXPECT_FALSE(method->isNative());
 
-    const auto importedInterfaceIdentifier = module->getIdentifierByName("Readable");
-    ASSERT_TRUE(importedInterfaceIdentifier.has_value());
-    const auto* importedInterface = dynamic_cast<const VnlcImportedInterface*>(importedInterfaceIdentifier.value());
+    const auto* importedInterfaceIdentifier = module->getIdentifierByName("Readable");
+    ASSERT_NE(importedInterfaceIdentifier, nullptr);
+    const auto* importedInterface = dynamic_cast<const VnlcImportedInterface*>(importedInterfaceIdentifier);
     ASSERT_NE(importedInterface, nullptr);
     EXPECT_EQ(importedInterface->getGenericParameters(), std::vector<std::string>({ "T" }));
 
-    const auto importedEnumIdentifier = module->getIdentifierByName("State");
-    ASSERT_TRUE(importedEnumIdentifier.has_value());
-    const auto* importedEnum = dynamic_cast<const VnlcImportedEnum*>(importedEnumIdentifier.value());
+    const auto* importedEnumIdentifier = module->getIdentifierByName("State");
+    ASSERT_NE(importedEnumIdentifier, nullptr);
+    const auto* importedEnum = dynamic_cast<const VnlcImportedEnum*>(importedEnumIdentifier);
     ASSERT_NE(importedEnum, nullptr);
-    const auto enumMember = importedEnum->getMemberByName("Ready");
-    ASSERT_TRUE(enumMember.has_value());
-    ASSERT_EQ(enumMember.value()->getAssociatedValues().size(), 1);
-    EXPECT_EQ(enumMember.value()->getAssociatedValues().at("code")->getType(), "int");
+    const auto* enumMember = importedEnum->getMemberByName("Ready");
+    ASSERT_NE(enumMember, nullptr);
+    ASSERT_EQ(enumMember->getAssociatedValues().size(), 1);
+    EXPECT_EQ(enumMember->getAssociatedValues().at("code")->getType(), "int");
 
-    const auto typeAliasIdentifier = module->getIdentifierByName("Alias");
-    ASSERT_TRUE(typeAliasIdentifier.has_value());
-    const auto* typeAlias = dynamic_cast<const VnlcImportedTypeAlias*>(typeAliasIdentifier.value());
+    const auto* typeAliasIdentifier = module->getIdentifierByName("Alias");
+    ASSERT_NE(typeAliasIdentifier, nullptr);
+    const auto* typeAlias = dynamic_cast<const VnlcImportedTypeAlias*>(typeAliasIdentifier);
     ASSERT_NE(typeAlias, nullptr);
     EXPECT_EQ(typeAlias->getOriginalType(), "List<T>");
 
-    const auto importedAliasIdentifier = module->getIdentifierByName("External");
-    ASSERT_TRUE(importedAliasIdentifier.has_value());
-    const auto* importedAlias = dynamic_cast<const VnlcImportedAlias*>(importedAliasIdentifier.value());
+    const auto* importedAliasIdentifier = module->getIdentifierByName("External");
+    ASSERT_NE(importedAliasIdentifier, nullptr);
+    const auto* importedAlias = dynamic_cast<const VnlcImportedAlias*>(importedAliasIdentifier);
     ASSERT_NE(importedAlias, nullptr);
     EXPECT_EQ(importedAlias->getSource(), "dependency.module.External");
 }
@@ -721,10 +721,10 @@ TEST_F(VnlcVniTest, VnlcPackageReaderReadsModuleInsidePackage) {
 
     const auto package = packages.find("package");
     ASSERT_NE(package, packages.end());
-    const auto module = package->second->getModuleByName("api");
-    ASSERT_TRUE(module.has_value());
-    ASSERT_EQ(module.value()->getIdentifiers().size(), 1);
-    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(module.value()->getIdentifiers().at("value").get())->getType(), "int");
+    const auto* module = package->second->getModuleByName("api");
+    ASSERT_NE(module, nullptr);
+    ASSERT_EQ(module->getIdentifiers().size(), 1);
+    EXPECT_EQ(dynamic_cast<const VnlcImportedLet*>(module->getIdentifiers().at("value").get())->getType(), "int");
 }
 
 TEST_F(VnlcVniTest, VnlcModuleInterfaceFileGeneratorGeneratesLetCategory) {

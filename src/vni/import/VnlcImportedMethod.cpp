@@ -51,10 +51,10 @@ std::string_view VnlcImportedMethod::getAccessModifier() const {
     return accessModifier;
 }
 
-std::optional<const VnlcImportedParameter*> VnlcImportedMethod::getParameterByName(std::string_view name) const {
+const VnlcImportedParameter* VnlcImportedMethod::getParameterByName(std::string_view name) const {
     auto it = parameters.find(std::string(name));
     if (it != parameters.end()) {
-        return std::make_optional<const VnlcImportedParameter*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }

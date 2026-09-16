@@ -4,7 +4,6 @@
 #include "ast/VnlcAstNode.hpp"
 #include "scope/VnlcScopeKind.hpp"
 #include "symbol/VnlcSymbol.hpp"
-#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -21,8 +20,8 @@ public:
 
     bool declare(VnlcSymbol&& symbol);
     [[nodiscard]] VnlcScopeKind getKind() const noexcept;
-    [[nodiscard]] std::optional<const VnlcSymbol*> lookupLocal(std::string_view name) const;
-    [[nodiscard]] std::optional<const VnlcSymbol*> lookup(std::string_view name) const;
+    [[nodiscard]] const VnlcSymbol* lookupLocal(std::string_view name) const;
+    [[nodiscard]] const VnlcSymbol* lookup(std::string_view name) const;
     [[nodiscard]] const VnlcScope* findParent() const noexcept;
     [[nodiscard]] const VnlcAstNode* getLocalNode() const noexcept;
 };

@@ -59,18 +59,18 @@ const std::unordered_map<std::string, std::unique_ptr<VnlcImportedMethod>>& Vnlc
     return methods;
 }
 
-std::optional<const VnlcImportedProperty*> VnlcImportedClass::getPropertyByName(std::string_view name) const {
+const VnlcImportedProperty* VnlcImportedClass::getPropertyByName(std::string_view name) const {
     auto it = properties.find(std::string(name));
     if (it != properties.end()) {
-        return std::make_optional<const VnlcImportedProperty*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<const VnlcImportedMethod*> VnlcImportedClass::getMethodByName(std::string_view name) const {
+const VnlcImportedMethod* VnlcImportedClass::getMethodByName(std::string_view name) const {
     auto it = methods.find(std::string(name));
     if (it != methods.end()) {
-        return std::make_optional<const VnlcImportedMethod*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }

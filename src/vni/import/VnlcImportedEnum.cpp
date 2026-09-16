@@ -23,10 +23,10 @@ const std::unordered_map<std::string, std::unique_ptr<VnlcImportedEnumMember>>& 
     return members;
 }
 
-std::optional<const VnlcImportedEnumMember*> VnlcImportedEnum::getMemberByName(std::string_view name) const {
+const VnlcImportedEnumMember* VnlcImportedEnum::getMemberByName(std::string_view name) const {
     auto it = members.find(std::string(name));
     if (it != members.end()) {
-        return std::make_optional<const VnlcImportedEnumMember*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }

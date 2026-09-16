@@ -54,36 +54,36 @@ void VnlcSemanticContext::collectImportedPackages(std::unordered_map<std::string
     }
 }
 
-std::optional<const VnlcImportedPackage*> VnlcSemanticContext::getImportedPackageByName(std::string_view name) const {
+const VnlcImportedPackage* VnlcSemanticContext::getImportedPackageByName(std::string_view name) const {
     auto it = importedPackages.find(std::string(name));
     if (it != importedPackages.end()) {
         return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-const std::optional<const VnlcCustomizedType*> VnlcSemanticContext::getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const {
+const VnlcCustomizedType* VnlcSemanticContext::getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const {
     auto it = customizedTypeRegistry.find(std::string(fullTypeName));
     if (it != customizedTypeRegistry.end()) {
-        return std::make_optional<const VnlcCustomizedType*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-const std::optional<const VnlcSemanticType*> VnlcSemanticContext::getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const {
+const VnlcSemanticType* VnlcSemanticContext::getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const {
     auto it = semanticTypeMap.find(typeNode);
     if (it != semanticTypeMap.end()) {
-        return std::make_optional<const VnlcSemanticType*>(it->second);
+        return it->second;
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-const std::optional<const VnlcSemanticType*> VnlcSemanticContext::getInferredExpressionType(const VnlcExpressionNode* expressionNode) const {
+const VnlcSemanticType* VnlcSemanticContext::getInferredExpressionType(const VnlcExpressionNode* expressionNode) const {
     auto it = inferredExpressionTypeMap.find(expressionNode);
     if (it != inferredExpressionTypeMap.end()) {
-        return std::make_optional<const VnlcSemanticType*>(it->second);
+        return it->second;
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 const VnlcScope* VnlcSemanticContext::getScopeByAstNode(const VnlcAstNode* astNode) const {

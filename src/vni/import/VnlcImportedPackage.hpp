@@ -4,7 +4,6 @@
 #include "vni/import/VnlcImportedItem.hpp"
 #include "vni/import/VnlcImportedModule.hpp"
 #include <memory>
-#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -23,8 +22,8 @@ public:
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>& getSubPackages() const;
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<VnlcImportedModule>>& getModules() const;
 
-    [[nodiscard]] std::optional<const VnlcImportedPackage*> getSubPackageByName(std::string_view name) const;
-    [[nodiscard]] std::optional<const VnlcImportedModule*> getModuleByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedPackage* getSubPackageByName(std::string_view name) const;
+    [[nodiscard]] const VnlcImportedModule* getModuleByName(std::string_view name) const;
 
     void addSubPackage(std::unique_ptr<VnlcImportedPackage>&& subPackage);
     void addModule(std::unique_ptr<VnlcImportedModule>&& module);

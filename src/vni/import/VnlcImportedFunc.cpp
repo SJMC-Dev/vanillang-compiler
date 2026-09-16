@@ -30,10 +30,10 @@ bool VnlcImportedFunc::isNative() const {
     return native;
 }
 
-std::optional<const VnlcImportedParameter*> VnlcImportedFunc::getParameterByName(std::string_view name) const {
+const VnlcImportedParameter* VnlcImportedFunc::getParameterByName(std::string_view name) const {
     auto it = parameters.find(std::string(name));
     if (it != parameters.end()) {
-        return std::make_optional<const VnlcImportedParameter*>(it->second.get());
+        return it->second.get();
     }
-    return std::nullopt;
+    return nullptr;
 }
