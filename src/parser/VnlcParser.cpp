@@ -534,7 +534,7 @@ VnlcPropertyDeclarationParsingResult VnlcParser::parsePropertyDeclaration(VnlcPr
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected property name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (!match(VnlcTokenType::COLON)) {
@@ -693,7 +693,7 @@ VnlcVariableDeclarationPrimaryParsingResult VnlcParser::parseVariableDeclaration
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected variable name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (match(VnlcTokenType::COLON)) {
@@ -829,7 +829,7 @@ VnlcClassDeclarationParsingResult VnlcParser::parseClassDeclaration(VnlcClassDec
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected class name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (match(VnlcTokenType::LEFT_ANGLE)) {
@@ -903,7 +903,7 @@ VnlcInterfaceDeclarationParsingResult VnlcParser::parseInterfaceDeclaration(Vnlc
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected interface name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (match(VnlcTokenType::LEFT_ANGLE)) {
@@ -945,7 +945,7 @@ VnlcEnumDeclarationParsingResult VnlcParser::parseEnumDeclaration(VnlcEnumDeclar
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected enum name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (match(VnlcTokenType::LEFT_ANGLE)) {
@@ -987,7 +987,7 @@ VnlcTypeAliasDeclarationParsingResult VnlcParser::parseTypeAliasDeclaration(Vnlc
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected type alias name", peek().getLine(), peek().getColumn());
     } else {
-        aliasName = std::move(constructCurrentIdentifierNode());
+        aliasName = constructCurrentIdentifierNode();
     }
 
     if (match(VnlcTokenType::LEFT_ANGLE)) {
@@ -1029,7 +1029,7 @@ VnlcExportListParsingResult VnlcParser::parseExportList() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier in export list", peek().getLine(), peek().getColumn());
         } else {
-            name = std::move(constructCurrentIdentifierNode());
+            name = constructCurrentIdentifierNode();
         }
 
         items.emplace_back(VnlcExportDeclarationItem{ .name = std::move(name) });
@@ -1047,7 +1047,7 @@ VnlcMetadataTermParsingResult VnlcParser::parseMetadataTerm() {
     if (!checkGeneralizedIdentifier()) {
         throw VnlcSyntaxError("Expected metadata term key", peek().getLine(), peek().getColumn());
     } else {
-        key = std::move(constructCurrentIdentifierNode());
+        key = constructCurrentIdentifierNode();
     }
 
     if (check(VnlcTokenType::STRING)) {
@@ -1062,12 +1062,11 @@ VnlcMetadataTermParsingResult VnlcParser::parseMetadataTerm() {
     }
 
     return VnlcMetadataTermParsingResult{
-        .term = std::move(
+        .term =
             VnlcDeclarationItem::MetadataTerm{
                 .key = std::move(key),
                 .value = std::move(value),
-            }
-        ),
+            },
     };
 }
 
@@ -1083,7 +1082,7 @@ VnlcFunctionSignatureParsingResult VnlcParser::parseFunctionSignature() {
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected function name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (!match(VnlcTokenType::LEFT_PARENTHESIS)) {
@@ -1124,7 +1123,7 @@ VnlcImportPathParsingResult VnlcParser::parseImportPath() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier in import path", peek().getLine(), peek().getColumn());
         } else {
-            namePrefix.emplace_back(std::move(constructCurrentIdentifierNode()));
+            namePrefix.emplace_back(constructCurrentIdentifierNode());
         }
 
         if (!check(VnlcTokenType::DOT)) {
@@ -1160,7 +1159,7 @@ VnlcImportPathParsingResult VnlcParser::parseImportPath() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier after 'as' keyword in import path", peek().getLine(), peek().getColumn());
         } else {
-            std::unique_ptr<VnlcIdentifierNode> alias = std::move(constructCurrentIdentifierNode());
+            std::unique_ptr<VnlcIdentifierNode> alias = constructCurrentIdentifierNode();
 
             paths = std::make_unique<VnlcImportDeclarationItem>(VnlcImportDeclarationItem{
                 .namePrefix = std::move(namePrefix),
@@ -1213,7 +1212,7 @@ VnlcTypeParsingResult VnlcParser::parseType() {
     };
 
     if (std::find(primitiveTypes.begin(), primitiveTypes.end(), peek().getType()) != primitiveTypes.end()) {
-        nameParts.emplace_back(std::move(constructCurrentIdentifierNode()));
+        nameParts.emplace_back(constructCurrentIdentifierNode());
     } else {
         do {
             if (!check(VnlcTokenType::IDENTIFIER)) {
@@ -1253,7 +1252,7 @@ VnlcParameterParsingResult VnlcParser::parseParameter() {
     if (!check(VnlcTokenType::IDENTIFIER)) {
         throw VnlcSyntaxError("Expected parameter name", peek().getLine(), peek().getColumn());
     } else {
-        name = std::move(constructCurrentIdentifierNode());
+        name = constructCurrentIdentifierNode();
     }
 
     if (!match(VnlcTokenType::COLON)) {
@@ -1286,7 +1285,7 @@ VnlcGenericParameterListParsingResult VnlcParser::parseGenericParameterList() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier in generic parameter list", peek().getLine(), peek().getColumn());
         } else {
-            parameters.emplace_back(std::move(constructCurrentIdentifierNode()));
+            parameters.emplace_back(constructCurrentIdentifierNode());
         }
     } while (match(VnlcTokenType::COMMA));
 
@@ -1397,7 +1396,7 @@ VnlcImportPathItemParsingResult VnlcParser::parseImportPathItem() {
     std::optional<std::unique_ptr<VnlcIdentifierNode>> alias = std::nullopt;
 
     if (check(VnlcTokenType::SELF)) {
-        namePrefix.emplace_back(std::move(constructCurrentIdentifierNode()));
+        namePrefix.emplace_back(constructCurrentIdentifierNode());
 
         if (match(VnlcTokenType::AS)) {
             if (!check(VnlcTokenType::IDENTIFIER)) {
@@ -1417,7 +1416,7 @@ VnlcImportPathItemParsingResult VnlcParser::parseImportPathItem() {
             }),
         };
     } else if (check(VnlcTokenType::ASTERISK)) {
-        namePrefix.emplace_back(std::move(constructCurrentIdentifierNode()));
+        namePrefix.emplace_back(constructCurrentIdentifierNode());
 
         return VnlcImportPathItemParsingResult{
             .paths = std::make_unique<VnlcImportDeclarationItem>(VnlcImportDeclarationItem{
@@ -2239,7 +2238,7 @@ VnlcPostfixExpressionParsingResult VnlcParser::parsePostfixExpression() {
             if (!checkGeneralizedIdentifier()) {
                 throw VnlcSyntaxError("Expected generalized identifier after '.'", peek().getLine(), peek().getColumn());
             } else {
-                name = std::move(constructCurrentIdentifierNode());
+                name = constructCurrentIdentifierNode();
             }
 
             VnlcToken lastToken = peek();
@@ -2254,7 +2253,7 @@ VnlcPostfixExpressionParsingResult VnlcParser::parsePostfixExpression() {
             if (!checkGeneralizedIdentifier()) {
                 throw VnlcSyntaxError("Expected generalized identifier after '?.'", peek().getLine(), peek().getColumn());
             } else {
-                name = std::move(constructCurrentIdentifierNode());
+                name = constructCurrentIdentifierNode();
             }
 
             VnlcToken lastToken = peek();
@@ -2868,7 +2867,7 @@ VnlcControlFlowStatementParsingResult VnlcParser::parseControlFlowStatement() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier after 'label'", peek().getLine(), peek().getColumn());
         } else {
-            label = std::make_optional(std::move(constructCurrentIdentifierNode()));
+            label = std::make_optional(constructCurrentIdentifierNode());
         }
 
         if (check(VnlcTokenType::WHILE)) {
@@ -3182,7 +3181,7 @@ VnlcBreakStatementParsingResult VnlcParser::parseBreakStatement() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier after 'break'", peek().getLine(), peek().getColumn());
         } else {
-            label = std::make_optional(std::move(constructCurrentIdentifierNode()));
+            label = std::make_optional(constructCurrentIdentifierNode());
         }
     }
 
@@ -3212,7 +3211,7 @@ VnlcContinueStatementParsingResult VnlcParser::parseContinueStatement() {
         if (!check(VnlcTokenType::IDENTIFIER)) {
             throw VnlcSyntaxError("Expected identifier after 'continue'", peek().getLine(), peek().getColumn());
         } else {
-            label = std::make_optional(std::move(constructCurrentIdentifierNode()));
+            label = std::make_optional(constructCurrentIdentifierNode());
         }
     }
 
