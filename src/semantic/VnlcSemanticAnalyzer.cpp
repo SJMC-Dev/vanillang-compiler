@@ -107,7 +107,7 @@ namespace {
             collectTypeDependencies(typeAlias->getOriginalType(), dependencies);
         }
     }
-}
+} // namespace
 
 VnlcSemanticAnalyzer::VnlcSemanticAnalyzer(const VnlcModuleNode& module) : module(module) {}
 
@@ -544,6 +544,8 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
         }
         context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolAccessModifier::PUBLIC, binding.name, target));
     }
+
+    // TODO: implement importing subpackages, modules, or identifiers from .vnl in the same root package
 }
 
 void VnlcSemanticAnalyzer::checkExport(const VnlcExportDeclarationNode& exportDecl) {
