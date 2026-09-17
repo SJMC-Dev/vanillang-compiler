@@ -802,6 +802,237 @@ TEST_F(VnlcSemanticAnalyzerImportTest, RetainsMultipleModulesAndPackagesAfterThe
     }
 }
 
+TEST_F(VnlcSemanticAnalyzerImportTest, LoadsIndirectImportsWithoutDeclaringTheirBindings) {
+    writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"External":{"category":"imported","source":"extra.tools.enabled"}})");
+
+    const auto result = analyze("import pkg.api.value\nlet enabled = 0\nlet tools = 0\nlet extra = 0\nexport value, enabled, tools, extra\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(findImportedNode(result, "value"), importedModule->getIdentifierByName("value"));
+    const auto* extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_NE(extraPackage, nullptr);
+    const auto* toolsModule = extraPackage->getModuleByName("tools");
+    ASSERT_NE(toolsModule, nullptr);
+    const auto* enabled = dynamic_cast<const VnlcImportedLet*>(toolsModule->getIdentifierByName("enabled"));
+    ASSERT_NE(enabled, nullptr);
+    EXPECT_EQ(enabled->getType(), "bool");
+    const auto* scope = result.getScopeByAstNode(*module);
+    ASSERT_NE(scope, nullptr);
+    EXPECT_EQ(scope->lookupLocal("External"), nullptr);
+    for (const auto name : { "enabled", "tools", "extra" }) {
+        const auto* symbol = scope->lookupLocal(name);
+        ASSERT_NE(symbol, nullptr);
+        EXPECT_NE(symbol->getLocalNode(), nullptr);
+        EXPECT_EQ(symbol->getImportedNode(), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ScansTypeDependenciesInEveryNestedIdentifierCollection) {
+    writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":[],"originalType":"pkg.sub.other.Target"}})");
+    writeFile("dependency_source/sub/other.vni", R"({"Target":{"category":"typealias","genericParameters":[],"originalType":"int"}})");
+    for (
+        const auto contents : {
+            R"({"category":"let","type":"extra.types.Remote"})",
+            R"({"category":"func","returnType":"extra.types.Remote","native":false,"parameters":{}})",
+            R"({"category":"func","returnType":"void","native":false,"parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}})",
+            R"({"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}})",
+            R"({"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}})",
+            R"({"category":"class","genericParameters":[],"properties":{},"methods":{},"baseClass":"extra.types.Remote","implementedInterfaces":[],"final":false})",
+            R"({"category":"class","genericParameters":[],"properties":{},"methods":{},"baseClass":null,"implementedInterfaces":["extra.types.Remote"],"final":false})",
+            R"({"category":"class","genericParameters":[],"properties":{"property":{"category":"property","type":"extra.types.Remote","static":false,"accessModifier":"public"}},"methods":{},"baseClass":null,"implementedInterfaces":[],"final":false})",
+            R"({"category":"class","genericParameters":[],"properties":{},"methods":{"method":{"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}}},"baseClass":null,"implementedInterfaces":[],"final":false})",
+            R"({"category":"class","genericParameters":[],"properties":{},"methods":{"method":{"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}}},"baseClass":null,"implementedInterfaces":[],"final":false})",
+            R"({"category":"interface","genericParameters":[],"methods":{"method":{"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}}}})",
+            R"({"category":"interface","genericParameters":[],"methods":{"method":{"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}}}})",
+            R"({"category":"enum","genericParameters":[],"members":{"member":{"category":"enummember","associatedValues":{"value":{"category":"enumvalue","type":"extra.types.Remote"}}}}})",
+            R"({"category":"enummember","associatedValues":{"value":{"category":"enumvalue","type":"extra.types.Remote"}}})",
+            R"({"category":"typealias","genericParameters":[],"originalType":"extra.types.Remote"})",
+            R"({"category":"property","type":"extra.types.Remote","static":false,"accessModifier":"public"})",
+            R"({"category":"parameter","type":"extra.types.Remote"})",
+        }) {
+        SCOPED_TRACE(contents);
+        writeFile("dependency_source/api.vni", std::string(R"({"value":{"category":"let","type":"int"},"holder":)") + contents + "}");
+
+        const auto result = analyze("import pkg.api.value\nexport value\n");
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto* extraPackage = result.getImportedPackageByName("extra");
+        ASSERT_NE(extraPackage, nullptr);
+        const auto* typesModule = extraPackage->getModuleByName("types");
+        ASSERT_NE(typesModule, nullptr);
+        EXPECT_NE(typesModule->getIdentifierByName("Remote"), nullptr);
+        const auto* package = result.getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        const auto* subPackage = package->getSubPackageByName("sub");
+        ASSERT_NE(subPackage, nullptr);
+        const auto* otherModule = subPackage->getModuleByName("other");
+        ASSERT_NE(otherModule, nullptr);
+        EXPECT_NE(otherModule->getIdentifierByName("Target"), nullptr);
+        const auto* scope = result.getScopeByAstNode(*module);
+        ASSERT_NE(scope, nullptr);
+        EXPECT_NE(scope->lookupLocal("value"), nullptr);
+        for (const auto name : { "holder", "Remote", "Target", "types", "other", "extra" }) {
+            EXPECT_EQ(scope->lookupLocal(name), nullptr);
+        }
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, LoadsEveryQualifiedTypeInGenericArgumentsAndNullableTypes) {
+    writeFile("dependency_source/api.vni", R"({"Alias":{"category":"typealias","genericParameters":["T"],"originalType":"pkg.sub.other.Pair<T, List<extra.types.Remote?>>?"}})");
+    writeFile("dependency_source/sub/other.vni", R"({"Pair":{"category":"typealias","genericParameters":["A","B"],"originalType":"A"}})");
+    writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":[],"originalType":"int"}})");
+
+    const auto result = analyze("import pkg.api.Alias\nexport Alias\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* subPackage = package->getSubPackageByName("sub");
+    ASSERT_NE(subPackage, nullptr);
+    const auto* otherModule = subPackage->getModuleByName("other");
+    ASSERT_NE(otherModule, nullptr);
+    EXPECT_NE(otherModule->getIdentifierByName("Pair"), nullptr);
+    const auto* extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_NE(extraPackage, nullptr);
+    const auto* typesModule = extraPackage->getModuleByName("types");
+    ASSERT_NE(typesModule, nullptr);
+    EXPECT_NE(typesModule->getIdentifierByName("Remote"), nullptr);
+    const auto* scope = result.getScopeByAstNode(*module);
+    ASSERT_NE(scope, nullptr);
+    for (const auto name : { "Pair", "Remote", "T", "A", "B", "List" }) {
+        EXPECT_EQ(scope->lookupLocal(name), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, FollowsTransitiveRepeatedAndCyclicIndirectImports) {
+    writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"pkg.sub.other.bridge"},"repeated":{"category":"imported","source":"pkg.sub.other.bridge"}})");
+    writeFile("dependency_source/sub/other.vni", R"({"bridge":{"category":"imported","source":"extra.tools.enabled"},"back":{"category":"imported","source":"pkg.api.External"}})");
+
+    const auto result = analyze("import pkg.api.External\nexport External\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(findImportedNode(result, "External"), importedModule->getIdentifierByName("External"));
+    const auto* subPackage = package->getSubPackageByName("sub");
+    ASSERT_NE(subPackage, nullptr);
+    const auto* otherModule = subPackage->getModuleByName("other");
+    ASSERT_NE(otherModule, nullptr);
+    EXPECT_NE(otherModule->getIdentifierByName("bridge"), nullptr);
+    EXPECT_NE(otherModule->getIdentifierByName("back"), nullptr);
+    const auto* extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_NE(extraPackage, nullptr);
+    EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
+    const auto* scope = result.getScopeByAstNode(*module);
+    ASSERT_NE(scope, nullptr);
+    for (const auto name : { "repeated", "bridge", "back", "enabled", "other", "tools" }) {
+        EXPECT_EQ(scope->lookupLocal(name), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, LoadsPackagesAndModulesReferencedByIndirectImports) {
+    for (const auto source : { "extra", "extra.tools", "pkg.sub" }) {
+        SCOPED_TRACE(source);
+        writeFile("dependency_source/api.vni", std::string(R"({"External":{"category":"imported","source":")") + source + R"("}})");
+
+        const auto result = analyze("import pkg.api.External\nexport External\n");
+
+        ASSERT_FALSE(result.hasErrors());
+        if (std::string_view(source) == "pkg.sub") {
+            const auto* package = result.getImportedPackageByName("pkg");
+            ASSERT_NE(package, nullptr);
+            const auto* subPackage = package->getSubPackageByName("sub");
+            ASSERT_NE(subPackage, nullptr);
+            EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
+            EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
+        } else {
+            const auto* extraPackage = result.getImportedPackageByName("extra");
+            ASSERT_NE(extraPackage, nullptr);
+            EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
+        }
+        const auto* scope = result.getScopeByAstNode(*module);
+        ASSERT_NE(scope, nullptr);
+        for (const auto name : { "extra", "tools", "sub", "other", "second" }) {
+            EXPECT_EQ(scope->lookupLocal(name), nullptr);
+        }
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, PreservesBindingsWhenDirectAndIndirectImportsShareModules) {
+    writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"extra.tools.enabled"}})");
+    writeFile("dependency_source/sub/other.vni", R"({"flag":{"category":"let","type":"bool"},"External":{"category":"imported","source":"extra.tools.enabled"}})");
+
+    for (const auto source : {
+             "import pkg.api.External\nimport extra.tools.enabled\nimport pkg.sub.other.flag\nimport extra.tools as tools\nexport External, enabled, flag, tools\n",
+             "import extra.tools.enabled\nimport pkg.api.External\nimport pkg.sub.other.flag\nimport extra.tools as tools\nexport External, enabled, flag, tools\n",
+         }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto* package = result.getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        const auto* importedModule = package->getModuleByName("api");
+        ASSERT_NE(importedModule, nullptr);
+        EXPECT_EQ(findImportedNode(result, "External"), importedModule->getIdentifierByName("External"));
+        const auto* subPackage = package->getSubPackageByName("sub");
+        ASSERT_NE(subPackage, nullptr);
+        const auto* otherModule = subPackage->getModuleByName("other");
+        ASSERT_NE(otherModule, nullptr);
+        EXPECT_EQ(findImportedNode(result, "flag"), otherModule->getIdentifierByName("flag"));
+        const auto* extraPackage = result.getImportedPackageByName("extra");
+        ASSERT_NE(extraPackage, nullptr);
+        const auto* toolsModule = extraPackage->getModuleByName("tools");
+        ASSERT_NE(toolsModule, nullptr);
+        EXPECT_EQ(findImportedNode(result, "tools"), toolsModule);
+        EXPECT_EQ(findImportedNode(result, "enabled"), toolsModule->getIdentifierByName("enabled"));
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, DoesNotCommitImportsWithMissingOrMalformedIndirectDependencies) {
+    writeFile("another_source/broken.vni", "invalid json");
+    for (const auto source : { "absent.tools.enabled", "extra.missing.enabled", "extra.broken.enabled", "", ".extra.tools.enabled", "extra..tools.enabled", "extra.tools.enabled." }) {
+        SCOPED_TRACE(source);
+        writeFile(
+            "dependency_source/api.vni",
+            std::string(R"({"External":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":")") + source + R"("}})"
+        );
+        std::optional<VnlcSemanticAnalysisResult> result;
+        ASSERT_NO_THROW(result.emplace(analyze("import pkg.api.External\nlet External = 0\n")));
+
+        ASSERT_TRUE(result->hasErrors());
+        ASSERT_EQ(result->getErrors().size(), 1);
+        EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
+        EXPECT_EQ(result->getImportedPackageByName("extra"), nullptr);
+        EXPECT_EQ(result->getImportedPackageByName("absent"), nullptr);
+        EXPECT_EQ(findImportedNode(*result, "External"), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, FailedIndirectImportsPreserveEarlierBindingsWithoutCommittingDependencies) {
+    writeFile("dependency_source/broken.vni", R"({"External":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"pkg.sub.missing.value"}})");
+
+    const auto result = analyze("import pkg.api as kept\nimport pkg.broken as staged\nlet staged = 0\nexport kept\n");
+
+    ASSERT_TRUE(result.hasErrors());
+    ASSERT_EQ(result.getErrors().size(), 1);
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(findImportedNode(result, "kept"), importedModule);
+    EXPECT_EQ(package->getModuleByName("broken"), nullptr);
+    EXPECT_EQ(package->getSubPackageByName("sub"), nullptr);
+    EXPECT_EQ(result.getImportedPackageByName("extra"), nullptr);
+    EXPECT_EQ(findImportedNode(result, "staged"), nullptr);
+}
+
 TEST_F(VnlcSemanticAnalyzerImportTest, ReportsInvalidImportsWithoutRetainingPartialTrees) {
     for (const auto source : {
              "import absent.api\n",
