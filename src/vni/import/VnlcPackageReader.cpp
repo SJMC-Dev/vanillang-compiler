@@ -2,11 +2,81 @@
 #include "error/VnlcPackageReaderError.hpp"
 #include "vni/import/VnlcModuleInterfaceFileReader.hpp"
 #include <filesystem>
+#include <vector>
 
 VnlcPackageReader::VnlcPackageReader(std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>& packages) : packages(packages) {}
 
 void VnlcPackageReader::readPackageFromSource(const VnlcImportDeclarationItem& importItem, const VnlcConfig& config) {
     readRecursivelyFromSource(importItem, config.dependencyPackageRootPaths, {}, nullptr);
+}
+
+void VnlcPackageReader::readPackageFromAlias(std::string_view aliasPath, const VnlcConfig& config) {
+    readFromAlias(aliasPath, config.dependencyPackageRootPaths);
+}
+
+void VnlcPackageReader::readFromAlias(std::string_view aliasPath, const std::unordered_map<std::string, std::filesystem::path>& rootPaths) {
+    std::vector<std::string> names;
+    for (std::size_t start = 0;;) {
+        std::size_t end = aliasPath.find('.', start);
+        std::string_view name = aliasPath.substr(start, end == std::string_view::npos ? end : end - start);
+        if (name.empty() || name.find_first_of("/\\:") != std::string_view::npos || name.find('\0') != std::string_view::npos) {
+            throw VnlcPackageReaderError(fmt::format("Invalid imported alias path: {}", aliasPath));
+        }
+        names.emplace_back(name);
+        if (end == std::string_view::npos) break;
+        start = end + 1;
+    }
+
+    auto rootPath = rootPaths.find(names.front());
+    if (rootPath == rootPaths.end()) {
+        throw VnlcPackageReaderError(fmt::format("Could not find package with name: {}", names.front()));
+    }
+    std::filesystem::path currentPath = rootPath->second;
+    if (!std::filesystem::is_directory(currentPath)) {
+        throw VnlcPackageReaderError(fmt::format("Package path {} is not a directory", currentPath.string()));
+    }
+    if (!packages.contains(names.front())) {
+        packages.emplace(
+            names.front(),
+            std::make_unique<VnlcImportedPackage>(
+                names.front(),
+                std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>(),
+                std::unordered_map<std::string, std::unique_ptr<VnlcImportedModule>>()
+            )
+        );
+    }
+    VnlcImportedPackage* currentPackage = packages.at(names.front()).get();
+
+    for (std::size_t index = 1; index < names.size(); ++index) {
+        const std::string& name = names[index];
+        std::filesystem::path packagePath = currentPath / name;
+        if (!std::filesystem::is_directory(packagePath)) {
+            if (currentPackage->getModules().contains(name)) return;
+
+            std::filesystem::path modulePath = currentPath / (name + ".vni");
+            if (!std::filesystem::is_regular_file(modulePath)) {
+                throw VnlcPackageReaderError(fmt::format("Could not find package or module with name: {}", name));
+            }
+            VnlcModuleInterfaceFileReader moduleReader(modulePath);
+            currentPackage->addModule(moduleReader.read());
+            return;
+        }
+
+        if (!currentPackage->getSubPackages().contains(name)) {
+            currentPackage->addSubPackage(
+                std::make_unique<VnlcImportedPackage>(
+                    name,
+                    std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>>(),
+                    std::unordered_map<std::string, std::unique_ptr<VnlcImportedModule>>()
+                )
+            );
+        }
+        currentPackage = currentPackage->getSubPackages().at(name).get();
+        currentPath = std::move(packagePath);
+    }
+
+    std::unordered_set<std::filesystem::path> activePackagePaths;
+    readPackageContents(currentPath, *currentPackage, activePackagePaths);
 }
 
 void VnlcPackageReader::readRecursivelyFromSource(
