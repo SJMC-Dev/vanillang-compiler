@@ -2,6 +2,7 @@
 #define VNLC_SCOPE_KIND_HPP
 
 enum class VnlcScopeKind {
+    PACKAGE,
     MODULE,
     CLASS,
     INTERFACE,
