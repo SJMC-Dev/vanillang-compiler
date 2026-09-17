@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -593,6 +594,11 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsIt
     const auto* importedModule = package->getModuleByName("api");
     ASSERT_NE(importedModule, nullptr);
     EXPECT_EQ(importedModule->getName(), "api");
+    EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
+    EXPECT_NE(importedModule->getIdentifierByName("count"), nullptr);
+    const auto* scope = result.getScopeByAstNode(*module);
+    ASSERT_NE(scope, nullptr);
+    EXPECT_EQ(scope->lookupLocal("count"), nullptr);
     const auto* member = importedModule->getIdentifierByName("value");
     ASSERT_NE(member, nullptr);
     EXPECT_EQ(findImportedNode(result, "value"), member);
@@ -616,9 +622,102 @@ TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalModule) {
     ASSERT_FALSE(result.hasErrors());
     const auto* package = result.getImportedPackageByName("pkg");
     ASSERT_NE(package, nullptr);
-    EXPECT_EQ(findImportedNode(result, "api"), package->getModuleByName("api"));
+    const auto* importedModule = package->getModuleByName("api");
+    ASSERT_NE(importedModule, nullptr);
+    EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
+    EXPECT_NE(importedModule->getIdentifierByName("value"), nullptr);
+    EXPECT_NE(importedModule->getIdentifierByName("count"), nullptr);
+    EXPECT_EQ(findImportedNode(result, "api"), importedModule);
     EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
     EXPECT_EQ(findImportedNode(result, "value"), nullptr);
+    const auto* scope = result.getScopeByAstNode(*module);
+    ASSERT_NE(scope, nullptr);
+    EXPECT_EQ(scope->lookupLocal("count"), nullptr);
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, RegistersEveryIdentifierKindAgainstTheCompleteModuleTree) {
+    writeFile(
+        "dependency_source/api.vni",
+        R"({
+    "value": {"category": "let", "type": "int"},
+    "run": {"category": "func", "returnType": "void", "parameters": {}, "native": false},
+    "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
+    "Readable": {"category": "interface", "genericParameters": [], "methods": {}},
+    "State": {"category": "enum", "genericParameters": [], "members": {}},
+    "Alias": {"category": "typealias", "genericParameters": [], "originalType": "int"},
+    "External": {"category": "imported", "source": "extra.tools.enabled"},
+    "method": {"category": "method", "returnType": "void", "parameters": {}, "native": false, "static": true, "accessModifier": "public"},
+    "Ready": {"category": "enummember", "associatedValues": {}},
+    "property": {"category": "property", "type": "int", "static": true, "accessModifier": "public"},
+    "parameter": {"category": "parameter", "type": "int"}
+})"
+    );
+    const std::vector<std::pair<std::string, VnlcSymbolKind>> identifiers = {
+        { "value", VnlcSymbolKind::VARIABLE },        { "run", VnlcSymbolKind::FUNCTION },        { "Box", VnlcSymbolKind::CLASS },
+        { "Readable", VnlcSymbolKind::INTERFACE },    { "State", VnlcSymbolKind::ENUM },          { "Alias", VnlcSymbolKind::TYPE_ALIAS },
+        { "External", VnlcSymbolKind::IMPORT_ALIAS }, { "method", VnlcSymbolKind::METHOD },       { "Ready", VnlcSymbolKind::ENUM_MEMBER },
+        { "property", VnlcSymbolKind::PROPERTY },     { "parameter", VnlcSymbolKind::PARAMETER },
+    };
+
+    for (const auto& [name, kind] : identifiers) {
+        for (const bool aliased : { false, true }) {
+            const auto source = "import pkg.api." + name + (aliased ? " as selected\n" : "\n");
+            SCOPED_TRACE(source);
+            const auto result = analyze(source);
+
+            ASSERT_FALSE(result.hasErrors());
+            const auto* package = result.getImportedPackageByName("pkg");
+            ASSERT_NE(package, nullptr);
+            const auto* importedModule = package->getModuleByName("api");
+            ASSERT_NE(importedModule, nullptr);
+            EXPECT_EQ(importedModule->getIdentifiers().size(), identifiers.size());
+            const auto* scope = result.getScopeByAstNode(*module);
+            ASSERT_NE(scope, nullptr);
+            EXPECT_EQ(scope->lookupLocal("pkg"), nullptr);
+            EXPECT_EQ(scope->lookupLocal("api"), nullptr);
+            const auto* symbol = scope->lookupLocal(aliased ? "selected" : name);
+            ASSERT_NE(symbol, nullptr);
+            EXPECT_EQ(symbol->getName(), aliased ? "selected" : name);
+            EXPECT_EQ(symbol->getKind(), kind);
+            EXPECT_EQ(symbol->getOrigin(), VnlcSymbolOrigin::IMPORTED);
+            EXPECT_EQ(symbol->getLocalNode(), nullptr);
+            EXPECT_EQ(symbol->getImportedNode(), importedModule->getIdentifierByName(name));
+            for (const auto& [otherName, otherKind] : identifiers) {
+                EXPECT_NE(importedModule->getIdentifierByName(otherName), nullptr);
+                if (aliased || otherName != name) {
+                    EXPECT_EQ(scope->lookupLocal(otherName), nullptr);
+                }
+            }
+        }
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReusesIdentifierNodesAcrossModuleAndPackageImports) {
+    for (const auto source : {
+             "import pkg.api.value\nimport pkg.api.count\nimport pkg.api.value as renamed\nimport pkg.api as library\nimport pkg as package\n",
+             "import pkg as package\nimport pkg.api as library\nimport pkg.api.value\nimport pkg.api.count\nimport pkg.api.value as renamed\n",
+             "import pkg.api as library\nimport pkg.api.value\nimport pkg.api.count\nimport pkg.api.value as renamed\nimport pkg as package\n",
+             "import pkg.{api.{value, count, value as renamed, self as library}, self as package}\n",
+         }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto* package = result.getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        const auto* importedModule = package->getModuleByName("api");
+        ASSERT_NE(importedModule, nullptr);
+        EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
+        const auto* value = importedModule->getIdentifierByName("value");
+        const auto* count = importedModule->getIdentifierByName("count");
+        ASSERT_NE(value, nullptr);
+        ASSERT_NE(count, nullptr);
+        EXPECT_EQ(findImportedNode(result, "value"), value);
+        EXPECT_EQ(findImportedNode(result, "renamed"), value);
+        EXPECT_EQ(findImportedNode(result, "count"), count);
+        EXPECT_EQ(findImportedNode(result, "library"), importedModule);
+        EXPECT_EQ(findImportedNode(result, "package"), package);
+    }
 }
 
 TEST_F(VnlcSemanticAnalyzerImportTest, AliasesBindToTheirOriginalTargets) {
@@ -736,6 +835,21 @@ TEST_F(VnlcSemanticAnalyzerImportTest, ReportsMalformedModuleInterfacesAsSemanti
         ASSERT_TRUE(result->hasErrors());
         EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
         EXPECT_EQ(findImportedNode(*result, "broken"), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, RejectsMalformedUnselectedIdentifiersWhenImportingAModuleOrIdentifier) {
+    writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"unused":{"category":"let","type":123}})");
+    for (const auto source : { "import pkg.api\n", "import pkg.api.value\n" }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+
+        ASSERT_TRUE(result.hasErrors());
+        EXPECT_EQ(result.getImportedPackageByName("pkg"), nullptr);
+        const auto* scope = result.getScopeByAstNode(*module);
+        ASSERT_NE(scope, nullptr);
+        EXPECT_EQ(scope->lookupLocal("api"), nullptr);
+        EXPECT_EQ(scope->lookupLocal("value"), nullptr);
     }
 }
 
