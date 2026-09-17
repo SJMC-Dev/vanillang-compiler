@@ -7,7 +7,8 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
     std::vector<VnlcDiagnostic>&& warnings,
     std::vector<VnlcDiagnostic>&& notes,
     std::unordered_set<std::unique_ptr<VnlcCustomizedType>>&& customizedTypes,
-    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>>&& scopeMap,
+    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>>&& localScopeMap,
+    std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>>&& importedScopeMap,
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*>&& semanticTypeMap,
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
@@ -18,7 +19,8 @@ VnlcSemanticAnalysisResult::VnlcSemanticAnalysisResult(
       warnings(std::move(warnings)),
       notes(std::move(notes)),
       customizedTypes(std::move(customizedTypes)),
-      scopeMap(std::move(scopeMap)),
+      localScopeMap(std::move(localScopeMap)),
+      importedScopeMap(std::move(importedScopeMap)),
       semanticTypeMap(std::move(semanticTypeMap)),
       inferredValueTypeMap(std::move(inferredValueTypeMap)),
       inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
@@ -59,11 +61,16 @@ const VnlcCustomizedType* VnlcSemanticAnalysisResult::getCustomizedTypeByFullTyp
 }
 
 const VnlcScope* VnlcSemanticAnalysisResult::getScopeByAstNode(const VnlcAstNode& node) const {
-    auto it = scopeMap.find(&node);
-    if (it != scopeMap.end()) {
+    auto it = localScopeMap.find(&node);
+    if (it != localScopeMap.end()) {
         return it->second.get();
     }
     return nullptr;
+}
+
+const VnlcScope* VnlcSemanticAnalysisResult::getScopeByImportedNode(const VnlcImportedItem& node) const {
+    auto it = importedScopeMap.find(&node);
+    return it == importedScopeMap.end() ? nullptr : it->second.get();
 }
 
 const VnlcSemanticType* VnlcSemanticAnalysisResult::getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const {

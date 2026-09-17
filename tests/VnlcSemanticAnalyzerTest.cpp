@@ -537,6 +537,50 @@ TEST(VnlcSemanticContextTest, RetainsPoppedScopesAndTheirParents) {
     EXPECT_EQ(symbol->getLocalNode(), classDeclaration);
 }
 
+TEST(VnlcSemanticContextTest, RetainsLocalAndImportedScopesSeparately) {
+    const auto config = makeConfig("scopes.vnl");
+    const auto module = parseModule("", config);
+    const VnlcImportedModule importedModule("api", {});
+    const VnlcImportedModule anotherModule("other", {});
+    VnlcSemanticContext context;
+
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr, module.get()));
+    const auto* localScope = &context.currentScope();
+    EXPECT_EQ(localScope->getOrigin(), VnlcScopeOrigin::LOCAL);
+    EXPECT_EQ(localScope->getLocalNode(), module.get());
+    EXPECT_EQ(localScope->getImportedNode(), nullptr);
+
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr, &importedModule));
+    const auto* importedScope = &context.currentScope();
+    EXPECT_EQ(importedScope->getOrigin(), VnlcScopeOrigin::IMPORTED);
+    EXPECT_EQ(importedScope->getLocalNode(), nullptr);
+    EXPECT_EQ(importedScope->getImportedNode(), &importedModule);
+    EXPECT_EQ(context.getScopeByAstNode(nullptr), nullptr);
+    EXPECT_EQ(context.getScopeByImportedNode(nullptr), nullptr);
+    EXPECT_EQ(context.getScopeByImportedNode(&importedModule), importedScope);
+    EXPECT_EQ(context.getScopeByAstNode(module.get()), localScope);
+    EXPECT_EQ(&context.getOrCreateImportedScope(VnlcScopeKind::MODULE, nullptr, importedModule), importedScope);
+
+    context.popScope();
+    EXPECT_EQ(context.getScopeByImportedNode(&importedModule), importedScope);
+    EXPECT_EQ(&context.getOrCreateImportedScope(VnlcScopeKind::MODULE, nullptr, importedModule), importedScope);
+    context.pushScope(std::make_unique<VnlcScope>(VnlcScopeKind::MODULE, nullptr, &anotherModule));
+    const auto* anotherScope = &context.currentScope();
+    context.popScope();
+    context.popScope();
+
+    EXPECT_EQ(context.getScopeByAstNode(module.get()), localScope);
+    EXPECT_EQ(context.getScopeByImportedNode(&importedModule), importedScope);
+    EXPECT_EQ(context.getScopeByImportedNode(&anotherModule), anotherScope);
+    auto importedScopes = context.takeImportedScopeMap();
+    ASSERT_EQ(importedScopes.size(), 2);
+    EXPECT_EQ(importedScopes.at(&importedModule).get(), importedScope);
+    EXPECT_EQ(importedScopes.at(&anotherModule).get(), anotherScope);
+    auto localScopes = context.takeLocalScopeMap();
+    ASSERT_EQ(localScopes.size(), 1);
+    EXPECT_EQ(localScopes.at(module.get()).get(), localScope);
+}
+
 class VnlcSemanticAnalyzerImportTest : public testing::Test {
 protected:
     std::filesystem::path testDirectory;
@@ -567,6 +611,32 @@ protected:
         output << contents;
     }
 
+    void writeScopedModule() const {
+        writeFile("dependency_source/api.vni", R"({
+    "value": {"category": "let", "type": "int"},
+    "run": {"category": "func", "returnType": "void", "native": false,
+        "parameters": {"amount": {"category": "parameter", "type": "int"}}},
+    "Box": {"category": "class", "genericParameters": ["T"], "baseClass": null, "implementedInterfaces": [], "final": false,
+        "properties": {
+            "visible": {"category": "property", "type": "T", "static": false, "accessModifier": "public"},
+            "secret": {"category": "property", "type": "int", "static": true, "accessModifier": "private"}},
+        "methods": {"apply": {"category": "method", "returnType": "T", "native": false, "static": false, "accessModifier": "protected",
+            "parameters": {"input": {"category": "parameter", "type": "T"}}}}},
+    "Readable": {"category": "interface", "genericParameters": ["R"],
+        "methods": {"read": {"category": "method", "returnType": "R", "native": false, "static": false, "accessModifier": "public",
+            "parameters": {"input": {"category": "parameter", "type": "R"}}}}},
+    "State": {"category": "enum", "genericParameters": ["E"],
+        "members": {"Ready": {"category": "enummember", "associatedValues": {"payload": {"category": "enumvalue", "type": "E"}}}}},
+    "Alias": {"category": "typealias", "genericParameters": ["A"], "originalType": "A"},
+    "External": {"category": "imported", "source": "extra.tools.enabled"},
+    "method": {"category": "method", "returnType": "void", "native": false, "static": true, "accessModifier": "public",
+        "parameters": {"amount": {"category": "parameter", "type": "int"}}},
+    "Ready": {"category": "enummember", "associatedValues": {"payload": {"category": "enumvalue", "type": "int"}}},
+    "property": {"category": "property", "type": "int", "static": true, "accessModifier": "public"},
+    "parameter": {"category": "parameter", "type": "int"}
+})");
+    }
+
     VnlcSemanticAnalysisResult analyze(std::string_view source) {
         module = parseModule(source, config);
         VnlcSemanticAnalyzer analyzer(*module);
@@ -581,6 +651,268 @@ protected:
         return symbol != nullptr ? symbol->getImportedNode() : nullptr;
     }
 };
+
+TEST_F(VnlcSemanticAnalyzerImportTest, BuildsImportedPackageModuleAndMemberScopes) {
+    writeScopedModule();
+    const auto result = analyze("import pkg as library\nlet localOnly = 0\nexport library\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto* localScope = result.getScopeByAstNode(*module);
+    ASSERT_NE(localScope, nullptr);
+    EXPECT_EQ(localScope->getOrigin(), VnlcScopeOrigin::LOCAL);
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* packageScope = result.getScopeByImportedNode(*package);
+    ASSERT_NE(packageScope, nullptr);
+    EXPECT_EQ(packageScope->getKind(), VnlcScopeKind::PACKAGE);
+    EXPECT_EQ(packageScope->getOrigin(), VnlcScopeOrigin::IMPORTED);
+    EXPECT_EQ(packageScope->getImportedNode(), package);
+    EXPECT_EQ(packageScope->getLocalNode(), nullptr);
+    EXPECT_EQ(packageScope->findParent(), nullptr);
+    EXPECT_EQ(findImportedNode(result, "library"), package);
+
+    const auto* api = package->getModuleByName("api");
+    ASSERT_NE(api, nullptr);
+    const auto* apiScope = result.getScopeByImportedNode(*api);
+    ASSERT_NE(apiScope, nullptr);
+    EXPECT_EQ(apiScope->getKind(), VnlcScopeKind::MODULE);
+    EXPECT_EQ(apiScope->findParent(), packageScope);
+    const auto* apiSymbol = packageScope->lookupLocal("api");
+    ASSERT_NE(apiSymbol, nullptr);
+    EXPECT_EQ(apiSymbol->getKind(), VnlcSymbolKind::MODULE);
+    EXPECT_EQ(apiSymbol->getImportedNode(), api);
+
+    const auto expectChildScope = [&](const VnlcScope& parent, std::string_view name, VnlcScopeKind kind) -> const VnlcScope* {
+        const auto* symbol = parent.lookupLocal(name);
+        EXPECT_NE(symbol, nullptr);
+        if (symbol == nullptr) return nullptr;
+        const auto* node = symbol->getImportedNode();
+        EXPECT_NE(node, nullptr);
+        if (node == nullptr) return nullptr;
+        const auto* scope = result.getScopeByImportedNode(*node);
+        EXPECT_NE(scope, nullptr);
+        if (scope != nullptr) {
+            EXPECT_EQ(scope->getKind(), kind);
+            EXPECT_EQ(scope->getOrigin(), VnlcScopeOrigin::IMPORTED);
+            EXPECT_EQ(scope->getImportedNode(), node);
+            EXPECT_EQ(scope->getLocalNode(), nullptr);
+            EXPECT_EQ(scope->findParent(), &parent);
+        }
+        return scope;
+    };
+    const auto* subScope = expectChildScope(*packageScope, "sub", VnlcScopeKind::PACKAGE);
+    ASSERT_NE(subScope, nullptr);
+    EXPECT_NE(expectChildScope(*subScope, "other", VnlcScopeKind::MODULE), nullptr);
+
+    const auto* boxScope = expectChildScope(*apiScope, "Box", VnlcScopeKind::CLASS);
+    ASSERT_NE(boxScope, nullptr);
+    const auto* visible = boxScope->lookupLocal("visible");
+    const auto* secret = boxScope->lookupLocal("secret");
+    const auto* method = boxScope->lookupLocal("apply");
+    ASSERT_NE(visible, nullptr);
+    ASSERT_NE(secret, nullptr);
+    ASSERT_NE(method, nullptr);
+    EXPECT_EQ(visible->getKind(), VnlcSymbolKind::PROPERTY);
+    EXPECT_EQ(visible->getAccessModifier(), VnlcSymbolAccessModifier::PUBLIC);
+    EXPECT_EQ(secret->getAccessModifier(), VnlcSymbolAccessModifier::PRIVATE);
+    EXPECT_EQ(method->getKind(), VnlcSymbolKind::METHOD);
+    EXPECT_EQ(method->getAccessModifier(), VnlcSymbolAccessModifier::PROTECTED);
+    EXPECT_EQ(result.getScopeByImportedNode(*visible->getImportedNode()), nullptr);
+    const auto* methodScope = expectChildScope(*boxScope, "apply", VnlcScopeKind::FUNCTION);
+    ASSERT_NE(methodScope, nullptr);
+    const auto* input = methodScope->lookupLocal("input");
+    ASSERT_NE(input, nullptr);
+    EXPECT_EQ(input->getKind(), VnlcSymbolKind::PARAMETER);
+    EXPECT_EQ(input->getOrigin(), VnlcSymbolOrigin::IMPORTED);
+    EXPECT_EQ(result.getScopeByImportedNode(*input->getImportedNode()), nullptr);
+    const auto* generic = boxScope->lookupLocal("T");
+    ASSERT_NE(generic, nullptr);
+    EXPECT_EQ(generic->getKind(), VnlcSymbolKind::GENERIC_PARAMETER);
+    EXPECT_EQ(generic->getImportedNode(), boxScope->getImportedNode());
+    EXPECT_EQ(methodScope->lookup("T"), generic);
+    EXPECT_EQ(methodScope->lookup("localOnly"), nullptr);
+
+    const auto* interfaceScope = expectChildScope(*apiScope, "Readable", VnlcScopeKind::INTERFACE);
+    ASSERT_NE(interfaceScope, nullptr);
+    const auto* readScope = expectChildScope(*interfaceScope, "read", VnlcScopeKind::FUNCTION);
+    ASSERT_NE(readScope, nullptr);
+    EXPECT_NE(readScope->lookupLocal("input"), nullptr);
+    EXPECT_NE(interfaceScope->lookupLocal("R"), nullptr);
+    EXPECT_EQ(readScope->lookup("R"), interfaceScope->lookupLocal("R"));
+
+    const auto* enumScope = expectChildScope(*apiScope, "State", VnlcScopeKind::ENUM);
+    ASSERT_NE(enumScope, nullptr);
+    const auto* memberScope = expectChildScope(*enumScope, "Ready", VnlcScopeKind::ENUM_MEMBER);
+    ASSERT_NE(memberScope, nullptr);
+    const auto* payload = memberScope->lookupLocal("payload");
+    ASSERT_NE(payload, nullptr);
+    EXPECT_EQ(payload->getKind(), VnlcSymbolKind::PROPERTY);
+    EXPECT_EQ(payload->getOrigin(), VnlcSymbolOrigin::IMPORTED);
+    EXPECT_EQ(result.getScopeByImportedNode(*payload->getImportedNode()), nullptr);
+    EXPECT_NE(enumScope->lookupLocal("E"), nullptr);
+    EXPECT_EQ(memberScope->lookup("E"), enumScope->lookupLocal("E"));
+
+    const auto* aliasScope = expectChildScope(*apiScope, "Alias", VnlcScopeKind::TYPE_ALIAS);
+    ASSERT_NE(aliasScope, nullptr);
+    EXPECT_NE(aliasScope->lookupLocal("A"), nullptr);
+    const auto* functionScope = expectChildScope(*apiScope, "run", VnlcScopeKind::FUNCTION);
+    ASSERT_NE(functionScope, nullptr);
+    EXPECT_NE(functionScope->lookupLocal("amount"), nullptr);
+    const auto* external = apiScope->lookupLocal("External");
+    ASSERT_NE(external, nullptr);
+    EXPECT_EQ(external->getKind(), VnlcSymbolKind::IMPORT_ALIAS);
+    EXPECT_EQ(result.getScopeByImportedNode(*external->getImportedNode()), nullptr);
+    const auto* extraPackage = result.getImportedPackageByName("extra");
+    ASSERT_NE(extraPackage, nullptr);
+    EXPECT_EQ(result.getScopeByImportedNode(*extraPackage), nullptr);
+    for (const auto name : { "api", "Box", "T", "apply", "input", "Ready", "payload", "extra", "External" }) {
+        EXPECT_EQ(localScope->lookupLocal(name), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, CreatesScopesForDirectAndWildcardImportsOfScopedIdentifiers) {
+    writeScopedModule();
+    const std::vector<std::pair<std::string, VnlcScopeKind>> scopedIdentifiers = {
+        { "run", VnlcScopeKind::FUNCTION },     { "Box", VnlcScopeKind::CLASS },       { "Readable", VnlcScopeKind::INTERFACE }, { "State", VnlcScopeKind::ENUM },
+        { "Alias", VnlcScopeKind::TYPE_ALIAS }, { "method", VnlcScopeKind::FUNCTION }, { "Ready", VnlcScopeKind::ENUM_MEMBER },
+    };
+    for (const auto& [name, kind] : scopedIdentifiers) {
+        SCOPED_TRACE(name);
+        const auto result = analyze("import pkg.api." + name + " as selected\nexport selected\n");
+        ASSERT_FALSE(result.hasErrors());
+        const auto* node = findImportedNode(result, "selected");
+        ASSERT_NE(node, nullptr);
+        const auto* scope = result.getScopeByImportedNode(*node);
+        ASSERT_NE(scope, nullptr);
+        EXPECT_EQ(scope->getKind(), kind);
+        EXPECT_EQ(scope->getImportedNode(), node);
+        const auto* localScope = result.getScopeByAstNode(*module);
+        ASSERT_NE(localScope, nullptr);
+        EXPECT_EQ(localScope->lookupLocal(name), nullptr);
+        EXPECT_EQ(localScope->lookupLocal("api"), nullptr);
+        EXPECT_EQ(localScope->lookupLocal("pkg"), nullptr);
+    }
+    const auto result = analyze("import pkg.api.*\n");
+    ASSERT_FALSE(result.hasErrors());
+    for (const auto& [name, kind] : scopedIdentifiers) {
+        const auto* node = findImportedNode(result, name);
+        ASSERT_NE(node, nullptr);
+        const auto* scope = result.getScopeByImportedNode(*node);
+        ASSERT_NE(scope, nullptr);
+        EXPECT_EQ(scope->getKind(), kind);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, DoesNotCreateScopesForImportedValuesOrUnresolvedAliases) {
+    writeScopedModule();
+    for (const auto name : { "value", "property", "parameter", "External" }) {
+        SCOPED_TRACE(name);
+        const auto result = analyze(std::string("import pkg.api.") + name + "\n");
+        ASSERT_FALSE(result.hasErrors());
+        const auto* node = findImportedNode(result, name);
+        ASSERT_NE(node, nullptr);
+        EXPECT_EQ(result.getScopeByImportedNode(*node), nullptr);
+        const auto* package = result.getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        EXPECT_EQ(result.getScopeByImportedNode(*package), nullptr);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, ReusesImportedScopesAcrossAliasesAndImportOrders) {
+    writeScopedModule();
+    for (const auto source : {
+             "import pkg.api.Box as First\nimport pkg.api as api\nimport pkg as library\nimport pkg.api.Box as Second\nimport extra.tools as tools\n",
+             "import pkg as library\nimport pkg.api as api\nimport pkg.api.Box as First\nimport pkg.api.Box as Second\nimport extra.tools as tools\n",
+             "import pkg.api as api\nimport pkg.api.Box as First\nimport pkg as library\nimport pkg.api.Box as Second\nimport extra.tools as tools\n",
+         }) {
+        SCOPED_TRACE(source);
+        const auto result = analyze(source);
+        ASSERT_FALSE(result.hasErrors());
+        const auto* first = findImportedNode(result, "First");
+        const auto* second = findImportedNode(result, "Second");
+        const auto* api = findImportedNode(result, "api");
+        const auto* library = findImportedNode(result, "library");
+        const auto* tools = findImportedNode(result, "tools");
+        ASSERT_NE(first, nullptr);
+        ASSERT_EQ(first, second);
+        ASSERT_NE(api, nullptr);
+        ASSERT_NE(library, nullptr);
+        ASSERT_NE(tools, nullptr);
+        const auto* classScope = result.getScopeByImportedNode(*first);
+        const auto* apiScope = result.getScopeByImportedNode(*api);
+        const auto* packageScope = result.getScopeByImportedNode(*library);
+        ASSERT_NE(classScope, nullptr);
+        ASSERT_NE(apiScope, nullptr);
+        ASSERT_NE(packageScope, nullptr);
+        EXPECT_EQ(classScope, result.getScopeByImportedNode(*second));
+        EXPECT_EQ(classScope->findParent(), apiScope);
+        EXPECT_EQ(apiScope->findParent(), packageScope);
+        const auto* method = classScope->lookupLocal("apply");
+        ASSERT_NE(method, nullptr);
+        const auto* methodScope = result.getScopeByImportedNode(*method->getImportedNode());
+        ASSERT_NE(methodScope, nullptr);
+        EXPECT_EQ(methodScope->findParent(), classScope);
+        EXPECT_EQ(methodScope->lookup("T"), classScope->lookupLocal("T"));
+        const auto* toolsScope = result.getScopeByImportedNode(*tools);
+        ASSERT_NE(toolsScope, nullptr);
+        EXPECT_NE(toolsScope->lookupLocal("enabled"), nullptr);
+        EXPECT_NE(toolsScope, apiScope);
+    }
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, UpdatesExistingImportedPackageScopesWhenNewModulesAreLoaded) {
+    const auto result = analyze("import pkg.api as api\nimport pkg.sub.other.flag\n");
+    ASSERT_FALSE(result.hasErrors());
+    const auto* package = result.getImportedPackageByName("pkg");
+    ASSERT_NE(package, nullptr);
+    const auto* packageScope = result.getScopeByImportedNode(*package);
+    ASSERT_NE(packageScope, nullptr);
+    const auto* sub = packageScope->lookupLocal("sub");
+    ASSERT_NE(sub, nullptr);
+    const auto* subScope = result.getScopeByImportedNode(*sub->getImportedNode());
+    ASSERT_NE(subScope, nullptr);
+    EXPECT_EQ(subScope->findParent(), packageScope);
+    const auto* other = subScope->lookupLocal("other");
+    ASSERT_NE(other, nullptr);
+    const auto* otherScope = result.getScopeByImportedNode(*other->getImportedNode());
+    ASSERT_NE(otherScope, nullptr);
+    const auto* flag = otherScope->lookupLocal("flag");
+    ASSERT_NE(flag, nullptr);
+    EXPECT_EQ(flag->getImportedNode(), findImportedNode(result, "flag"));
+    EXPECT_EQ(otherScope->findParent(), subScope);
+}
+
+TEST_F(VnlcSemanticAnalyzerImportTest, UpdatesExistingScopesWhenIndirectImportsExtendAnotherPackage) {
+    writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"extra.types.Remote"}})");
+    writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":["T"],"originalType":"T"}})");
+    const auto result = analyze("import extra.tools as tools\nimport pkg.api.value\n");
+
+    ASSERT_FALSE(result.hasErrors());
+    const auto* package = result.getImportedPackageByName("extra");
+    ASSERT_NE(package, nullptr);
+    const auto* packageScope = result.getScopeByImportedNode(*package);
+    ASSERT_NE(packageScope, nullptr);
+    const auto* types = packageScope->lookupLocal("types");
+    ASSERT_NE(types, nullptr);
+    const auto* typesScope = result.getScopeByImportedNode(*types->getImportedNode());
+    ASSERT_NE(typesScope, nullptr);
+    EXPECT_EQ(typesScope->findParent(), packageScope);
+    const auto* remote = typesScope->lookupLocal("Remote");
+    ASSERT_NE(remote, nullptr);
+    const auto* remoteScope = result.getScopeByImportedNode(*remote->getImportedNode());
+    ASSERT_NE(remoteScope, nullptr);
+    EXPECT_EQ(remoteScope->findParent(), typesScope);
+    EXPECT_NE(remoteScope->lookupLocal("T"), nullptr);
+    const auto* tools = findImportedNode(result, "tools");
+    ASSERT_NE(tools, nullptr);
+    const auto* toolsScope = result.getScopeByImportedNode(*tools);
+    ASSERT_NE(toolsScope, nullptr);
+    EXPECT_EQ(toolsScope->findParent(), packageScope);
+    const auto* localScope = result.getScopeByAstNode(*module);
+    ASSERT_NE(localScope, nullptr);
+    EXPECT_EQ(localScope->lookupLocal("types"), nullptr);
+    EXPECT_EQ(localScope->lookupLocal("Remote"), nullptr);
+}
 
 TEST_F(VnlcSemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsItsModule) {
     const auto result = analyze("import pkg.api.value\nlet pkg = 0\nlet api = 0\nexport value\n");

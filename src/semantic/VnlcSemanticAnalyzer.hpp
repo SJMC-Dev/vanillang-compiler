@@ -30,8 +30,14 @@ private:
     const VnlcModuleNode& module;
     VnlcSemanticContext context;
 
-    void checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
+    static VnlcSymbolKind getImportedSymbolKind(const VnlcImportedItem& item);
+    static std::optional<VnlcScopeKind> getImportedScopeKind(const VnlcImportedItem& item);
+    static VnlcSymbolAccessModifier getImportedAccessModifier(const VnlcImportedItem& item);
+    static void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies);
+    static void collectImportDependencies(const VnlcImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const VnlcImportedModule*>& visitedModules);
 
+    void registerImportedScopes(const VnlcImportedItem& item, const VnlcScope* parent);
+    void checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
     [[nodiscard]] bool checkAccessModifier(const VnlcMemberAccessExpressionNode& memberAccessNode);
     [[nodiscard]] bool checkAccessModifier(const VnlcIdentifierExpressionNode& identifierNode);
     [[nodiscard]] bool checkMemberAccessModifier(const VnlcTypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
@@ -39,7 +45,6 @@ private:
     [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const VnlcConfig& config) const;
     [[nodiscard]] bool isActiveTypeDeclaration(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName);
     void registerLocalCustomizedType(const VnlcTypeDeclarationNode& typeDecl, std::string_view typeName, VnlcCustomizedTypeKind kind, const VnlcConfig& config);
-
     void checkModule(const VnlcModuleNode& moduleNode, const VnlcConfig& config);
     void checkImport(const VnlcImportDeclarationNode& importDecl, const VnlcConfig& config);
     void checkExport(const VnlcExportDeclarationNode& exportDecl);
@@ -49,11 +54,9 @@ private:
     void checkInterfaceDeclaration(const VnlcInterfaceDeclarationNode& interfaceDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
     void checkEnumDeclaration(const VnlcEnumDeclarationNode& enumDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
     void checkTypeAliasDeclaration(const VnlcTypeAliasDeclarationNode& typeAliasDecl, const VnlcConfig& config, VnlcMetadataInfo metadataInfo = VnlcMetadataInfo::DEFAULT);
-
     void checkStatement(const VnlcStatementNode& statement);
     void checkExpression(const VnlcExpressionNode& expression);
     void checkType(const VnlcTypeNode& type);
-
     [[nodiscard]] VnlcTypeInferenceResult inferExpressionType(const VnlcExpressionNode& expression);
     [[nodiscard]] VnlcTypeInferenceResult inferFunctionReturnType(const VnlcFunctionDeclarationNode& funcDecl);
 

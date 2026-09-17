@@ -23,7 +23,8 @@ private:
     std::vector<VnlcDiagnostic> notes;
 
     std::unordered_set<std::unique_ptr<VnlcCustomizedType>> customizedTypes;
-    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> scopeMap;
+    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> localScopeMap;
+    std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>> importedScopeMap;
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> semanticTypeMap;
     std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*> inferredValueTypeMap;
     std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*> inferredFunctionReturnTypeMap;
@@ -37,7 +38,8 @@ public:
         std::vector<VnlcDiagnostic>&& warnings,
         std::vector<VnlcDiagnostic>&& notes,
         std::unordered_set<std::unique_ptr<VnlcCustomizedType>>&& customizedTypes,
-        std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>>&& scopeMap,
+        std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>>&& localScopeMap,
+        std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>>&& importedScopeMap,
         std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*>&& semanticTypeMap,
         std::unordered_map<const VnlcValueDeclarationNode*, const VnlcSemanticType*>&& inferredValueTypeMap,
         std::unordered_map<const VnlcFunctionDeclarationNode*, const VnlcSemanticType*>&& inferredFunctionReturnTypeMap,
@@ -58,6 +60,7 @@ public:
 
     [[nodiscard]] const VnlcCustomizedType* getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
     [[nodiscard]] const VnlcScope* getScopeByAstNode(const VnlcAstNode& node) const;
+    [[nodiscard]] const VnlcScope* getScopeByImportedNode(const VnlcImportedItem& node) const;
     [[nodiscard]] const VnlcSemanticType* getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
     [[nodiscard]] const VnlcImportedPackage* getImportedPackageByName(std::string_view packageName) const;
     [[nodiscard]] const VnlcSemanticType* getInferredValueType(const VnlcValueDeclarationNode* valueDeclaration) const;

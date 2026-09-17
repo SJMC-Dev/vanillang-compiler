@@ -19,8 +19,25 @@ void VnlcSemanticContext::pushScope(std::unique_ptr<VnlcScope>&& scope) {
 }
 
 void VnlcSemanticContext::popScope() {
-    scopeMap.emplace(scopeStack.back()->getLocalNode(), std::move(scopeStack.back()));
+    if (scopeStack.back()->getOrigin() == VnlcScopeOrigin::IMPORTED) {
+        importedScopeMap.emplace(scopeStack.back()->getImportedNode(), std::move(scopeStack.back()));
+    } else {
+        localScopeMap.emplace(scopeStack.back()->getLocalNode(), std::move(scopeStack.back()));
+    }
     scopeStack.pop_back();
+}
+
+VnlcScope& VnlcSemanticContext::getOrCreateImportedScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcImportedItem& importedNode) {
+    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
+        if ((*it)->getOrigin() == VnlcScopeOrigin::IMPORTED && (*it)->getImportedNode() == &importedNode) {
+            return **it;
+        }
+    }
+    auto [it, inserted] = importedScopeMap.try_emplace(&importedNode);
+    if (inserted) {
+        it->second = std::make_unique<VnlcScope>(kind, parent, &importedNode);
+    }
+    return *it->second;
 }
 
 void VnlcSemanticContext::registerCustomizedType(std::string_view fullName, std::unique_ptr<VnlcCustomizedType>&& customizedType) {
@@ -87,17 +104,29 @@ const VnlcSemanticType* VnlcSemanticContext::getInferredExpressionType(const Vnl
 }
 
 const VnlcScope* VnlcSemanticContext::getScopeByAstNode(const VnlcAstNode* astNode) const {
+    if (astNode == nullptr) return nullptr;
     for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
-        if ((*it)->getLocalNode() == astNode) {
+        if ((*it)->getOrigin() == VnlcScopeOrigin::LOCAL && (*it)->getLocalNode() == astNode) {
             return it->get();
         }
     }
 
-    auto it = scopeMap.find(astNode);
-    if (it != scopeMap.end()) {
+    auto it = localScopeMap.find(astNode);
+    if (it != localScopeMap.end()) {
         return it->second.get();
     }
     return nullptr;
+}
+
+const VnlcScope* VnlcSemanticContext::getScopeByImportedNode(const VnlcImportedItem* importedNode) const {
+    if (importedNode == nullptr) return nullptr;
+    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
+        if ((*it)->getOrigin() == VnlcScopeOrigin::IMPORTED && (*it)->getImportedNode() == importedNode) {
+            return it->get();
+        }
+    }
+    auto it = importedScopeMap.find(importedNode);
+    return it == importedScopeMap.end() ? nullptr : it->second.get();
 }
 
 VnlcScope& VnlcSemanticContext::currentScope() {
@@ -224,8 +253,12 @@ std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector
     return std::make_tuple(std::move(errors), std::move(warnings), std::move(notes));
 }
 
-std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> VnlcSemanticContext::takeScopeMap() {
-    return std::move(scopeMap);
+std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> VnlcSemanticContext::takeLocalScopeMap() {
+    return std::move(localScopeMap);
+}
+
+std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>> VnlcSemanticContext::takeImportedScopeMap() {
+    return std::move(importedScopeMap);
 }
 
 std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> VnlcSemanticContext::takeImportedPackages() {

@@ -44,72 +44,168 @@
 #include <string_view>
 #include <unordered_set>
 
-namespace {
-    void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies) {
-        constexpr std::string_view delimiters = "<>,? \t\r\n";
-        auto begin = type.find_first_not_of(delimiters);
-        while (begin != std::string_view::npos) {
-            auto end = type.find_first_of(delimiters, begin);
-            const auto name = type.substr(begin, end == std::string_view::npos ? type.size() - begin : end - begin);
-            if (name.find('.') != std::string_view::npos) {
-                dependencies.emplace(name);
-            }
-            begin = end == std::string_view::npos ? end : type.find_first_not_of(delimiters, end);
-        }
-    }
-
-    void collectImportDependencies(const VnlcImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const VnlcImportedModule*>& visitedModules) {
-        const auto collectChildren = [&](const auto& children) {
-            for (const auto& [name, child] : children) {
-                collectImportDependencies(*child, dependencies, visitedModules);
-            }
-        };
-
-        if (const auto* package = dynamic_cast<const VnlcImportedPackage*>(&item)) {
-            collectChildren(package->getSubPackages());
-            collectChildren(package->getModules());
-        } else if (const auto* module = dynamic_cast<const VnlcImportedModule*>(&item)) {
-            if (visitedModules.insert(module).second) {
-                collectChildren(module->getIdentifiers());
-            }
-        } else if (const auto* alias = dynamic_cast<const VnlcImportedAlias*>(&item)) {
-            dependencies.emplace(alias->getSource());
-        } else if (const auto* variable = dynamic_cast<const VnlcImportedLet*>(&item)) {
-            collectTypeDependencies(variable->getType(), dependencies);
-        } else if (const auto* property = dynamic_cast<const VnlcImportedProperty*>(&item)) {
-            collectTypeDependencies(property->getType(), dependencies);
-        } else if (const auto* parameter = dynamic_cast<const VnlcImportedParameter*>(&item)) {
-            collectTypeDependencies(parameter->getType(), dependencies);
-        } else if (const auto* enumValue = dynamic_cast<const VnlcImportedEnumValue*>(&item)) {
-            collectTypeDependencies(enumValue->getType(), dependencies);
-        } else if (const auto* function = dynamic_cast<const VnlcImportedFunc*>(&item)) {
-            collectTypeDependencies(function->getReturnType(), dependencies);
-            collectChildren(function->getParameters());
-        } else if (const auto* method = dynamic_cast<const VnlcImportedMethod*>(&item)) {
-            collectTypeDependencies(method->getReturnType(), dependencies);
-            collectChildren(method->getParameters());
-        } else if (const auto* classType = dynamic_cast<const VnlcImportedClass*>(&item)) {
-            if (classType->getBaseClass().has_value()) {
-                collectTypeDependencies(classType->getBaseClass().value(), dependencies);
-            }
-            for (const auto& interfaceType : classType->getImplementedInterfaces()) {
-                collectTypeDependencies(interfaceType, dependencies);
-            }
-            collectChildren(classType->getProperties());
-            collectChildren(classType->getMethods());
-        } else if (const auto* interfaceType = dynamic_cast<const VnlcImportedInterface*>(&item)) {
-            collectChildren(interfaceType->getMethods());
-        } else if (const auto* enumType = dynamic_cast<const VnlcImportedEnum*>(&item)) {
-            collectChildren(enumType->getMembers());
-        } else if (const auto* enumMember = dynamic_cast<const VnlcImportedEnumMember*>(&item)) {
-            collectChildren(enumMember->getAssociatedValues());
-        } else if (const auto* typeAlias = dynamic_cast<const VnlcImportedTypeAlias*>(&item)) {
-            collectTypeDependencies(typeAlias->getOriginalType(), dependencies);
-        }
-    }
-} // namespace
-
 VnlcSemanticAnalyzer::VnlcSemanticAnalyzer(const VnlcModuleNode& module) : module(module) {}
+
+VnlcSymbolKind VnlcSemanticAnalyzer::getImportedSymbolKind(const VnlcImportedItem& item) {
+    if (dynamic_cast<const VnlcImportedPackage*>(&item)) return VnlcSymbolKind::PACKAGE;
+    if (dynamic_cast<const VnlcImportedModule*>(&item)) return VnlcSymbolKind::MODULE;
+    if (dynamic_cast<const VnlcImportedLet*>(&item)) return VnlcSymbolKind::VARIABLE;
+    if (dynamic_cast<const VnlcImportedFunc*>(&item)) return VnlcSymbolKind::FUNCTION;
+    if (dynamic_cast<const VnlcImportedClass*>(&item)) return VnlcSymbolKind::CLASS;
+    if (dynamic_cast<const VnlcImportedInterface*>(&item)) return VnlcSymbolKind::INTERFACE;
+    if (dynamic_cast<const VnlcImportedEnum*>(&item)) return VnlcSymbolKind::ENUM;
+    if (dynamic_cast<const VnlcImportedTypeAlias*>(&item)) return VnlcSymbolKind::TYPE_ALIAS;
+    if (dynamic_cast<const VnlcImportedEnumMember*>(&item)) return VnlcSymbolKind::ENUM_MEMBER;
+    if (dynamic_cast<const VnlcImportedProperty*>(&item) || dynamic_cast<const VnlcImportedEnumValue*>(&item)) return VnlcSymbolKind::PROPERTY;
+    if (dynamic_cast<const VnlcImportedMethod*>(&item)) return VnlcSymbolKind::METHOD;
+    if (dynamic_cast<const VnlcImportedParameter*>(&item)) return VnlcSymbolKind::PARAMETER;
+    return VnlcSymbolKind::IMPORT_ALIAS;
+}
+
+std::optional<VnlcScopeKind> VnlcSemanticAnalyzer::getImportedScopeKind(const VnlcImportedItem& item) {
+    switch (getImportedSymbolKind(item)) {
+        case VnlcSymbolKind::PACKAGE:
+            return VnlcScopeKind::PACKAGE;
+        case VnlcSymbolKind::MODULE:
+            return VnlcScopeKind::MODULE;
+        case VnlcSymbolKind::CLASS:
+            return VnlcScopeKind::CLASS;
+        case VnlcSymbolKind::INTERFACE:
+            return VnlcScopeKind::INTERFACE;
+        case VnlcSymbolKind::ENUM:
+            return VnlcScopeKind::ENUM;
+        case VnlcSymbolKind::ENUM_MEMBER:
+            return VnlcScopeKind::ENUM_MEMBER;
+        case VnlcSymbolKind::TYPE_ALIAS:
+            return VnlcScopeKind::TYPE_ALIAS;
+        case VnlcSymbolKind::FUNCTION:
+        case VnlcSymbolKind::METHOD:
+            return VnlcScopeKind::FUNCTION;
+        default:
+            return std::nullopt;
+    }
+}
+
+VnlcSymbolAccessModifier VnlcSemanticAnalyzer::getImportedAccessModifier(const VnlcImportedItem& item) {
+    std::string_view accessModifier;
+    if (const auto* property = dynamic_cast<const VnlcImportedProperty*>(&item)) {
+        accessModifier = property->getAccessModifier();
+    } else if (const auto* method = dynamic_cast<const VnlcImportedMethod*>(&item)) {
+        accessModifier = method->getAccessModifier();
+    }
+    if (accessModifier == "private") return VnlcSymbolAccessModifier::PRIVATE;
+    if (accessModifier == "protected") return VnlcSymbolAccessModifier::PROTECTED;
+    return VnlcSymbolAccessModifier::PUBLIC;
+}
+
+void VnlcSemanticAnalyzer::collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies) {
+    constexpr std::string_view delimiters = "<>,? \t\r\n";
+    auto begin = type.find_first_not_of(delimiters);
+    while (begin != std::string_view::npos) {
+        auto end = type.find_first_of(delimiters, begin);
+        const auto name = type.substr(begin, end == std::string_view::npos ? type.size() - begin : end - begin);
+        if (name.find('.') != std::string_view::npos) {
+            dependencies.emplace(name);
+        }
+        begin = end == std::string_view::npos ? end : type.find_first_not_of(delimiters, end);
+    }
+}
+
+void VnlcSemanticAnalyzer::collectImportDependencies(
+    const VnlcImportedItem& item,
+    std::unordered_set<std::string>& dependencies,
+    std::unordered_set<const VnlcImportedModule*>& visitedModules
+) {
+    const auto collectChildren = [&](const auto& children) {
+        for (const auto& [name, child] : children) {
+            collectImportDependencies(*child, dependencies, visitedModules);
+        }
+    };
+
+    if (const auto* package = dynamic_cast<const VnlcImportedPackage*>(&item)) {
+        collectChildren(package->getSubPackages());
+        collectChildren(package->getModules());
+    } else if (const auto* module = dynamic_cast<const VnlcImportedModule*>(&item)) {
+        if (visitedModules.insert(module).second) {
+            collectChildren(module->getIdentifiers());
+        }
+    } else if (const auto* alias = dynamic_cast<const VnlcImportedAlias*>(&item)) {
+        dependencies.emplace(alias->getSource());
+    } else if (const auto* variable = dynamic_cast<const VnlcImportedLet*>(&item)) {
+        collectTypeDependencies(variable->getType(), dependencies);
+    } else if (const auto* property = dynamic_cast<const VnlcImportedProperty*>(&item)) {
+        collectTypeDependencies(property->getType(), dependencies);
+    } else if (const auto* parameter = dynamic_cast<const VnlcImportedParameter*>(&item)) {
+        collectTypeDependencies(parameter->getType(), dependencies);
+    } else if (const auto* enumValue = dynamic_cast<const VnlcImportedEnumValue*>(&item)) {
+        collectTypeDependencies(enumValue->getType(), dependencies);
+    } else if (const auto* function = dynamic_cast<const VnlcImportedFunc*>(&item)) {
+        collectTypeDependencies(function->getReturnType(), dependencies);
+        collectChildren(function->getParameters());
+    } else if (const auto* method = dynamic_cast<const VnlcImportedMethod*>(&item)) {
+        collectTypeDependencies(method->getReturnType(), dependencies);
+        collectChildren(method->getParameters());
+    } else if (const auto* classType = dynamic_cast<const VnlcImportedClass*>(&item)) {
+        if (classType->getBaseClass().has_value()) {
+            collectTypeDependencies(classType->getBaseClass().value(), dependencies);
+        }
+        for (const auto& interfaceType : classType->getImplementedInterfaces()) {
+            collectTypeDependencies(interfaceType, dependencies);
+        }
+        collectChildren(classType->getProperties());
+        collectChildren(classType->getMethods());
+    } else if (const auto* interfaceType = dynamic_cast<const VnlcImportedInterface*>(&item)) {
+        collectChildren(interfaceType->getMethods());
+    } else if (const auto* enumType = dynamic_cast<const VnlcImportedEnum*>(&item)) {
+        collectChildren(enumType->getMembers());
+    } else if (const auto* enumMember = dynamic_cast<const VnlcImportedEnumMember*>(&item)) {
+        collectChildren(enumMember->getAssociatedValues());
+    } else if (const auto* typeAlias = dynamic_cast<const VnlcImportedTypeAlias*>(&item)) {
+        collectTypeDependencies(typeAlias->getOriginalType(), dependencies);
+    }
+}
+
+void VnlcSemanticAnalyzer::registerImportedScopes(const VnlcImportedItem& item, const VnlcScope* parent) {
+    const auto kind = getImportedScopeKind(item);
+    if (!kind.has_value()) return;
+    auto& scope = context.getOrCreateImportedScope(kind.value(), parent, item);
+    const auto declareChildren = [&](const auto& children) {
+        for (const auto& [name, child] : children) {
+            scope.declare(VnlcSymbol(getImportedSymbolKind(*child), getImportedAccessModifier(*child), name, child.get()));
+            registerImportedScopes(*child, &scope);
+        }
+    };
+    const auto declareGenericParameters = [&](const auto& parameters) {
+        for (const auto& name : parameters) {
+            scope.declare(VnlcSymbol(VnlcSymbolKind::GENERIC_PARAMETER, VnlcSymbolAccessModifier::PUBLIC, name, &item));
+        }
+    };
+
+    if (const auto* package = dynamic_cast<const VnlcImportedPackage*>(&item)) {
+        declareChildren(package->getSubPackages());
+        declareChildren(package->getModules());
+    } else if (const auto* module = dynamic_cast<const VnlcImportedModule*>(&item)) {
+        declareChildren(module->getIdentifiers());
+    } else if (const auto* classType = dynamic_cast<const VnlcImportedClass*>(&item)) {
+        declareChildren(classType->getProperties());
+        declareChildren(classType->getMethods());
+        declareGenericParameters(classType->getGenericParameters());
+    } else if (const auto* interfaceType = dynamic_cast<const VnlcImportedInterface*>(&item)) {
+        declareChildren(interfaceType->getMethods());
+        declareGenericParameters(interfaceType->getGenericParameters());
+    } else if (const auto* enumType = dynamic_cast<const VnlcImportedEnum*>(&item)) {
+        declareChildren(enumType->getMembers());
+        declareGenericParameters(enumType->getGenericParameters());
+    } else if (const auto* enumMember = dynamic_cast<const VnlcImportedEnumMember*>(&item)) {
+        declareChildren(enumMember->getAssociatedValues());
+    } else if (const auto* typeAlias = dynamic_cast<const VnlcImportedTypeAlias*>(&item)) {
+        declareGenericParameters(typeAlias->getGenericParameters());
+    } else if (const auto* function = dynamic_cast<const VnlcImportedFunc*>(&item)) {
+        declareChildren(function->getParameters());
+    } else if (const auto* method = dynamic_cast<const VnlcImportedMethod*>(&item)) {
+        declareChildren(method->getParameters());
+    }
+}
 
 void VnlcSemanticAnalyzer::checkIdentifierExpressionUse(const VnlcIdentifierExpressionNode& exprNode, VnlcMetadataInfo metadataInfo) {
     const VnlcSymbol* symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
@@ -442,31 +538,13 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
         return nullptr;
     };
 
-    const auto getKind = [](const VnlcImportedItem* item) {
-        if (dynamic_cast<const VnlcImportedPackage*>(item)) return VnlcSymbolKind::PACKAGE;
-        if (dynamic_cast<const VnlcImportedModule*>(item)) return VnlcSymbolKind::MODULE;
-        if (dynamic_cast<const VnlcImportedLet*>(item)) return VnlcSymbolKind::VARIABLE;
-        if (dynamic_cast<const VnlcImportedFunc*>(item)) return VnlcSymbolKind::FUNCTION;
-        if (dynamic_cast<const VnlcImportedClass*>(item)) return VnlcSymbolKind::CLASS;
-        if (dynamic_cast<const VnlcImportedInterface*>(item)) return VnlcSymbolKind::INTERFACE;
-        if (dynamic_cast<const VnlcImportedEnum*>(item)) return VnlcSymbolKind::ENUM;
-        if (dynamic_cast<const VnlcImportedTypeAlias*>(item)) return VnlcSymbolKind::TYPE_ALIAS;
-        if (dynamic_cast<const VnlcImportedEnumMember*>(item)) return VnlcSymbolKind::ENUM_MEMBER;
-        if (dynamic_cast<const VnlcImportedProperty*>(item)) return VnlcSymbolKind::PROPERTY;
-        if (dynamic_cast<const VnlcImportedMethod*>(item)) return VnlcSymbolKind::METHOD;
-        if (dynamic_cast<const VnlcImportedParameter*>(item)) return VnlcSymbolKind::PARAMETER;
-        if (dynamic_cast<const VnlcImportedAlias*>(item)) return VnlcSymbolKind::IMPORT_ALIAS;
-
-        return VnlcSymbolKind::IMPORT_ALIAS; // should never reach here
-    };
-
     const auto bind = [&](const VnlcImportedItem* target, const std::vector<std::string>& path, const VnlcIdentifierNode* alias, const VnlcAstNode& location) {
         const std::string name(alias ? alias->getIdentifierString() : target->getName());
         if (context.currentScope().lookupLocal(name) != nullptr || !names.insert(name).second) {
             context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
             return;
         }
-        bindings.push_back({ name, path, getKind(target) });
+        bindings.push_back({ name, path, getImportedSymbolKind(*target) });
     };
 
     std::function<void(const VnlcImportDeclarationItem&, const VnlcImportedItem*, std::vector<std::string>)> checkItem;
@@ -536,13 +614,27 @@ void VnlcSemanticAnalyzer::checkImport(const VnlcImportDeclarationNode& importDe
         return;
     }
 
+    std::unordered_set<const VnlcImportedPackage*> scopedPackages;
+    for (const auto& [name, stagedPackage] : packages) {
+        const auto* package = context.getImportedPackageByName(name);
+        if (package != nullptr && context.getScopeByImportedNode(package) != nullptr) {
+            scopedPackages.insert(package);
+        }
+    }
     context.collectImportedPackages(std::move(packages));
     for (const auto& binding : bindings) {
-        const VnlcImportedItem* target = context.getImportedPackageByName(binding.path.front());
+        const auto* package = context.getImportedPackageByName(binding.path.front());
+        const VnlcImportedItem* target = package;
         for (std::size_t index = 1; index < binding.path.size(); ++index) {
             target = findChild(target, binding.path[index]);
         }
         context.currentScope().declare(VnlcSymbol(binding.kind, VnlcSymbolAccessModifier::PUBLIC, binding.name, target));
+        if (getImportedScopeKind(*target).has_value()) {
+            scopedPackages.insert(package);
+        }
+    }
+    for (const auto* package : scopedPackages) {
+        registerImportedScopes(*package, nullptr);
     }
 
     // TODO: implement importing subpackages, modules, or identifiers from .vnl in the same root package
@@ -901,7 +993,8 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
 
     auto diagnostics = context.takeDiagnostics();
     auto customizedTypes = context.takeCustomizedTypeRegistry();
-    auto scopes = context.takeScopeMap();
+    auto scopes = context.takeLocalScopeMap();
+    auto importedScopes = context.takeImportedScopeMap();
     auto semanticTypes = context.takeSemanticTypeMap();
     auto inferredValueTypes = context.takeInferredValueTypeMap();
     auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
@@ -913,6 +1006,7 @@ VnlcSemanticAnalysisResult VnlcSemanticAnalyzer::analyze(const VnlcConfig& confi
         std::move(std::get<2>(diagnostics)),
         std::move(customizedTypes),
         std::move(scopes),
+        std::move(importedScopes),
         std::move(semanticTypes),
         std::move(inferredValueTypes),
         std::move(inferredFunctionReturnTypes),

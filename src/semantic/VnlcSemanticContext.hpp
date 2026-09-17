@@ -26,7 +26,8 @@ private:
     std::vector<VnlcDiagnostic> notes;
 
     std::vector<std::unique_ptr<VnlcScope>> scopeStack;
-    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> scopeMap;
+    std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> localScopeMap;
+    std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>> importedScopeMap;
 
     std::unordered_map<std::string, std::unique_ptr<VnlcCustomizedType>> customizedTypeRegistry;
     std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> semanticTypeMap;
@@ -52,6 +53,7 @@ public:
 
     void pushScope(std::unique_ptr<VnlcScope>&& scope);
     void popScope();
+    VnlcScope& getOrCreateImportedScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcImportedItem& importedNode);
 
     void registerCustomizedType(std::string_view fullName, std::unique_ptr<VnlcCustomizedType>&& customizedType);
     void mapSemanticType(const VnlcTypeNode* typeNode, const VnlcSemanticType* semanticType);
@@ -66,6 +68,7 @@ public:
     [[nodiscard]] const VnlcSemanticType* getSemanticTypeByTypeNode(const VnlcTypeNode* typeNode) const;
     [[nodiscard]] const VnlcSemanticType* getInferredExpressionType(const VnlcExpressionNode* expressionNode) const;
     [[nodiscard]] const VnlcScope* getScopeByAstNode(const VnlcAstNode* astNode) const;
+    [[nodiscard]] const VnlcScope* getScopeByImportedNode(const VnlcImportedItem* importedNode) const;
 
     [[nodiscard]] VnlcScope& currentScope();
 
@@ -86,7 +89,8 @@ public:
     [[nodiscard]] unsigned int getSwitchDepth() const noexcept;
 
     [[nodiscard]] std::tuple<std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>, std::vector<VnlcDiagnostic>> takeDiagnostics();
-    [[nodiscard]] std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> takeScopeMap();
+    [[nodiscard]] std::unordered_map<const VnlcAstNode*, std::unique_ptr<VnlcScope>> takeLocalScopeMap();
+    [[nodiscard]] std::unordered_map<const VnlcImportedItem*, std::unique_ptr<VnlcScope>> takeImportedScopeMap();
     [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<VnlcImportedPackage>> takeImportedPackages();
     [[nodiscard]] std::unordered_set<std::unique_ptr<VnlcCustomizedType>> takeCustomizedTypeRegistry();
     [[nodiscard]] std::unordered_map<const VnlcTypeNode*, const VnlcSemanticType*> takeSemanticTypeMap();

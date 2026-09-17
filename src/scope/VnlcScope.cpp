@@ -1,6 +1,18 @@
 #include "VnlcScope.hpp"
 
-VnlcScope::VnlcScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcAstNode* localNode) noexcept : kind(kind), parent(parent), localNode(localNode) {}
+VnlcScope::VnlcScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcAstNode* localNode) noexcept
+    : kind(kind),
+      origin(VnlcScopeOrigin::LOCAL),
+      parent(parent),
+      localNode(localNode),
+      importedNode(nullptr) {}
+
+VnlcScope::VnlcScope(VnlcScopeKind kind, const VnlcScope* parent, const VnlcImportedItem* importedNode) noexcept
+    : kind(kind),
+      origin(VnlcScopeOrigin::IMPORTED),
+      parent(parent),
+      localNode(nullptr),
+      importedNode(importedNode) {}
 
 bool VnlcScope::declare(VnlcSymbol&& symbol) {
     auto existingSymbolIterator = symbols.find(std::string(symbol.getName()));
@@ -37,10 +49,18 @@ VnlcScopeKind VnlcScope::getKind() const noexcept {
     return kind;
 }
 
+VnlcScopeOrigin VnlcScope::getOrigin() const noexcept {
+    return origin;
+}
+
 const VnlcScope* VnlcScope::findParent() const noexcept {
     return parent;
 }
 
 const VnlcAstNode* VnlcScope::getLocalNode() const noexcept {
     return localNode;
+}
+
+const VnlcImportedItem* VnlcScope::getImportedNode() const noexcept {
+    return importedNode;
 }
