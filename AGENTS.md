@@ -15,11 +15,11 @@ Be sure that your working directory is the root directory of this project before
 - Use `cmake --build --preset release` to get a release build.
 
 ## Coding Standards
-- Use PascalCase for customized type names and all type names defined in this project should start with `Vnlc`.
+- Use PascalCase for customized type names and all type names defined in this project should be in the namespace `vnlc`.
 - Use camelCase for customized variable and function names.
 - Follow `.clang-format` to format source code.
 - Format code after editing.
-- Do not add comments unless you are explicitly instructed.
+- Do not add comments unless you are explicitly instructed, but comments after namespaces and header guards should be reserved.
 - Refer to existing code for other coding standards.
 
 ## Commits
