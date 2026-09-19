@@ -1,9 +1,9 @@
-#include "app/VnlcApp.hpp"
-#include "log/VnlcLogger.hpp"
+#include "app/App.hpp"
+#include "log/Logger.hpp"
 
 int main(int argc, char** argv) {
     try {
-        VnlcApp app{ argc, argv };
+        vnlc::App app{ argc, argv };
         app.run();
     } catch (const std::exception& e) {
         VNLC_LOG_FATAL(e.what());

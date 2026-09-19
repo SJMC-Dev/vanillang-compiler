@@ -1,9 +1,0 @@
-#ifndef VNLC_CUSTOMIZED_TYPE_ORIGIN_HPP
-#define VNLC_CUSTOMIZED_TYPE_ORIGIN_HPP
-
-enum class VnlcCustomizedTypeOrigin {
-    LOCAL,
-    IMPORTED,
-};
-
-#endif // VNLC_CUSTOMIZED_TYPE_ORIGIN_HPP

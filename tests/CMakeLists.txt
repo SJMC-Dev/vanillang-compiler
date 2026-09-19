@@ -10,9 +10,9 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(
     vnlctest_lexer
-    ${PROJECT_SOURCE_DIR}/src/lexer/VnlcLexer.cpp
-    ${PROJECT_SOURCE_DIR}/src/token/VnlcToken.cpp
-    VnlcLexerTest.cpp
+    ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
+    ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    LexerTest.cpp
 )
 
 file(GLOB_RECURSE AST_FILES CONFIGURE_DEPENDS
@@ -49,21 +49,21 @@ file(GLOB_RECURSE VNI_IMPORT_FILES CONFIGURE_DEPENDS
 
 add_executable(
     vnlctest_parser
-    ${PROJECT_SOURCE_DIR}/src/lexer/VnlcLexer.cpp
-    ${PROJECT_SOURCE_DIR}/src/token/VnlcToken.cpp
-    ${PROJECT_SOURCE_DIR}/src/parser/VnlcParser.cpp
-    ${PROJECT_SOURCE_DIR}/src/util/VnlcTokenTypeUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
+    ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TokenTypeUtil.cpp
     ${AST_FILES}
-    VnlcParserTest.cpp
+    ParserTest.cpp
 )
 
 add_executable(
     vnlctest_semantic
-    ${PROJECT_SOURCE_DIR}/src/diagnostic/VnlcDiagnostic.cpp
-    ${PROJECT_SOURCE_DIR}/src/lexer/VnlcLexer.cpp
-    ${PROJECT_SOURCE_DIR}/src/token/VnlcToken.cpp
-    ${PROJECT_SOURCE_DIR}/src/parser/VnlcParser.cpp
-    ${PROJECT_SOURCE_DIR}/src/util/VnlcTokenTypeUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/diagnostic/Diagnostic.cpp
+    ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
+    ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TokenTypeUtil.cpp
     ${AST_FILES}
     ${SEMANTIC_FILES}
     ${SCOPE_FILES}
@@ -71,17 +71,17 @@ add_executable(
     ${METADATA_FILES}
     ${TYPE_FILES}
     ${VNI_IMPORT_FILES}
-    VnlcSemanticAnalyzerTest.cpp
+    SemanticAnalyzerTest.cpp
 )
 
 add_executable(
     vnlctest_vni
-    ${PROJECT_SOURCE_DIR}/src/token/VnlcToken.cpp
-    ${PROJECT_SOURCE_DIR}/src/semantic/VnlcSemanticAnalysisResult.cpp
+    ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${PROJECT_SOURCE_DIR}/src/semantic/SemanticAnalysisResult.cpp
     ${AST_FILES}
     ${TYPE_FILES}
     ${VNI_FILES}
-    VnlcModuleInterfaceTest.cpp
+    ModuleInterfaceTest.cpp
 )
 
 target_include_directories(

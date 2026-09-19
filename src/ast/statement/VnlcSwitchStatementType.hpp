@@ -1,9 +1,0 @@
-#ifndef VNLC_SWITCH_STATEMENT_TYPE_HPP
-#define VNLC_SWITCH_STATEMENT_TYPE_HPP
-
-enum class VnlcSwitchStatementType {
-    LITERAL_MATCH,
-    TYPE_MATCH,
-};
-
-#endif // VNLC_SWITCH_STATEMENT_TYPE_HPP

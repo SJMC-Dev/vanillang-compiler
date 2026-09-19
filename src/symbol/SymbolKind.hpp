@@ -1,0 +1,25 @@
+#ifndef VNLC_SYMBOL_KIND_HPP
+#define VNLC_SYMBOL_KIND_HPP
+
+namespace vnlc {
+    enum class SymbolKind {
+        PACKAGE,
+        MODULE,
+        VARIABLE,
+        FUNCTION,
+        CLASS,
+        INTERFACE,
+        ENUM,
+        TYPE_ALIAS,
+        ENUM_MEMBER,
+        PROPERTY,
+        METHOD,
+        PARAMETER,
+        IMPORT_ALIAS,
+        EXPORT_ALIAS,
+        GENERIC_PARAMETER,
+        LOOP_LABEL,
+    };
+}
+
+#endif // VNLC_SYMBOL_KIND_HPP
