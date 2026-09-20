@@ -398,6 +398,16 @@ namespace vnlc {
         return symbol != nullptr && symbol->getLocalNode() == &typeDecl;
     }
 
+    const Scope* SemanticAnalyzer::getScopeBySymbol(const Symbol& symbol) const {
+        if (symbol.getLocalNode() != nullptr) {
+            return context.getScopeByAstNode(symbol.getLocalNode());
+        }
+        if (symbol.getImportedNode() != nullptr) {
+            return context.getScopeByImportedNode(symbol.getImportedNode());
+        }
+        return nullptr;
+    }
+
     void SemanticAnalyzer::registerLocalCustomizedType(const TypeDeclarationNode& typeDecl, std::string_view typeName, CustomizedTypeKind kind, const Config& config) {
         std::string fullTypeName = getFullTypeName(typeName, config);
         context.registerCustomizedType(fullTypeName, std::make_unique<CustomizedType>(kind, fullTypeName, &typeDecl));
@@ -952,7 +962,55 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkType(const TypeNode& type) {
-        // TODO: Implement type checking process
+        const auto& nameParts = type.getNameParts();
+        const auto isPrimitiveType = [](std::string_view name) {
+            static const std::unordered_set<std::string_view> primitiveTypes = {
+                "byte", "short", "int", "long", "float", "double", "bool", "string",
+            };
+            return primitiveTypes.contains(name);
+        };
+        const auto isTypeDefinition = [](SymbolKind kind) {
+            switch (kind) {
+                case SymbolKind::CLASS:
+                case SymbolKind::INTERFACE:
+                case SymbolKind::ENUM:
+                case SymbolKind::ENUM_MEMBER:
+                case SymbolKind::TYPE_ALIAS:
+                case SymbolKind::GENERIC_PARAMETER:
+                    return true;
+                default:
+                    return false;
+            }
+        };
+
+        if (nameParts.size() != 1 || !isPrimitiveType(nameParts.front()->getIdentifierString())) {
+            const Scope* scope = &context.currentScope();
+            for (std::size_t index = 0; index < nameParts.size(); ++index) {
+                const auto& namePart = nameParts[index];
+                const Symbol* symbol = scope->lookup(namePart->getIdentifierString());
+                if (symbol == nullptr) {
+                    context.reportError(*namePart, fmt::format("Use of undeclared type '{}'", namePart->getIdentifierString()));
+                    break;
+                }
+
+                if (index == nameParts.size() - 1) {
+                    if (!isTypeDefinition(symbol->getKind())) {
+                        context.reportError(*namePart, fmt::format("Identifier '{}' is not a type definition", namePart->getIdentifierString()));
+                    }
+                    break;
+                }
+
+                scope = getScopeBySymbol(*symbol);
+                if (scope == nullptr) {
+                    context.reportError(*namePart, fmt::format("Identifier '{}' does not have a scope", namePart->getIdentifierString()));
+                    break;
+                }
+            }
+        }
+
+        for (const auto& genericArgument : type.getGenericArguments()) {
+            checkType(*genericArgument);
+        }
     }
 
     TypeInferenceResult SemanticAnalyzer::inferExpressionType(const ExpressionNode& expression) {
