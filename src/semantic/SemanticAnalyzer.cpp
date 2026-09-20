@@ -698,24 +698,12 @@ namespace vnlc {
 
         for (const auto& member : classDecl.getMemberDeclarations()) {
             if (auto* varDecl = dynamic_cast<ValueDeclarationNode*>(member.get())) {
-                Symbol memberSymbol(
-                    SymbolKind::PROPERTY,
-
-                    static_cast<SymbolAccessModifier>(varDecl->getAccessModifier()),
-                    varDecl->getName().getIdentifierString(),
-                    varDecl
-                );
+                Symbol memberSymbol(SymbolKind::PROPERTY, static_cast<SymbolAccessModifier>(varDecl->getAccessModifier()), varDecl->getName().getIdentifierString(), varDecl);
                 if (!context.currentScope().declare(std::move(memberSymbol))) {
                     context.reportError(*varDecl, fmt::format("Redeclaration of class member '{}'", varDecl->getName().getIdentifierString()));
                 }
             } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
-                Symbol memberSymbol(
-                    SymbolKind::METHOD,
-
-                    static_cast<SymbolAccessModifier>(funcDecl->getAccessModifier()),
-                    funcDecl->getName().getIdentifierString(),
-                    funcDecl
-                );
+                Symbol memberSymbol(SymbolKind::METHOD, static_cast<SymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl);
                 if (!context.currentScope().declare(std::move(memberSymbol))) {
                     context.reportError(*funcDecl, fmt::format("Redeclaration of class member '{}'", funcDecl->getName().getIdentifierString()));
                 }
@@ -753,13 +741,7 @@ namespace vnlc {
         context.pushScope(std::make_unique<Scope>(ScopeKind::INTERFACE, &context.currentScope(), &interfaceDecl));
 
         for (const auto& member : interfaceDecl.getMethodDeclarations()) {
-            Symbol memberSymbol(
-                SymbolKind::METHOD,
-
-                static_cast<SymbolAccessModifier>(member->getAccessModifier()),
-                member->getName().getIdentifierString(),
-                member.get()
-            );
+            Symbol memberSymbol(SymbolKind::METHOD, static_cast<SymbolAccessModifier>(member->getAccessModifier()), member->getName().getIdentifierString(), member.get());
             if (!context.currentScope().declare(std::move(memberSymbol))) {
                 context.reportError(*member, fmt::format("Redeclaration of interface method '{}'", member->getName().getIdentifierString()));
             }
