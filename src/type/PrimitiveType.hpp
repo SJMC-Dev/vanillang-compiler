@@ -21,6 +21,9 @@ namespace vnlc {
         PrimitiveType(PrimitiveTypeKind primitiveKind);
 
     public:
+        PrimitiveType(const PrimitiveType&) = delete;
+        PrimitiveType(PrimitiveType&&) noexcept = delete;
+
         [[nodiscard]] PrimitiveTypeKind getPrimitiveKind() const noexcept;
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;
 
