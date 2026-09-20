@@ -408,6 +408,40 @@ namespace vnlc {
         return nullptr;
     }
 
+    std::size_t SemanticAnalyzer::getGenericParameterCount(const Symbol& symbol) const {
+        if (symbol.getKind() == SymbolKind::GENERIC_PARAMETER) {
+            return 0;
+        }
+        if (symbol.getLocalNode() != nullptr) {
+            if (const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(symbol.getLocalNode())) {
+                return classDeclaration->getGenericParameterNames().size();
+            }
+            if (const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(symbol.getLocalNode())) {
+                return interfaceDeclaration->getGenericParameterNames().size();
+            }
+            if (const auto* enumDeclaration = dynamic_cast<const EnumDeclarationNode*>(symbol.getLocalNode())) {
+                return enumDeclaration->getGenericParameterNames().size();
+            }
+            if (const auto* typeAliasDeclaration = dynamic_cast<const TypeAliasDeclarationNode*>(symbol.getLocalNode())) {
+                return typeAliasDeclaration->getGenericParameterNames().size();
+            }
+        } else if (symbol.getImportedNode() != nullptr) {
+            if (const auto* importedClass = dynamic_cast<const ImportedClass*>(symbol.getImportedNode())) {
+                return importedClass->getGenericParameters().size();
+            }
+            if (const auto* importedInterface = dynamic_cast<const ImportedInterface*>(symbol.getImportedNode())) {
+                return importedInterface->getGenericParameters().size();
+            }
+            if (const auto* importedEnum = dynamic_cast<const ImportedEnum*>(symbol.getImportedNode())) {
+                return importedEnum->getGenericParameters().size();
+            }
+            if (const auto* importedTypeAlias = dynamic_cast<const ImportedTypeAlias*>(symbol.getImportedNode())) {
+                return importedTypeAlias->getGenericParameters().size();
+            }
+        }
+        return 0;
+    }
+
     void SemanticAnalyzer::registerLocalCustomizedType(const TypeDeclarationNode& typeDecl, std::string_view typeName, CustomizedTypeKind kind, const Config& config) {
         std::string fullTypeName = getFullTypeName(typeName, config);
         context.registerCustomizedType(fullTypeName, std::make_unique<CustomizedType>(kind, fullTypeName, &typeDecl));
@@ -983,7 +1017,11 @@ namespace vnlc {
             }
         };
 
-        if (nameParts.size() != 1 || !isPrimitiveType(nameParts.front()->getIdentifierString())) {
+        const bool isPrimitiveTypeReference = nameParts.size() == 1 && isPrimitiveType(nameParts.front()->getIdentifierString());
+        bool hasResolvedType = isPrimitiveTypeReference;
+        const Symbol* typeSymbol = nullptr;
+
+        if (!isPrimitiveTypeReference) {
             const Scope* scope = &context.currentScope();
             for (std::size_t index = 0; index < nameParts.size(); ++index) {
                 const auto& namePart = nameParts[index];
@@ -996,6 +1034,9 @@ namespace vnlc {
                 if (index == nameParts.size() - 1) {
                     if (!isTypeDefinition(symbol->getKind())) {
                         context.reportError(*namePart, fmt::format("Identifier '{}' is not a type definition", namePart->getIdentifierString()));
+                    } else {
+                        typeSymbol = symbol;
+                        hasResolvedType = true;
                     }
                     break;
                 }
@@ -1006,6 +1047,17 @@ namespace vnlc {
                     break;
                 }
             }
+        }
+
+        if (!hasResolvedType) {
+            return;
+        }
+
+        const std::size_t genericArgumentCount = type.getGenericArguments().size();
+        const std::size_t genericParameterCount = typeSymbol == nullptr ? 0 : getGenericParameterCount(*typeSymbol);
+        if (genericArgumentCount != genericParameterCount) {
+            context.reportError(type, fmt::format("Generic argument count mismatch: expected {}, got {}", genericParameterCount, genericArgumentCount));
+            return;
         }
 
         for (const auto& genericArgument : type.getGenericArguments()) {

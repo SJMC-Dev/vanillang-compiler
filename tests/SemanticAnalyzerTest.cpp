@@ -504,6 +504,54 @@ interface ValidInterface {}
         expectRegisteredCustomizedType(result, "semantic_test_package.models.registration_errors.ValidInterface", CustomizedTypeKind::INTERFACE, validInterfaceDeclaration);
     }
 
+    TEST(SemanticAnalyzerTest, AcceptsMatchingGenericArgumentCounts) {
+        constexpr std::string_view source = R"(
+class Box<T> {}
+type BoxAlias = Box<int>
+type Identity<T> = T
+)";
+        const auto config = makeConfig("generic_arguments.vnl");
+        auto module = parseModule(source, config);
+
+        SemanticAnalyzer analyzer(*module);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+    }
+
+    TEST(SemanticAnalyzerTest, RejectsGenericArgumentCountMismatchWithoutCheckingArguments) {
+        constexpr std::string_view source = R"(
+class Box<T> {}
+type MissingArgument = Box
+type ExtraArgument = Box<Missing, Missing>
+)";
+        const auto config = makeConfig("generic_argument_errors.vnl");
+        auto module = parseModule(source, config);
+
+        SemanticAnalyzer analyzer(*module);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 2);
+        EXPECT_EQ(result.getErrors()[0].getMessage(), "Generic argument count mismatch: expected 1, got 0");
+        EXPECT_EQ(result.getErrors()[1].getMessage(), "Generic argument count mismatch: expected 1, got 2");
+    }
+
+    TEST(SemanticAnalyzerTest, DoesNotCheckGenericArgumentsOfInvalidTypeReferences) {
+        constexpr std::string_view source = R"(
+type Invalid = Missing<Unknown>
+)";
+        const auto config = makeConfig("invalid_generic_type.vnl");
+        auto module = parseModule(source, config);
+
+        SemanticAnalyzer analyzer(*module);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 1);
+        EXPECT_EQ(result.getErrors().front().getMessage(), "Use of undeclared type 'Missing'");
+    }
+
     TEST(SemanticContextTest, RetainsPoppedScopesAndTheirParents) {
         const auto config = makeConfig("scopes.vnl");
         const auto module = parseModule("class Sample {}", config);

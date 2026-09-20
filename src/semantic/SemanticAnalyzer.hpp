@@ -46,6 +46,7 @@ namespace vnlc {
         [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const Config& config) const;
         [[nodiscard]] bool isActiveTypeDeclaration(const TypeDeclarationNode& typeDecl, std::string_view typeName);
         [[nodiscard]] const Scope* getScopeBySymbol(const Symbol& symbol) const;
+        [[nodiscard]] std::size_t getGenericParameterCount(const Symbol& symbol) const;
         void registerLocalCustomizedType(const TypeDeclarationNode& typeDecl, std::string_view typeName, CustomizedTypeKind kind, const Config& config);
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);
