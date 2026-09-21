@@ -30,7 +30,7 @@ namespace vnlc {
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>> localScopeMap;
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> importedScopeMap;
 
-        std::unordered_map<std::string, std::unique_ptr<CustomizedType>> customizedTypeRegistry;
+        std::unordered_set<std::unique_ptr<CustomizedType>> customizedTypeRegistry;
         std::unordered_map<const TypeNode*, const SemanticType*> semanticTypeMap;
         std::unordered_map<const ValueDeclarationNode*, const SemanticType*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const SemanticType*> inferredFunctionReturnTypeMap;
@@ -56,7 +56,7 @@ namespace vnlc {
         void popScope();
         Scope& getOrCreateImportedScope(ScopeKind kind, const Scope* parent, const ImportedItem& importedNode);
 
-        void registerCustomizedType(std::string_view fullName, std::unique_ptr<CustomizedType>&& customizedType);
+        void registerCustomizedType(std::unique_ptr<CustomizedType>&& customizedType);
         void mapSemanticType(const TypeNode* typeNode, const SemanticType* semanticType);
         void mapInferredValueType(const ValueDeclarationNode* valueDeclaration, const SemanticType* semanticType);
         void mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const SemanticType* semanticType);

@@ -41,8 +41,8 @@ namespace vnlc {
         return *it->second;
     }
 
-    void SemanticContext::registerCustomizedType(std::string_view fullName, std::unique_ptr<CustomizedType>&& customizedType) {
-        customizedTypeRegistry.emplace(std::string(fullName), std::move(customizedType));
+    void SemanticContext::registerCustomizedType(std::unique_ptr<CustomizedType>&& customizedType) {
+        customizedTypeRegistry.emplace(std::move(customizedType));
     }
 
     void SemanticContext::mapSemanticType(const TypeNode* typeNode, const SemanticType* semanticType) {
@@ -81,9 +81,10 @@ namespace vnlc {
     }
 
     const CustomizedType* SemanticContext::getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const {
-        auto it = customizedTypeRegistry.find(std::string(fullTypeName));
-        if (it != customizedTypeRegistry.end()) {
-            return it->second.get();
+        for (auto it = customizedTypeRegistry.begin(); it != customizedTypeRegistry.end(); it++) {
+            if ((*it)->getFullTypeName() == fullTypeName) {
+                return (*it).get();
+            }
         }
         return nullptr;
     }
@@ -267,15 +268,7 @@ namespace vnlc {
     }
 
     std::unordered_set<std::unique_ptr<CustomizedType>> SemanticContext::takeCustomizedTypeRegistry() {
-        std::unordered_set<std::unique_ptr<CustomizedType>> customizedTypes;
-
-        for (auto& [_, customizedType] : customizedTypeRegistry) {
-            customizedTypes.insert(std::move(customizedType));
-        }
-
-        customizedTypeRegistry.clear();
-
-        return customizedTypes;
+        return std::move(customizedTypeRegistry);
     }
 
     std::unordered_map<const TypeNode*, const SemanticType*> SemanticContext::takeSemanticTypeMap() {
