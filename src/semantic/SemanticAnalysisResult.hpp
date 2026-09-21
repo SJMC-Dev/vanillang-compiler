@@ -13,7 +13,6 @@
 #include "vni/import/ImportedPackage.hpp"
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace vnlc {
@@ -23,7 +22,7 @@ namespace vnlc {
         std::vector<Diagnostic> warnings;
         std::vector<Diagnostic> notes;
 
-        std::unordered_set<std::unique_ptr<CustomizedType>> customizedTypes;
+        std::unordered_map<std::string, std::unique_ptr<CustomizedType>> customizedTypes;
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>> localScopeMap;
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> importedScopeMap;
         std::unordered_map<const TypeNode*, const SemanticType*> semanticTypeMap;
@@ -38,7 +37,7 @@ namespace vnlc {
             std::vector<Diagnostic>&& errors,
             std::vector<Diagnostic>&& warnings,
             std::vector<Diagnostic>&& notes,
-            std::unordered_set<std::unique_ptr<CustomizedType>>&& customizedTypes,
+            std::unordered_map<std::string, std::unique_ptr<CustomizedType>>&& customizedTypes,
             std::unordered_map<const AstNode*, std::unique_ptr<Scope>>&& localScopeMap,
             std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>>&& importedScopeMap,
             std::unordered_map<const TypeNode*, const SemanticType*>&& semanticTypeMap,
@@ -59,7 +58,7 @@ namespace vnlc {
         [[nodiscard]] const std::vector<Diagnostic>& getWarnings() const;
         [[nodiscard]] const std::vector<Diagnostic>& getNotes() const;
 
-        [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
+        [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode& node) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem& node) const;
         [[nodiscard]] const SemanticType* getSemanticTypeByTypeNode(const TypeNode* typeNode) const;

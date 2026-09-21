@@ -7,7 +7,7 @@ namespace vnlc {
         std::vector<Diagnostic>&& errors,
         std::vector<Diagnostic>&& warnings,
         std::vector<Diagnostic>&& notes,
-        std::unordered_set<std::unique_ptr<CustomizedType>>&& customizedTypes,
+        std::unordered_map<std::string, std::unique_ptr<CustomizedType>>&& customizedTypes,
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>>&& localScopeMap,
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>>&& importedScopeMap,
         std::unordered_map<const TypeNode*, const SemanticType*>&& semanticTypeMap,
@@ -52,12 +52,12 @@ namespace vnlc {
         return notes;
     }
 
-    const CustomizedType* SemanticAnalysisResult::getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const {
-        for (const auto& customizedType : customizedTypes) {
-            if (customizedType->getFullTypeName() == fullTypeName) {
-                return customizedType.get();
-            }
+    const CustomizedType* SemanticAnalysisResult::getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const {
+        auto it = customizedTypes.find(fullTypeName);
+        if (it != customizedTypes.end()) {
+            return it->second.get();
         }
+
         return nullptr;
     }
 

@@ -22,6 +22,7 @@
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 namespace vnlc {
     class SemanticAnalyzer {

@@ -16,7 +16,6 @@
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace vnlc {
@@ -30,7 +29,7 @@ namespace vnlc {
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>> localScopeMap;
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> importedScopeMap;
 
-        std::unordered_set<std::unique_ptr<CustomizedType>> customizedTypeRegistry;
+        std::unordered_map<std::string, std::unique_ptr<CustomizedType>> customizedTypeRegistry;
         std::unordered_map<const TypeNode*, const SemanticType*> semanticTypeMap;
         std::unordered_map<const ValueDeclarationNode*, const SemanticType*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const SemanticType*> inferredFunctionReturnTypeMap;
@@ -65,7 +64,7 @@ namespace vnlc {
         void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages);
 
         [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
-        [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(std::string_view fullTypeName) const;
+        [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
         [[nodiscard]] const SemanticType* getSemanticTypeByTypeNode(const TypeNode* typeNode) const;
         [[nodiscard]] const SemanticType* getInferredExpressionType(const ExpressionNode* expressionNode) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode* astNode) const;
@@ -93,7 +92,7 @@ namespace vnlc {
         [[nodiscard]] std::unordered_map<const AstNode*, std::unique_ptr<Scope>> takeLocalScopeMap();
         [[nodiscard]] std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> takeImportedScopeMap();
         [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> takeImportedPackages();
-        [[nodiscard]] std::unordered_set<std::unique_ptr<CustomizedType>> takeCustomizedTypeRegistry();
+        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<CustomizedType>> takeCustomizedTypeRegistry();
         [[nodiscard]] std::unordered_map<const TypeNode*, const SemanticType*> takeSemanticTypeMap();
         [[nodiscard]] std::unordered_map<const ValueDeclarationNode*, const SemanticType*> takeInferredValueTypeMap();
         [[nodiscard]] std::unordered_map<const FunctionDeclarationNode*, const SemanticType*> takeInferredFunctionReturnTypeMap();
