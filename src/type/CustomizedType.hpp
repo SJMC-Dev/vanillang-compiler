@@ -17,16 +17,30 @@ namespace vnlc {
         CustomizedTypeOrigin origin;
         std::string fullTypeName;
         std::vector<const SemanticType*> genericArguments;
+        bool optional;
 
         const TypeDeclarationNode* localNode;
         const ImportedIdentifier* importedNode;
 
     public:
-        CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const SemanticType*>&& genericArguments, const TypeDeclarationNode* localNode);
-        CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const SemanticType*>&& genericArguments, const ImportedIdentifier* importedNode);
+        CustomizedType(
+            CustomizedTypeKind customizedKind,
+            std::string_view fullTypeName,
+            std::vector<const SemanticType*>&& genericArguments,
+            bool optional,
+            const TypeDeclarationNode* localNode
+        );
+        CustomizedType(
+            CustomizedTypeKind customizedKind,
+            std::string_view fullTypeName,
+            std::vector<const SemanticType*>&& genericArguments,
+            bool optional,
+            const ImportedIdentifier* importedNode
+        );
 
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;
         [[nodiscard]] const std::vector<const SemanticType*> getGenericArguments() const noexcept;
+        [[nodiscard]] bool isOptional() const noexcept;
         [[nodiscard]] CustomizedTypeKind getCustomizedKind() const noexcept;
         [[nodiscard]] CustomizedTypeOrigin getOrigin() const noexcept;
 

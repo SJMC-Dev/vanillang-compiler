@@ -2,12 +2,19 @@
 #include "type/CustomizedTypeOrigin.hpp"
 
 namespace vnlc {
-    CustomizedType::CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const SemanticType*>&& genericArguments, const TypeDeclarationNode* localNode)
+    CustomizedType::CustomizedType(
+        CustomizedTypeKind customizedKind,
+        std::string_view fullTypeName,
+        std::vector<const SemanticType*>&& genericArguments,
+        bool optional,
+        const TypeDeclarationNode* localNode
+    )
         : SemanticType(),
           customizedKind(customizedKind),
           origin(CustomizedTypeOrigin::LOCAL),
           fullTypeName(fullTypeName),
           genericArguments(std::move(genericArguments)),
+          optional(optional),
           localNode(localNode),
           importedNode(nullptr) {}
 
@@ -15,6 +22,7 @@ namespace vnlc {
         CustomizedTypeKind customizedKind,
         std::string_view fullTypeName,
         std::vector<const SemanticType*>&& genericArguments,
+        bool optional,
         const ImportedIdentifier* importedNode
     )
         : SemanticType(),
@@ -22,6 +30,7 @@ namespace vnlc {
           origin(CustomizedTypeOrigin::IMPORTED),
           fullTypeName(fullTypeName),
           genericArguments(std::move(genericArguments)),
+          optional(optional),
           localNode(nullptr),
           importedNode(importedNode) {}
 
@@ -39,6 +48,10 @@ namespace vnlc {
 
     const std::vector<const SemanticType*> CustomizedType::getGenericArguments() const noexcept {
         return genericArguments;
+    }
+
+    bool CustomizedType::isOptional() const noexcept {
+        return optional;
     }
 
     const TypeDeclarationNode* CustomizedType::getLocalNode() const noexcept {
