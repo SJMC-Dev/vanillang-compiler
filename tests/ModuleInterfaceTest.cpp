@@ -799,8 +799,8 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesClassWithMembersAndModifiers) {
         const auto config = makeGeneratorConfig(testDirectory);
-        CustomizedType baseType(CustomizedTypeKind::CLASS, "package.Base", static_cast<const TypeDeclarationNode*>(nullptr));
-        CustomizedType interfaceType(CustomizedTypeKind::INTERFACE, "package.Readable", static_cast<const TypeDeclarationNode*>(nullptr));
+        CustomizedType baseType(CustomizedTypeKind::CLASS, "package.Base", std::vector<const SemanticType*>{}, false, static_cast<const TypeDeclarationNode*>(nullptr));
+        CustomizedType interfaceType(CustomizedTypeKind::INTERFACE, "package.Readable", std::vector<const SemanticType*>{}, false, static_cast<const TypeDeclarationNode*>(nullptr));
         auto baseClass = makeType("Base");
         const auto* baseClassNode = baseClass.get();
         auto implementedInterface = makeType("Readable");

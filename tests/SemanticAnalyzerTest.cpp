@@ -11,7 +11,6 @@
 #include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticContext.hpp"
 #include "type/CustomizedTypeKind.hpp"
-#include "type/CustomizedTypeOrigin.hpp"
 #include "type/TypeExpressionType.hpp"
 #include "vni/import/ImportedLet.hpp"
 #include <filesystem>
@@ -50,19 +49,6 @@ namespace vnlc {
             Lexer lexer(input);
             Parser parser(std::move(lexer));
             return parser.parse(config);
-        }
-
-        void
-        expectRegisteredCustomizedType(const SemanticAnalysisResult& result, std::string_view fullTypeName, CustomizedTypeKind expectedKind, const TypeDeclarationNode* expectedDeclaration) {
-            SCOPED_TRACE(fullTypeName);
-
-            const auto* customizedType = result.getCustomizedTypeByFullTypeName(fullTypeName);
-            ASSERT_NE(customizedType, nullptr);
-            EXPECT_EQ(customizedType->getFullTypeName(), fullTypeName);
-            EXPECT_EQ(customizedType->getCustomizedKind(), expectedKind);
-            EXPECT_EQ(customizedType->getOrigin(), CustomizedTypeOrigin::LOCAL);
-            EXPECT_EQ(customizedType->getLocalNode(), expectedDeclaration);
-            EXPECT_EQ(customizedType->getImportedNode(), nullptr);
         }
 
     } // namespace
@@ -175,6 +161,8 @@ class GenericPrivateShadow<privateMember> extends Base {}
             }
             for (const auto* classDeclaration : classes) {
                 ASSERT_TRUE(context.currentScope().declare(Symbol(SymbolKind::CLASS, SymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration)));
+                const auto fullName = std::string(module->getFullName()) + "." + std::string(classDeclaration->getName().getIdentifierString());
+                context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const SemanticType*>{}, false, classDeclaration));
             }
             accessModules.push_back(parseModule("let privateMember = 0\n", config));
             ASSERT_TRUE(
@@ -212,7 +200,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
             auto& context = analyzer->context;
             context = SemanticContext{};
             const auto fullName = std::string(module->getFullName()) + ".Base";
-            context.registerCustomizedType(fullName, std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, baseClass.get()));
+            context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const SemanticType*>{}, false, baseClass.get()));
             context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
             context.popScope();
         }
@@ -222,7 +210,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
             auto& context = analyzer->context;
             const auto& derivedClass = dynamic_cast<const ClassDeclarationNode&>(*module->getTopIdentifierDeclarations().front());
             const auto fullName = std::string(module->getFullName()) + ".Derived";
-            context.registerCustomizedType(fullName, std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, &derivedClass));
+            context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const SemanticType*>{}, false, &derivedClass));
             context.mapSemanticType(derivedClass.getBaseClass().value().get(), findType("Base"));
             context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, context.getScopeByAstNode(module.get()), &derivedClass));
             context.popScope();
@@ -444,64 +432,6 @@ class GenericPrivateShadow<privateMember> extends Base {}
         EXPECT_FALSE(canAccess("GenericShadow", "", "protectedMember"));
         EXPECT_FALSE(canAccess("GenericShadow", "Unrelated", "protectedMember"));
         EXPECT_TRUE(canAccess("GenericShadow", "GenericShadow", "protectedMember"));
-    }
-
-    TEST(SemanticAnalyzerTest, RegistersLocalCustomizedTypes) {
-        constexpr std::string_view source = R"(
-class SampleClass {}
-interface SampleInterface {}
-enum SampleEnum {}
-type SampleAlias = int
-)";
-        const auto config = makeConfig("types.vnl");
-        auto module = parseModule(source, config);
-
-        SemanticAnalyzer analyzer(*module);
-        const auto result = analyzer.analyze(config);
-
-        ASSERT_FALSE(result.hasErrors());
-        const auto& declarations = module->getTopIdentifierDeclarations();
-        ASSERT_EQ(declarations.size(), 4);
-
-        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(declarations[0].get());
-        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(declarations[1].get());
-        const auto* enumDeclaration = dynamic_cast<const EnumDeclarationNode*>(declarations[2].get());
-        const auto* typeAliasDeclaration = dynamic_cast<const TypeAliasDeclarationNode*>(declarations[3].get());
-        ASSERT_NE(classDeclaration, nullptr);
-        ASSERT_NE(interfaceDeclaration, nullptr);
-        ASSERT_NE(enumDeclaration, nullptr);
-        ASSERT_NE(typeAliasDeclaration, nullptr);
-
-        expectRegisteredCustomizedType(result, "semantic_test_package.models.types.SampleClass", CustomizedTypeKind::CLASS, classDeclaration);
-        expectRegisteredCustomizedType(result, "semantic_test_package.models.types.SampleInterface", CustomizedTypeKind::INTERFACE, interfaceDeclaration);
-        expectRegisteredCustomizedType(result, "semantic_test_package.models.types.SampleEnum", CustomizedTypeKind::ENUM, enumDeclaration);
-        expectRegisteredCustomizedType(result, "semantic_test_package.models.types.SampleAlias", CustomizedTypeKind::TYPE_ALIAS, typeAliasDeclaration);
-    }
-
-    TEST(SemanticAnalyzerTest, DoesNotRegisterInvalidDeclarationAndContinuesRegisteringValidDeclarations) {
-        constexpr std::string_view source = R"(
-class InvalidClass {
-    func duplicated() {}
-    func duplicated() {}
-}
-interface ValidInterface {}
-)";
-        const auto config = makeConfig("registration_errors.vnl");
-        auto module = parseModule(source, config);
-
-        SemanticAnalyzer analyzer(*module);
-        const auto result = analyzer.analyze(config);
-
-        ASSERT_TRUE(result.hasErrors());
-        ASSERT_EQ(result.getErrors().size(), 1);
-        EXPECT_EQ(result.getErrors().front().getMessage(), "Redeclaration of class member 'duplicated'");
-        EXPECT_EQ(result.getCustomizedTypeByFullTypeName("semantic_test_package.models.registration_errors.InvalidClass"), nullptr);
-
-        const auto& declarations = module->getTopIdentifierDeclarations();
-        ASSERT_EQ(declarations.size(), 2);
-        const auto* validInterfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(declarations[1].get());
-        ASSERT_NE(validInterfaceDeclaration, nullptr);
-        expectRegisteredCustomizedType(result, "semantic_test_package.models.registration_errors.ValidInterface", CustomizedTypeKind::INTERFACE, validInterfaceDeclaration);
     }
 
     TEST(SemanticAnalyzerTest, AcceptsMatchingGenericArgumentCounts) {
