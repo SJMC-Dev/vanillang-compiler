@@ -1,8 +1,5 @@
 #include "semantic/SemanticAnalyzer.hpp"
 #include "ast/declaration/ClassDeclarationNode.hpp"
-#include "ast/declaration/EnumDeclarationNode.hpp"
-#include "ast/declaration/InterfaceDeclarationNode.hpp"
-#include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/statement/ExpressionStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "config/Config.hpp"
