@@ -393,11 +393,6 @@ namespace vnlc {
         return fmt::format("{}.{}", module.getFullName(), typeName);
     }
 
-    bool SemanticAnalyzer::isActiveTypeDeclaration(const TypeDeclarationNode& typeDecl, std::string_view typeName) {
-        const Symbol* symbol = context.currentScope().lookupLocal(typeName);
-        return symbol != nullptr && symbol->getLocalNode() == &typeDecl;
-    }
-
     const Scope* SemanticAnalyzer::getScopeBySymbol(const Symbol& symbol) const {
         if (symbol.getLocalNode() != nullptr) {
             return context.getScopeByAstNode(symbol.getLocalNode());
@@ -440,11 +435,6 @@ namespace vnlc {
             }
         }
         return 0;
-    }
-
-    void SemanticAnalyzer::registerLocalCustomizedType(const TypeDeclarationNode& typeDecl, std::string_view typeName, CustomizedTypeKind kind, const Config& config) {
-        std::string fullTypeName = getFullTypeName(typeName, config);
-        context.registerCustomizedType(fullTypeName, std::make_unique<CustomizedType>(kind, fullTypeName, &typeDecl));
     }
 
     void SemanticAnalyzer::checkModule(const ModuleNode& moduleNode, const Config& config) {
@@ -774,10 +764,6 @@ namespace vnlc {
         }
 
         context.popScope();
-
-        if (context.getErrors().size() == errorCount && isActiveTypeDeclaration(classDecl, classDecl.getName().getIdentifierString())) {
-            registerLocalCustomizedType(classDecl, classDecl.getName().getIdentifierString(), CustomizedTypeKind::CLASS, config);
-        }
     }
 
     void SemanticAnalyzer::checkInterfaceDeclaration(const InterfaceDeclarationNode& interfaceDecl, const Config& config, MetadataInfo metadataInfo) {
@@ -807,10 +793,6 @@ namespace vnlc {
         }
 
         context.popScope();
-
-        if (context.getErrors().size() == errorCount && isActiveTypeDeclaration(interfaceDecl, interfaceDecl.getName().getIdentifierString())) {
-            registerLocalCustomizedType(interfaceDecl, interfaceDecl.getName().getIdentifierString(), CustomizedTypeKind::INTERFACE, config);
-        }
     }
 
     void SemanticAnalyzer::checkEnumDeclaration(const EnumDeclarationNode& enumDecl, const Config& config, MetadataInfo metadataInfo) {
@@ -855,10 +837,6 @@ namespace vnlc {
         }
 
         context.popScope();
-
-        if (context.getErrors().size() == errorCount && isActiveTypeDeclaration(enumDecl, enumDecl.getName().getIdentifierString())) {
-            registerLocalCustomizedType(enumDecl, enumDecl.getName().getIdentifierString(), CustomizedTypeKind::ENUM, config);
-        }
     }
 
     void SemanticAnalyzer::checkTypeAliasDeclaration(const TypeAliasDeclarationNode& typeAliasDecl, const Config& config, MetadataInfo metadataInfo) {
@@ -875,10 +853,6 @@ namespace vnlc {
         checkType(typeAliasDecl.getOriginalType());
 
         context.popScope();
-
-        if (context.getErrors().size() == errorCount && isActiveTypeDeclaration(typeAliasDecl, typeAliasDecl.getAliasName().getIdentifierString())) {
-            registerLocalCustomizedType(typeAliasDecl, typeAliasDecl.getAliasName().getIdentifierString(), CustomizedTypeKind::TYPE_ALIAS, config);
-        }
     }
 
     void SemanticAnalyzer::checkStatement(const StatementNode& statement) {

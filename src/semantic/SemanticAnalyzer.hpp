@@ -31,9 +31,9 @@ namespace vnlc {
         const ModuleNode& module;
         SemanticContext context;
 
-        static SymbolKind getImportedSymbolKind(const ImportedItem& item);
-        static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
-        static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
+        [[nodiscard]] static SymbolKind getImportedSymbolKind(const ImportedItem& item);
+        [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
+        [[nodiscard]] static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
         static void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies);
         static void collectImportDependencies(const ImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const ImportedModule*>& visitedModules);
 
@@ -44,10 +44,8 @@ namespace vnlc {
         [[nodiscard]] bool checkMemberAccessModifier(const TypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
         [[nodiscard]] MetadataInfo checkMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms, const DeclarationNode& declNode);
         [[nodiscard]] std::string getFullTypeName(std::string_view typeName, const Config& config) const;
-        [[nodiscard]] bool isActiveTypeDeclaration(const TypeDeclarationNode& typeDecl, std::string_view typeName);
         [[nodiscard]] const Scope* getScopeBySymbol(const Symbol& symbol) const;
         [[nodiscard]] std::size_t getGenericParameterCount(const Symbol& symbol) const;
-        void registerLocalCustomizedType(const TypeDeclarationNode& typeDecl, std::string_view typeName, CustomizedTypeKind kind, const Config& config);
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);
         void checkExport(const ExportDeclarationNode& exportDecl);
