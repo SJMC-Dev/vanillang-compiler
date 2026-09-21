@@ -389,10 +389,6 @@ namespace vnlc {
         };
     }
 
-    std::string SemanticAnalyzer::getFullTypeName(std::string_view typeName, const Config& config) const {
-        return fmt::format("{}.{}", module.getFullName(), typeName);
-    }
-
     const Scope* SemanticAnalyzer::getScopeBySymbol(const Symbol& symbol) const {
         if (symbol.getLocalNode() != nullptr) {
             return context.getScopeByAstNode(symbol.getLocalNode());
