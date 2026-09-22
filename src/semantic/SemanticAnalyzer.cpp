@@ -201,7 +201,7 @@ namespace vnlc {
 
             std::vector<std::string> genericArgumentFullNames;
             for (const auto& genericArgument : typeNode.getGenericArguments()) {
-                genericArgumentFullNames.emplace_back(std::move(getFullTypeNameByTypeNode(*genericArgument)));
+                genericArgumentFullNames.emplace_back(getFullTypeNameByTypeNode(*genericArgument));
             }
             if (!genericArgumentFullNames.empty()) {
                 std::string args = "<";
