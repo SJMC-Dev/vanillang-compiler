@@ -17,7 +17,6 @@ namespace vnlc {
         CustomizedTypeOrigin origin;
         std::string fullTypeName;
         std::vector<const SemanticType*> genericArguments;
-        bool optional;
 
         const TypeDeclarationNode* localNode;
         const ImportedIdentifier* importedNode;
@@ -40,7 +39,6 @@ namespace vnlc {
 
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;
         [[nodiscard]] const std::vector<const SemanticType*> getGenericArguments() const noexcept;
-        [[nodiscard]] bool isOptional() const noexcept;
         [[nodiscard]] CustomizedTypeKind getCustomizedKind() const noexcept;
         [[nodiscard]] CustomizedTypeOrigin getOrigin() const noexcept;
 

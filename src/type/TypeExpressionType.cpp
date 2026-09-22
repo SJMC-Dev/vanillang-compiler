@@ -1,7 +1,7 @@
 #include "TypeExpressionType.hpp"
 
 namespace vnlc {
-    TypeExpressionType::TypeExpressionType(const SemanticType* expressedType) : SemanticType(), expressedType(expressedType) {}
+    TypeExpressionType::TypeExpressionType(const SemanticType* expressedType) : SemanticType(expressedType->isOptional()), expressedType(expressedType) {}
 
     std::string_view TypeExpressionType::getFullTypeName() const noexcept {
         return expressedType->getFullTypeName();

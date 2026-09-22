@@ -5,11 +5,15 @@
 
 namespace vnlc {
     class SemanticType {
+    private:
+        bool optional;
+
     protected:
-        SemanticType();
+        explicit SemanticType(bool optional);
 
     public:
         [[nodiscard]] virtual std::string_view getFullTypeName() const noexcept = 0;
+        [[nodiscard]] bool isOptional() const noexcept;
 
         virtual ~SemanticType() = default;
     };
