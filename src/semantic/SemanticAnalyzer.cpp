@@ -660,7 +660,6 @@ namespace vnlc {
         struct ImportBinding {
             std::string name;
             std::vector<std::string> path;
-            SymbolKind kind;
         };
 
         std::vector<ImportBinding> bindings;
@@ -680,13 +679,41 @@ namespace vnlc {
             return nullptr;
         };
 
-        const auto bind = [&](const ImportedItem* target, const std::vector<std::string>& path, const IdentifierNode* alias, const AstNode& location) {
+        const auto bind = [&](const ImportedItem* target, std::vector<std::string> path, const IdentifierNode* alias, const AstNode& location) {
             const std::string name(alias ? alias->getIdentifierString() : target->getName());
             if (context.currentScope().lookupLocal(name) != nullptr || !names.insert(name).second) {
                 context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
                 return;
             }
-            bindings.push_back({ name, path, getImportedSymbolKind(*target) });
+
+            std::unordered_set<const ImportedAlias*> visitedAliases;
+            while (const auto* importedAlias = dynamic_cast<const ImportedAlias*>(target)) {
+                if (!visitedAliases.insert(importedAlias).second) {
+                    context.reportError(location, fmt::format("Cyclic imported alias '{}'", importedAlias->getSource()));
+                    return;
+                }
+
+                path.assign(1, std::string());
+                for (const char ch : importedAlias->getSource()) {
+                    if (ch == '.') {
+                        path.emplace_back();
+                    } else {
+                        path.back().push_back(ch);
+                    }
+                }
+
+                const auto package = packages.find(path.front());
+                target = package == packages.end() ? nullptr : package->second.get();
+                for (std::size_t index = 1; target != nullptr && index < path.size(); ++index) {
+                    target = findChild(target, path[index]);
+                }
+                if (target == nullptr) {
+                    context.reportError(location, fmt::format("Could not find imported alias target '{}'", importedAlias->getSource()));
+                    return;
+                }
+            }
+
+            bindings.push_back({ name, std::move(path) });
         };
 
         std::function<void(const ImportDeclarationItem&, const ImportedItem*, std::vector<std::string>)> checkItem;
@@ -770,7 +797,8 @@ namespace vnlc {
             for (std::size_t index = 1; index < binding.path.size(); ++index) {
                 target = findChild(target, binding.path[index]);
             }
-            context.currentScope().declare(Symbol(binding.kind, SymbolAccessModifier::PUBLIC, binding.name, target));
+
+            context.currentScope().declare(Symbol(getImportedSymbolKind(*target), SymbolAccessModifier::PUBLIC, binding.name, target));
             if (getImportedScopeKind(*target).has_value()) {
                 scopedPackages.insert(package);
             }
