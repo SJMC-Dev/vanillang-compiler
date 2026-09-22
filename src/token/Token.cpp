@@ -1,7 +1,7 @@
 #include "Token.hpp"
 
 namespace vnlc {
-    Token::Token(TokenType type, std::string_view value, unsigned int line, unsigned int column, unsigned int offset) : type(type), value(value), offset(offset), line(line), column(column) {}
+    Token::Token(TokenType type, std::string_view value, std::size_t line, std::size_t column, std::size_t offset) : type(type), value(value), offset(offset), line(line), column(column) {}
     Token::Token(Token&& other) noexcept : type(other.type), value(std::move(other.value)), offset(other.offset), line(other.line), column(other.column) {}
     Token::Token(const Token& other) : type(other.type), value(other.value), offset(other.offset), line(other.line), column(other.column) {}
 
@@ -30,20 +30,20 @@ namespace vnlc {
         return type;
     }
 
-    unsigned int Token::getLine() const noexcept {
+    std::size_t Token::getLine() const noexcept {
         return line;
     }
 
-    unsigned int Token::getColumn() const noexcept {
+    std::size_t Token::getColumn() const noexcept {
         return column;
     }
 
-    unsigned int Token::getOffset() const noexcept {
+    std::size_t Token::getOffset() const noexcept {
         return offset;
     }
 
-    unsigned int Token::getLength() const noexcept {
-        return static_cast<unsigned int>(value.length());
+    std::size_t Token::getLength() const noexcept {
+        return static_cast<std::size_t>(value.length());
     }
 
     std::string_view Token::getValue() const noexcept {

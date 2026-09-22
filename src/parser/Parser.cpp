@@ -41,7 +41,7 @@
 #include <unordered_set>
 
 namespace vnlc {
-    Parser::Parser(Lexer&& lexer, unsigned int maxBufferSize) : lexer(std::move(lexer)), tokenBuffer(), currentTokenIndex(0), bufferSize(maxBufferSize) {
+    Parser::Parser(Lexer&& lexer, std::size_t maxBufferSize) : lexer(std::move(lexer)), tokenBuffer(), currentTokenIndex(0), bufferSize(maxBufferSize) {
         fillBuffer();
     }
 
@@ -49,7 +49,7 @@ namespace vnlc {
         return lexer.hasNext() || currentTokenIndex < bufferSize;
     }
 
-    const Token& Parser::peek(unsigned int offset) const {
+    const Token& Parser::peek(std::size_t offset) const {
         if (currentTokenIndex + offset < bufferSize) {
             return tokenBuffer[currentTokenIndex + offset];
         } else {
@@ -65,7 +65,7 @@ namespace vnlc {
         bool blank = false;
         tokenBuffer.clear();
 
-        for (unsigned int i = 0; i < bufferSize && lexer.hasNext(); i = blank ? i : i + 1) {
+        for (std::size_t i = 0; i < bufferSize && lexer.hasNext(); i = blank ? i : i + 1) {
             Token token = lexer.next();
             if (token.getType() == TokenType::BLANK || token.getType() == TokenType::SINGLE_LINE_COMMENT || token.getType() == TokenType::MULTI_LINE_COMMENT) {
                 blank = true;
@@ -2983,8 +2983,8 @@ namespace vnlc {
         }
 
         while (check(TokenType::CASE)) {
-            unsigned int caseBeginLine = peek().getLine();
-            unsigned int caseBeginColumn = peek().getColumn();
+            std::size_t caseBeginLine = peek().getLine();
+            std::size_t caseBeginColumn = peek().getColumn();
             auto caseResult = parseSwitchCase();
 
             if (hasSwitchCases && caseResult.kind != switchType) {

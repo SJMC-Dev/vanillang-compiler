@@ -7,15 +7,15 @@ namespace vnlc {
           line(firstToken.getLine()),
           column(firstToken.getColumn()) {}
 
-    std::pair<unsigned int, unsigned int> AstNode::locate() const noexcept {
+    std::pair<std::size_t, std::size_t> AstNode::locate() const noexcept {
         return { line, column };
     }
 
-    unsigned int AstNode::getOffset() const noexcept {
+    std::size_t AstNode::getOffset() const noexcept {
         return offset;
     }
 
-    unsigned int AstNode::getLength() const noexcept {
+    std::size_t AstNode::getLength() const noexcept {
         return length;
     }
 

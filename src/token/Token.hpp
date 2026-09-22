@@ -11,12 +11,12 @@ namespace vnlc {
     private:
         TokenType type;
         std::string value;
-        unsigned int offset;
-        unsigned int line;
-        unsigned int column;
+        std::size_t offset;
+        std::size_t line;
+        std::size_t column;
 
     public:
-        Token(TokenType type, std::string_view value, unsigned int line, unsigned int column, unsigned int offset);
+        Token(TokenType type, std::string_view value, std::size_t line, std::size_t column, std::size_t offset);
         Token(Token&& other) noexcept;
         Token(const Token& other);
 
@@ -24,10 +24,10 @@ namespace vnlc {
         Token& operator=(const Token& other);
 
         [[nodiscard]] TokenType getType() const noexcept;
-        [[nodiscard]] unsigned int getLine() const noexcept;
-        [[nodiscard]] unsigned int getColumn() const noexcept;
-        [[nodiscard]] unsigned int getOffset() const noexcept;
-        [[nodiscard]] unsigned int getLength() const noexcept;
+        [[nodiscard]] std::size_t getLine() const noexcept;
+        [[nodiscard]] std::size_t getColumn() const noexcept;
+        [[nodiscard]] std::size_t getOffset() const noexcept;
+        [[nodiscard]] std::size_t getLength() const noexcept;
         [[nodiscard]] std::string_view getValue() const noexcept;
     };
 } // namespace vnlc

@@ -252,11 +252,11 @@ namespace vnlc {
         return notes;
     }
 
-    unsigned int SemanticContext::getLoopDepth() const noexcept {
+    std::size_t SemanticContext::getLoopDepth() const noexcept {
         return loopDepth;
     }
 
-    unsigned int SemanticContext::getSwitchDepth() const noexcept {
+    std::size_t SemanticContext::getSwitchDepth() const noexcept {
         return switchDepth;
     }
 

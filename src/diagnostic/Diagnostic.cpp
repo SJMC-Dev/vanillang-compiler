@@ -1,7 +1,7 @@
 #include "Diagnostic.hpp"
 
 namespace vnlc {
-    Diagnostic::Diagnostic(DiagnosticPhase phase, DiagnosticSeverity severity, std::string message, unsigned int line, unsigned int column, unsigned int offset, unsigned int length)
+    Diagnostic::Diagnostic(DiagnosticPhase phase, DiagnosticSeverity severity, std::string message, std::size_t line, std::size_t column, std::size_t offset, std::size_t length)
         : phase(phase),
           severity(severity),
           message(std::move(message)),
@@ -22,19 +22,19 @@ namespace vnlc {
         return message;
     }
 
-    unsigned int Diagnostic::getLine() const {
+    std::size_t Diagnostic::getLine() const {
         return line;
     }
 
-    unsigned int Diagnostic::getColumn() const {
+    std::size_t Diagnostic::getColumn() const {
         return column;
     }
 
-    unsigned int Diagnostic::getOffset() const {
+    std::size_t Diagnostic::getOffset() const {
         return offset;
     }
 
-    unsigned int Diagnostic::getLength() const {
+    std::size_t Diagnostic::getLength() const {
         return length;
     }
 } // namespace vnlc

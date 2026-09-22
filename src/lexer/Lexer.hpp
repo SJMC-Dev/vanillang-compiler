@@ -23,7 +23,7 @@ namespace vnlc {
         std::istream& source;
         std::string currentLine;
 
-        unsigned int offset;
+        std::size_t offset;
         int line;
         int column;
 
@@ -43,16 +43,16 @@ namespace vnlc {
         [[nodiscard]] int peek() const;
         [[nodiscard]] int peek(int offset) const;
 
-        [[nodiscard]] Token processStartsWithBlank(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token processStartsWithNumber(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token processStartsWithSpecial(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token processStartsWithNewline(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token processStartsWithEof(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token processStartsWithIdentifier(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
+        [[nodiscard]] Token processStartsWithBlank(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token processStartsWithNumber(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token processStartsWithSpecial(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token processStartsWithNewline(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token processStartsWithEof(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token processStartsWithIdentifier(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
 
-        [[nodiscard]] Token scanStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token scanFormatStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
-        [[nodiscard]] Token scanRawStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset);
+        [[nodiscard]] Token scanStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token scanFormatStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
+        [[nodiscard]] Token scanRawStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset);
 
     public:
         explicit Lexer(std::istream& input);

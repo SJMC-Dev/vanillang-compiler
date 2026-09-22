@@ -37,8 +37,8 @@ namespace vnlc {
 
         std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> importedPackages;
 
-        unsigned int loopDepth = 0;
-        unsigned int switchDepth = 0;
+        std::size_t loopDepth = 0;
+        std::size_t switchDepth = 0;
 
     public:
         SemanticContext() = default;
@@ -86,8 +86,8 @@ namespace vnlc {
         [[nodiscard]] const std::vector<Diagnostic>& getWarnings() const noexcept;
         [[nodiscard]] const std::vector<Diagnostic>& getNotes() const noexcept;
 
-        [[nodiscard]] unsigned int getLoopDepth() const noexcept;
-        [[nodiscard]] unsigned int getSwitchDepth() const noexcept;
+        [[nodiscard]] std::size_t getLoopDepth() const noexcept;
+        [[nodiscard]] std::size_t getSwitchDepth() const noexcept;
 
         [[nodiscard]] std::tuple<std::vector<Diagnostic>, std::vector<Diagnostic>, std::vector<Diagnostic>> takeDiagnostics();
         [[nodiscard]] std::unordered_map<const AstNode*, std::unique_ptr<Scope>> takeLocalScopeMap();

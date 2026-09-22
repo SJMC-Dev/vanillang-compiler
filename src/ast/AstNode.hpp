@@ -11,18 +11,18 @@ namespace vnlc {
         void resetPosition(const Token& firstToken, const Token& lastToken) noexcept;
 
     protected:
-        unsigned int offset;
-        unsigned int length;
+        std::size_t offset;
+        std::size_t length;
 
-        unsigned int line;
-        unsigned int column;
+        std::size_t line;
+        std::size_t column;
 
         AstNode(const Token& firstToken, const Token& lastToken); // lastToken is the first token of the next node
 
     public:
-        [[nodiscard]] std::pair<unsigned int, unsigned int> locate() const noexcept;
-        [[nodiscard]] unsigned int getOffset() const noexcept;
-        [[nodiscard]] unsigned int getLength() const noexcept;
+        [[nodiscard]] std::pair<std::size_t, std::size_t> locate() const noexcept;
+        [[nodiscard]] std::size_t getOffset() const noexcept;
+        [[nodiscard]] std::size_t getLength() const noexcept;
 
         virtual ~AstNode() = default;
         friend class Parser;

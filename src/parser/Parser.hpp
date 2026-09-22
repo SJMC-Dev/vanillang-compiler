@@ -17,13 +17,13 @@ namespace vnlc {
         Lexer lexer;
 
         std::vector<Token> tokenBuffer;
-        unsigned int currentTokenIndex;
-        unsigned int bufferSize;
+        std::size_t currentTokenIndex;
+        std::size_t bufferSize;
         bool endsWithNewlineOrEOF;
 
         [[nodiscard]] bool hasNextToken() const;
         [[nodiscard]] const Token& peek() const;
-        [[nodiscard]] const Token& peek(unsigned int offset) const;
+        [[nodiscard]] const Token& peek(std::size_t offset) const;
 
         void fillBuffer();
         void advance();
@@ -124,7 +124,7 @@ namespace vnlc {
         [[nodiscard]] SwitchCaseParsingResult parseSwitchCase();
 
     public:
-        explicit Parser(Lexer&& lexer, unsigned int maxBufferSize = 3);
+        explicit Parser(Lexer&& lexer, std::size_t maxBufferSize = 3);
 
         [[nodiscard]] std::unique_ptr<ModuleNode> parse(const Config& config);
     };

@@ -208,7 +208,7 @@ namespace vnlc {
         return !exhausted;
     }
 
-    Token Lexer::processStartsWithBlank(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithBlank(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         while (blank()) {
             if (peek() != '\r') {
                 collect(tokenValue);
@@ -220,7 +220,7 @@ namespace vnlc {
         return Token(TokenType::BLANK, std::move(tokenValue), currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::processStartsWithNumber(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithNumber(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         constexpr unsigned char BIN = 0b001;
         constexpr unsigned char OCT = 0b010;
         constexpr unsigned char HEX = 0b100;
@@ -358,7 +358,7 @@ namespace vnlc {
         return Token(TokenType::NUMBER, std::move(tokenValue), currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::processStartsWithSpecial(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithSpecial(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         if (peek() == '+') {
             collect(tokenValue);
 
@@ -743,17 +743,17 @@ namespace vnlc {
         }
     }
 
-    Token Lexer::processStartsWithNewline(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithNewline(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         collect(tokenValue);
         return Token(TokenType::NEWLINE, std::move(tokenValue), currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::processStartsWithEof(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithEof(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         advance();
         return Token(TokenType::END_OF_FILE, "", currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::processStartsWithIdentifier(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::processStartsWithIdentifier(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         bool error = false;
 
         if ((peek() == 'f' || peek() == 'F') && peek(1) == '"') {
@@ -795,7 +795,7 @@ namespace vnlc {
         }
     }
 
-    Token Lexer::scanStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::scanStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         bool error = false;
         std::string_view escapeChars = "bfnrst\\\"'";
 
@@ -833,7 +833,7 @@ namespace vnlc {
         return Token(TokenType::STRING, std::move(tokenValue), currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::scanFormatStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::scanFormatStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         bool error = false;
         std::string_view escapeChars = "bfnrst\\\"'$";
 
@@ -875,7 +875,7 @@ namespace vnlc {
         return Token(TokenType::STRING, std::move(tokenValue), currentLine, currentColumn, currentOffset);
     }
 
-    Token Lexer::scanRawStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, unsigned int currentOffset) {
+    Token Lexer::scanRawStringLiteral(std::string& tokenValue, int currentLine, int currentColumn, std::size_t currentOffset) {
         while (true) {
             if (eof() || newline()) {
                 mode = LexerMode::DEFAULT;
