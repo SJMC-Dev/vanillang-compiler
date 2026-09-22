@@ -8,6 +8,7 @@
 #include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticContext.hpp"
 #include "type/CustomizedTypeKind.hpp"
+#include "type/PrimitiveType.hpp"
 #include "type/TypeExpressionType.hpp"
 #include "vni/import/ImportedLet.hpp"
 #include <filesystem>
@@ -614,6 +615,71 @@ type Invalid = Missing<Unknown>
             return analyzer.analyze(config);
         }
 
+        template <typename Callback> void withAliasType(std::string_view source, Callback&& callback) {
+            module = parseModule(source, config);
+            SemanticAnalyzer analyzer(*module);
+            auto& context = analyzer.context;
+            context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
+            for (const auto& importDecl : module->getImportDeclarations()) {
+                analyzer.checkImport(*importDecl, config);
+            }
+            const TypeAliasDeclarationNode* typeAlias = nullptr;
+            for (const auto& topIdentifierDecl : module->getTopIdentifierDeclarations()) {
+                DeclarationNode* declaration = topIdentifierDecl.get();
+                if (auto* valueDecl = dynamic_cast<ValueDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(
+                        Symbol(SymbolKind::VARIABLE, static_cast<SymbolAccessModifier>(valueDecl->getAccessModifier()), valueDecl->getName().getIdentifierString(), valueDecl)
+                    );
+                    analyzer.checkValueDeclaration(*valueDecl);
+                } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(
+                        Symbol(SymbolKind::FUNCTION, static_cast<SymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl)
+                    );
+                    analyzer.checkFunctionDeclaration(*funcDecl);
+                } else if (auto* classDecl = dynamic_cast<ClassDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(Symbol(SymbolKind::CLASS, SymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl));
+                    analyzer.checkClassDeclaration(*classDecl, config);
+                } else if (auto* interfaceDecl = dynamic_cast<InterfaceDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(Symbol(SymbolKind::INTERFACE, SymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl));
+                    analyzer.checkInterfaceDeclaration(*interfaceDecl, config);
+                } else if (auto* enumDecl = dynamic_cast<EnumDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(Symbol(SymbolKind::ENUM, SymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl));
+                    analyzer.checkEnumDeclaration(*enumDecl, config);
+                } else if (auto* typeAliasDecl = dynamic_cast<TypeAliasDeclarationNode*>(declaration)) {
+                    context.currentScope().declare(Symbol(SymbolKind::TYPE_ALIAS, SymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl));
+                    analyzer.checkTypeAliasDeclaration(*typeAliasDecl, config);
+                    typeAlias = typeAliasDecl;
+                }
+            }
+            if (typeAlias == nullptr) {
+                context.popScope();
+                return;
+            }
+            context.pushScope(std::make_unique<Scope>(ScopeKind::TYPE_ALIAS, &context.currentScope(), typeAlias));
+            for (const auto& genericParameter : typeAlias->getGenericParameterNames()) {
+                context.currentScope().declare(Symbol(SymbolKind::GENERIC_PARAMETER, SymbolAccessModifier::PUBLIC, genericParameter->getIdentifierString(), typeAlias));
+            }
+            callback(analyzer, *typeAlias);
+            context.popScope();
+            context.popScope();
+        }
+
+        std::string getFullTypeNameByAlias(std::string_view source) {
+            std::string fullName;
+            withAliasType(source, [&fullName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+                fullName = analyzer.getFullTypeNameByTypeNode(typeAlias.getOriginalType());
+            });
+            return fullName;
+        }
+
+        SemanticContext& semanticContext(SemanticAnalyzer& analyzer) const {
+            return analyzer.context;
+        }
+
+        const SemanticType* checkedType(SemanticAnalyzer& analyzer, const TypeNode& type) const {
+            return analyzer.checkType(type);
+        }
+
         const ImportedItem* findImportedNode(const SemanticAnalysisResult& result, std::string_view name) const {
             const auto* scope = result.getScopeByAstNode(*module);
             EXPECT_NE(scope, nullptr);
@@ -622,6 +688,114 @@ type Invalid = Missing<Unknown>
             return symbol != nullptr ? symbol->getImportedNode() : nullptr;
         }
     };
+
+    TEST_F(SemanticAnalyzerImportTest, PrefixesImportedTypesWithTheirCanonicalPaths) {
+        writeScopedModule();
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox\n"), "pkg.api.Box");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api as api\ntype Result = api.Box\n"), "pkg.api.Box");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg as library\ntype Result = library.api.Box\n"), "pkg.api.Box");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.*\ntype Result = Box\n"), "pkg.api.Box");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.State as State\ntype Result = State.Ready\n"), "pkg.api.State.Ready");
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, PrefixesGenericArgumentsAndPreservesOptionalImportedTypes) {
+        writeScopedModule();
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api as api\ntype Result = api.Box<api.Readable>\n"), "pkg.api.Box<pkg.api.Readable>");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.*\ntype Result = Box<Readable>\n"), "pkg.api.Box<pkg.api.Readable>");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int?>\n"), "pkg.api.Box<int?>");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result<T> = ImportedBox<T>\n"), "pkg.api.Box<T>");
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox?\n"), "pkg.api.Box?");
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, BuildsLocalFullTypeNames) {
+        const auto classFullName = getFullTypeNameByAlias("class Box {}\ntype Result = Box\n");
+        EXPECT_EQ(classFullName, std::string(module->getFullName()) + ".Box");
+
+        const auto interfaceFullName = getFullTypeNameByAlias("interface Readable {}\ntype Result = Readable\n");
+        EXPECT_EQ(interfaceFullName, std::string(module->getFullName()) + ".Readable");
+
+        const auto enumMemberFullName = getFullTypeNameByAlias("enum State {\n    Ready\n}\ntype Result = State.Ready\n");
+        EXPECT_EQ(enumMemberFullName, std::string(module->getFullName()) + ".State.Ready");
+
+        const auto typeAliasFullName = getFullTypeNameByAlias("type Alias = int\ntype Result = Alias\n");
+        EXPECT_EQ(typeAliasFullName, std::string(module->getFullName()) + ".Alias");
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, BuildsLocalGenericAndOptionalFullTypeNames) {
+        const auto genericFullName = getFullTypeNameByAlias("class Box<T> {}\ntype Result<T> = Box<T?>\n");
+        EXPECT_EQ(genericFullName, std::string(module->getFullName()) + ".Box<T?>");
+
+        const auto optionalCustomizedFullName = getFullTypeNameByAlias("class Box<T> {}\ninterface Readable {}\ntype Result = Box<Readable?>\n");
+        EXPECT_EQ(optionalCustomizedFullName, std::string(module->getFullName()) + ".Box<" + std::string(module->getFullName()) + ".Readable?>");
+
+        EXPECT_EQ(getFullTypeNameByAlias("type Result = int?\n"), "int?");
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, MapsPrimitiveTypeNodesToSharedSemanticTypes) {
+        withAliasType("type Result = int?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+            auto& context = semanticContext(analyzer);
+            const auto* semanticType = context.getSemanticTypeByTypeNode(&typeAlias.getOriginalType());
+            ASSERT_NE(semanticType, nullptr);
+            EXPECT_EQ(semanticType, PrimitiveType::optionalIntType());
+            EXPECT_TRUE(semanticType->isOptional());
+            EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), semanticType);
+        });
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, RegistersLocalCustomizedTypesAndReusesExistingPointers) {
+        withAliasType("class Box<T> {}\ntype Result = Box<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+            auto& context = semanticContext(analyzer);
+            const auto* semanticType = context.getSemanticTypeByTypeNode(&typeAlias.getOriginalType());
+            const auto* customizedType = dynamic_cast<const CustomizedType*>(semanticType);
+            ASSERT_NE(customizedType, nullptr);
+            EXPECT_EQ(customizedType->getCustomizedKind(), CustomizedTypeKind::CLASS);
+            EXPECT_EQ(customizedType->getOrigin(), CustomizedTypeOrigin::LOCAL);
+            EXPECT_EQ(customizedType->getFullTypeName(), std::string(module->getFullName()) + ".Box<int>");
+            EXPECT_FALSE(customizedType->isOptional());
+            ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+            EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
+            EXPECT_EQ(customizedType->getLocalNode(), module->getTopIdentifierDeclarations().front().get());
+            EXPECT_EQ(context.getCustomizedTypeByFullTypeName(std::string(customizedType->getFullTypeName())), customizedType);
+            EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), customizedType);
+        });
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, ReusesCustomizedTypesAcrossDifferentTypeNodes) {
+        withAliasType("class Box<T> {}\ntype First = Box<int>\ntype Second = Box<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& secondAlias) {
+            const TypeAliasDeclarationNode* firstAlias = nullptr;
+            for (const auto& declaration : module->getTopIdentifierDeclarations()) {
+                const auto* typeAlias = dynamic_cast<const TypeAliasDeclarationNode*>(declaration.get());
+                if (typeAlias != nullptr && typeAlias->getAliasName().getIdentifierString() == "First") {
+                    firstAlias = typeAlias;
+                    break;
+                }
+            }
+            ASSERT_NE(firstAlias, nullptr);
+            auto& context = semanticContext(analyzer);
+            EXPECT_EQ(context.getSemanticTypeByTypeNode(&firstAlias->getOriginalType()), context.getSemanticTypeByTypeNode(&secondAlias.getOriginalType()));
+        });
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, RegistersAndReusesImportedCustomizedTypes) {
+        writeScopedModule();
+        withAliasType("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+            auto& context = semanticContext(analyzer);
+            const auto* semanticType = context.getSemanticTypeByTypeNode(&typeAlias.getOriginalType());
+            const auto* customizedType = dynamic_cast<const CustomizedType*>(semanticType);
+            ASSERT_NE(customizedType, nullptr);
+            EXPECT_EQ(customizedType->getCustomizedKind(), CustomizedTypeKind::CLASS);
+            EXPECT_EQ(customizedType->getOrigin(), CustomizedTypeOrigin::IMPORTED);
+            EXPECT_EQ(customizedType->getFullTypeName(), "pkg.api.Box<int>");
+            ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+            EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
+            const auto* moduleScope = context.currentScope().findParent();
+            ASSERT_NE(moduleScope, nullptr);
+            const auto* symbol = moduleScope->lookupLocal("ImportedBox");
+            ASSERT_NE(symbol, nullptr);
+            EXPECT_EQ(customizedType->getImportedNode(), symbol->getImportedNode());
+            EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), customizedType);
+        });
+    }
 
     TEST_F(SemanticAnalyzerImportTest, BuildsImportedPackageModuleAndMemberScopes) {
         writeScopedModule();
