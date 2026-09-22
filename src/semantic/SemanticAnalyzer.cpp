@@ -935,13 +935,7 @@ namespace vnlc {
             context.pushScope(std::make_unique<Scope>(ScopeKind::ENUM_MEMBER, &context.currentScope(), member.get()));
 
             for (auto& associatedValue : member->getAssociatedValues()) {
-                Symbol associatedValueSymbol(
-                    SymbolKind::PROPERTY,
-
-                    SymbolAccessModifier::PUBLIC,
-                    associatedValue->getName().getIdentifierString(),
-                    associatedValue.get()
-                );
+                Symbol associatedValueSymbol(SymbolKind::PROPERTY, SymbolAccessModifier::PUBLIC, associatedValue->getName().getIdentifierString(), associatedValue.get());
                 if (!context.currentScope().declare(std::move(associatedValueSymbol))) {
                     context.reportError(*associatedValue, fmt::format("Redeclaration of enum member associated value '{}'", associatedValue->getName().getIdentifierString()));
                 }
