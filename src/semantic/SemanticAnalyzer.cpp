@@ -723,7 +723,6 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkClassDeclaration(const ClassDeclarationNode& classDecl, const Config& config, MetadataInfo metadataInfo) {
-        const std::size_t errorCount = context.getErrors().size();
         context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, &context.currentScope(), &classDecl));
 
         for (const auto& member : classDecl.getMemberDeclarations()) {
@@ -763,7 +762,6 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkInterfaceDeclaration(const InterfaceDeclarationNode& interfaceDecl, const Config& config, MetadataInfo metadataInfo) {
-        const std::size_t errorCount = context.getErrors().size();
         context.pushScope(std::make_unique<Scope>(ScopeKind::INTERFACE, &context.currentScope(), &interfaceDecl));
 
         for (const auto& member : interfaceDecl.getMethodDeclarations()) {
@@ -792,7 +790,6 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkEnumDeclaration(const EnumDeclarationNode& enumDecl, const Config& config, MetadataInfo metadataInfo) {
-        const std::size_t errorCount = context.getErrors().size();
         context.pushScope(std::make_unique<Scope>(ScopeKind::ENUM, &context.currentScope(), &enumDecl));
 
         for (const auto& member : enumDecl.getMemberDeclarations()) {
@@ -836,7 +833,6 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkTypeAliasDeclaration(const TypeAliasDeclarationNode& typeAliasDecl, const Config& config, MetadataInfo metadataInfo) {
-        const std::size_t errorCount = context.getErrors().size();
         context.pushScope(std::make_unique<Scope>(ScopeKind::TYPE_ALIAS, &context.currentScope(), &typeAliasDecl));
 
         for (const auto& genericParamName : typeAliasDecl.getGenericParameterNames()) {
