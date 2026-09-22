@@ -31,6 +31,8 @@
 #include "error/IllegalModuleOrPackageNameError.hpp"
 #include "error/OutOfRangeError.hpp"
 #include "error/SyntaxError.hpp"
+#include "token/Token.hpp"
+#include "token/TokenType.hpp"
 #include "util/TokenTypeUtil.hpp"
 #include <memory>
 #include <optional>
@@ -2292,6 +2294,9 @@ namespace vnlc {
         static const std::unordered_set<TokenType> literalStarters = {
             TokenType::NUMBER, TokenType::STRING, TokenType::CHAR, TokenType::TRUE, TokenType::FALSE, TokenType::LEFT_BRACKET, TokenType::LEFT_BRACE, TokenType::SELECTOR_PREFIX,
         };
+        static const std::unordered_set<TokenType> primitiveTypes = {
+            TokenType::BYTE_TYPE, TokenType::SHORT_TYPE, TokenType::INT_TYPE, TokenType::LONG_TYPE, TokenType::FLOAT_TYPE, TokenType::DOUBLE_TYPE, TokenType::BOOL_TYPE, TokenType::STRING_TYPE,
+        };
 
         Token firstToken = peek();
 
@@ -2320,7 +2325,7 @@ namespace vnlc {
             return PrimaryExpressionParsingResult{
                 .expression = std::make_unique<SuperExpressionNode>(firstToken, lastToken),
             };
-        } else if (check(TokenType::IDENTIFIER)) {
+        } else if (check(TokenType::IDENTIFIER) || checkAny(primitiveTypes)) {
             auto name = constructCurrentIdentifierNode();
 
             Token lastToken = peek();
