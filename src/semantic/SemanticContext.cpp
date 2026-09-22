@@ -130,6 +130,16 @@ namespace vnlc {
         return it == importedScopeMap.end() ? nullptr : it->second.get();
     }
 
+    const Scope* SemanticContext::getScopeBySymbol(const Symbol& symbol) const {
+        if (symbol.getLocalNode() != nullptr) {
+            return getScopeByAstNode(symbol.getLocalNode());
+        }
+        if (symbol.getImportedNode() != nullptr) {
+            return getScopeByImportedNode(symbol.getImportedNode());
+        }
+        return nullptr;
+    }
+
     Scope& SemanticContext::currentScope() {
         return *scopeStack.back();
     }

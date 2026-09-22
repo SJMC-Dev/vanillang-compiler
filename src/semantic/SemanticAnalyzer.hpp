@@ -46,7 +46,6 @@ namespace vnlc {
         [[nodiscard]] bool checkAccessModifier(const IdentifierExpressionNode& identifierNode);
         [[nodiscard]] bool checkMemberAccessModifier(const TypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
         [[nodiscard]] MetadataInfo checkMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms, const DeclarationNode& declNode);
-        [[nodiscard]] const Scope* getScopeBySymbol(const Symbol& symbol) const;
         [[nodiscard]] std::size_t getGenericParameterCount(const Symbol& symbol) const;
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);

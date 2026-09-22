@@ -69,6 +69,7 @@ namespace vnlc {
         [[nodiscard]] const SemanticType* getInferredExpressionType(const ExpressionNode* expressionNode) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode* astNode) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem* importedNode) const;
+        [[nodiscard]] const Scope* getScopeBySymbol(const Symbol& symbol) const;
 
         [[nodiscard]] Scope& currentScope();
 

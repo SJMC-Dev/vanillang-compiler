@@ -139,7 +139,7 @@ namespace vnlc {
             if (firstSymbol.getKind() == SymbolKind::GENERIC_PARAMETER) {
                 result = std::string(firstSymbol.getName());
             } else if (firstSymbol.getOrigin() == SymbolOrigin::LOCAL) {
-                const Scope* localScope = getScopeBySymbol(firstSymbol);
+                const Scope* localScope = context.getScopeBySymbol(firstSymbol);
                 if (localScope != nullptr) {
                     while (localScope->findParent() && localScope->getKind() != ScopeKind::MODULE) {
                         const TypeDeclarationNode* node = dynamic_cast<const TypeDeclarationNode*>(localScope->getLocalNode());
@@ -171,7 +171,7 @@ namespace vnlc {
                     result.append(typeNode.getNameParts()[index]->getIdentifierString());
                 }
             } else if (firstSymbol.getOrigin() == SymbolOrigin::IMPORTED) {
-                const Scope* importedScope = getScopeBySymbol(firstSymbol);
+                const Scope* importedScope = context.getScopeBySymbol(firstSymbol);
                 if (importedScope == nullptr) {
                     context.reportError(*typeNode.getNameParts().front(), fmt::format("Identifier '{}' does not have a scope", typeNode.getNameParts().front()->getIdentifierString()));
                     return "";
@@ -512,16 +512,6 @@ namespace vnlc {
             noWarnings,
             deprecated,
         };
-    }
-
-    const Scope* SemanticAnalyzer::getScopeBySymbol(const Symbol& symbol) const {
-        if (symbol.getLocalNode() != nullptr) {
-            return context.getScopeByAstNode(symbol.getLocalNode());
-        }
-        if (symbol.getImportedNode() != nullptr) {
-            return context.getScopeByImportedNode(symbol.getImportedNode());
-        }
-        return nullptr;
     }
 
     std::size_t SemanticAnalyzer::getGenericParameterCount(const Symbol& symbol) const {
@@ -1126,7 +1116,7 @@ namespace vnlc {
                     break;
                 }
 
-                scope = getScopeBySymbol(*symbol);
+                scope = context.getScopeBySymbol(*symbol);
                 if (scope == nullptr) {
                     context.reportError(*namePart, fmt::format("Identifier '{}' does not have a scope", namePart->getIdentifierString()));
                     break;
