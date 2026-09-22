@@ -10,21 +10,21 @@ namespace vnlc {
     std::string_view PrimitiveType::getFullTypeName() const noexcept {
         switch (primitiveKind) {
             case PrimitiveTypeKind::BYTE:
-                return "byte";
+                return isOptional() ? "byte?" : "byte";
             case PrimitiveTypeKind::SHORT:
-                return "short";
+                return isOptional() ? "short?" : "short";
             case PrimitiveTypeKind::INT:
-                return "int";
+                return isOptional() ? "int?" : "int";
             case PrimitiveTypeKind::LONG:
-                return "long";
+                return isOptional() ? "long?" : "long";
             case PrimitiveTypeKind::FLOAT:
-                return "float";
+                return isOptional() ? "float?" : "float";
             case PrimitiveTypeKind::DOUBLE:
-                return "double";
+                return isOptional() ? "double?" : "double";
             case PrimitiveTypeKind::BOOLEAN:
-                return "bool";
+                return isOptional() ? "bool?" : "bool";
             case PrimitiveTypeKind::STRING:
-                return "string";
+                return isOptional() ? "string?" : "string";
         }
 
         return "unknown"; // should never reach here
