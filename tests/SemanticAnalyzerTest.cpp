@@ -10,6 +10,7 @@
 #include "type/CustomizedTypeKind.hpp"
 #include "type/PrimitiveType.hpp"
 #include "type/TypeExpressionType.hpp"
+#include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedLet.hpp"
 #include <filesystem>
 #include <fstream>
@@ -948,7 +949,7 @@ type Invalid = Missing<Unknown>
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, DoesNotCreateScopesForImportedValuesOrUnresolvedAliases) {
+    TEST_F(SemanticAnalyzerImportTest, DoesNotCreateScopesForImportedValuesOrAliasesToValues) {
         writeScopedModule();
         for (const auto name : { "value", "property", "parameter", "External" }) {
             SCOPED_TRACE(name);
@@ -1130,10 +1131,9 @@ type Invalid = Missing<Unknown>
 })"
         );
         const std::vector<std::pair<std::string, SymbolKind>> identifiers = {
-            { "value", SymbolKind::VARIABLE },        { "run", SymbolKind::FUNCTION },        { "Box", SymbolKind::CLASS },
-            { "Readable", SymbolKind::INTERFACE },    { "State", SymbolKind::ENUM },          { "Alias", SymbolKind::TYPE_ALIAS },
-            { "External", SymbolKind::IMPORT_ALIAS }, { "method", SymbolKind::METHOD },       { "Ready", SymbolKind::ENUM_MEMBER },
-            { "property", SymbolKind::PROPERTY },     { "parameter", SymbolKind::PARAMETER },
+            { "value", SymbolKind::VARIABLE },    { "run", SymbolKind::FUNCTION },      { "Box", SymbolKind::CLASS },           { "Readable", SymbolKind::INTERFACE },
+            { "State", SymbolKind::ENUM },        { "Alias", SymbolKind::TYPE_ALIAS },  { "External", SymbolKind::VARIABLE },   { "method", SymbolKind::METHOD },
+            { "Ready", SymbolKind::ENUM_MEMBER }, { "property", SymbolKind::PROPERTY }, { "parameter", SymbolKind::PARAMETER },
         };
 
         for (const auto& [name, kind] : identifiers) {
@@ -1158,7 +1158,16 @@ type Invalid = Missing<Unknown>
                 EXPECT_EQ(symbol->getKind(), kind);
                 EXPECT_EQ(symbol->getOrigin(), SymbolOrigin::IMPORTED);
                 EXPECT_EQ(symbol->getLocalNode(), nullptr);
-                EXPECT_EQ(symbol->getImportedNode(), importedModule->getIdentifierByName(name));
+                if (name == "External") {
+                    const auto* extraPackage = result.getImportedPackageByName("extra");
+                    ASSERT_NE(extraPackage, nullptr);
+                    const auto* toolsModule = extraPackage->getModuleByName("tools");
+                    ASSERT_NE(toolsModule, nullptr);
+                    EXPECT_EQ(symbol->getImportedNode(), toolsModule->getIdentifierByName("enabled"));
+                    EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName(name)), nullptr);
+                } else {
+                    EXPECT_EQ(symbol->getImportedNode(), importedModule->getIdentifierByName(name));
+                }
                 for (const auto& [otherName, otherKind] : identifiers) {
                     EXPECT_NE(importedModule->getIdentifierByName(otherName), nullptr);
                     if (aliased || otherName != name) {
@@ -1209,6 +1218,84 @@ type Invalid = Missing<Unknown>
         EXPECT_EQ(findImportedNode(result, "library"), importedModule);
         EXPECT_EQ(findImportedNode(result, "value"), nullptr);
         EXPECT_EQ(findImportedNode(result, "api"), nullptr);
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, ResolvesReexportedAliasesWhilePreservingDirectRenamedAndWildcardBindings) {
+        writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"pkg.sub.other.bridge"}})");
+        writeFile("dependency_source/sub/other.vni", R"({"bridge":{"category":"imported","source":"extra.tools.enabled"}})");
+
+        for (const auto source : {
+                 "import pkg.api.External\nimport pkg.api.External as renamed\nimport extra.tools.enabled\n",
+                 "import pkg.api.*\nimport pkg.api.External as renamed\nimport extra.tools.enabled\n",
+             }) {
+            SCOPED_TRACE(source);
+            const auto result = analyze(source);
+
+            ASSERT_FALSE(result.hasErrors());
+            const auto* scope = result.getScopeByAstNode(*module);
+            ASSERT_NE(scope, nullptr);
+            const auto* enabled = findImportedNode(result, "enabled");
+            ASSERT_NE(enabled, nullptr);
+            EXPECT_EQ(enabled->getName(), "enabled");
+            for (const auto name : { "External", "renamed", "enabled" }) {
+                const auto* symbol = scope->lookupLocal(name);
+                ASSERT_NE(symbol, nullptr);
+                EXPECT_EQ(symbol->getName(), name);
+                EXPECT_EQ(symbol->getKind(), SymbolKind::VARIABLE);
+                EXPECT_EQ(symbol->getOrigin(), SymbolOrigin::IMPORTED);
+                EXPECT_EQ(symbol->getImportedNode(), enabled);
+            }
+            for (const auto name : { "pkg", "api", "bridge", "extra", "tools" }) {
+                EXPECT_EQ(scope->lookupLocal(name), nullptr);
+            }
+        }
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, RegistersReexportedTypeScopesUnderTheirOriginalPackageAndModule) {
+        writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"extra.types.Box"},"Alias":{"category":"imported","source":"extra.types.Alias"}})");
+        writeFile("another_source/types.vni", R"({
+    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"baseClass":null,"implementedInterfaces":[],"final":false},
+    "Alias":{"category":"typealias","genericParameters":["T"],"originalType":"T"}
+})");
+
+        for (const auto source : {
+                 "import pkg.api.External as selected\nimport pkg.api.Alias\n",
+                 "import pkg.api.*\nimport pkg.api.External as selected\n",
+             }) {
+            SCOPED_TRACE(source);
+            const auto result = analyze(std::string(source) + "type ClassResult = selected<int>\ntype AliasResult = Alias<int>\n");
+
+            ASSERT_FALSE(result.hasErrors());
+            const auto* package = result.getImportedPackageByName("extra");
+            ASSERT_NE(package, nullptr);
+            const auto* typesModule = package->getModuleByName("types");
+            ASSERT_NE(typesModule, nullptr);
+            const auto* packageScope = result.getScopeByImportedNode(*package);
+            const auto* typesScope = result.getScopeByImportedNode(*typesModule);
+            ASSERT_NE(packageScope, nullptr);
+            ASSERT_NE(typesScope, nullptr);
+            EXPECT_EQ(packageScope->findParent(), nullptr);
+            EXPECT_EQ(typesScope->findParent(), packageScope);
+            const auto* localScope = result.getScopeByAstNode(*module);
+            ASSERT_NE(localScope, nullptr);
+            for (const auto name : { "selected", "Alias" }) {
+                SCOPED_TRACE(name);
+                const bool isClass = std::string_view(name) == "selected";
+                const auto* symbol = localScope->lookupLocal(name);
+                ASSERT_NE(symbol, nullptr);
+                EXPECT_EQ(symbol->getKind(), isClass ? SymbolKind::CLASS : SymbolKind::TYPE_ALIAS);
+                const auto* node = symbol->getImportedNode();
+                ASSERT_EQ(node, typesModule->getIdentifierByName(isClass ? "Box" : "Alias"));
+                ASSERT_NE(node, nullptr);
+                const auto* scope = result.getScopeByImportedNode(*node);
+                ASSERT_NE(scope, nullptr);
+                EXPECT_EQ(scope->getKind(), isClass ? ScopeKind::CLASS : ScopeKind::TYPE_ALIAS);
+                EXPECT_EQ(scope->getImportedNode(), node);
+                EXPECT_EQ(scope->findParent(), typesScope);
+                EXPECT_NE(scope->lookupLocal("T"), nullptr);
+            }
+        }
+        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.External as selected\ntype Result = selected<int>\n"), "extra.types.Box<int>");
     }
 
     TEST_F(SemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
@@ -1396,7 +1483,7 @@ type Invalid = Missing<Unknown>
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(findImportedNode(result, "External"), importedModule->getIdentifierByName("External"));
+        EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName("External")), nullptr);
         const auto* subPackage = package->getSubPackageByName("sub");
         ASSERT_NE(subPackage, nullptr);
         const auto* otherModule = subPackage->getModuleByName("other");
@@ -1405,9 +1492,14 @@ type Invalid = Missing<Unknown>
         EXPECT_NE(otherModule->getIdentifierByName("back"), nullptr);
         const auto* extraPackage = result.getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
-        EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
+        const auto* toolsModule = extraPackage->getModuleByName("tools");
+        ASSERT_NE(toolsModule, nullptr);
+        EXPECT_EQ(findImportedNode(result, "External"), toolsModule->getIdentifierByName("enabled"));
         const auto* scope = result.getScopeByAstNode(*module);
         ASSERT_NE(scope, nullptr);
+        const auto* external = scope->lookupLocal("External");
+        ASSERT_NE(external, nullptr);
+        EXPECT_EQ(external->getKind(), SymbolKind::VARIABLE);
         for (const auto name : { "repeated", "bridge", "back", "enabled", "other", "tools" }) {
             EXPECT_EQ(scope->lookupLocal(name), nullptr);
         }
@@ -1421,20 +1513,40 @@ type Invalid = Missing<Unknown>
             const auto result = analyze("import pkg.api.External\nexport External\n");
 
             ASSERT_FALSE(result.hasErrors());
+            const ImportedItem* target = nullptr;
             if (std::string_view(source) == "pkg.sub") {
                 const auto* package = result.getImportedPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* subPackage = package->getSubPackageByName("sub");
                 ASSERT_NE(subPackage, nullptr);
+                target = subPackage;
                 EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
                 EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
             } else {
                 const auto* extraPackage = result.getImportedPackageByName("extra");
                 ASSERT_NE(extraPackage, nullptr);
                 EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
+                target = std::string_view(source) == "extra" ? static_cast<const ImportedItem*>(extraPackage) : extraPackage->getModuleByName("tools");
             }
             const auto* scope = result.getScopeByAstNode(*module);
             ASSERT_NE(scope, nullptr);
+            const auto* external = scope->lookupLocal("External");
+            ASSERT_NE(external, nullptr);
+            EXPECT_EQ(external->getImportedNode(), target);
+            EXPECT_EQ(external->getKind(), std::string_view(source) == "extra.tools" ? SymbolKind::MODULE : SymbolKind::PACKAGE);
+            ASSERT_NE(target, nullptr);
+            const auto* targetScope = result.getScopeByImportedNode(*target);
+            ASSERT_NE(targetScope, nullptr);
+            EXPECT_EQ(targetScope->getKind(), std::string_view(source) == "extra.tools" ? ScopeKind::MODULE : ScopeKind::PACKAGE);
+            if (std::string_view(source) == "extra") {
+                EXPECT_EQ(targetScope->findParent(), nullptr);
+            } else {
+                const auto* parentPackage = result.getImportedPackageByName(std::string_view(source) == "pkg.sub" ? "pkg" : "extra");
+                ASSERT_NE(parentPackage, nullptr);
+                const auto* parentScope = result.getScopeByImportedNode(*parentPackage);
+                ASSERT_NE(parentScope, nullptr);
+                EXPECT_EQ(targetScope->findParent(), parentScope);
+            }
             for (const auto name : { "extra", "tools", "sub", "other", "second" }) {
                 EXPECT_EQ(scope->lookupLocal(name), nullptr);
             }
@@ -1457,7 +1569,7 @@ type Invalid = Missing<Unknown>
             ASSERT_NE(package, nullptr);
             const auto* importedModule = package->getModuleByName("api");
             ASSERT_NE(importedModule, nullptr);
-            EXPECT_EQ(findImportedNode(result, "External"), importedModule->getIdentifierByName("External"));
+            EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName("External")), nullptr);
             const auto* subPackage = package->getSubPackageByName("sub");
             ASSERT_NE(subPackage, nullptr);
             const auto* otherModule = subPackage->getModuleByName("other");
@@ -1469,6 +1581,12 @@ type Invalid = Missing<Unknown>
             ASSERT_NE(toolsModule, nullptr);
             EXPECT_EQ(findImportedNode(result, "tools"), toolsModule);
             EXPECT_EQ(findImportedNode(result, "enabled"), toolsModule->getIdentifierByName("enabled"));
+            EXPECT_EQ(findImportedNode(result, "External"), findImportedNode(result, "enabled"));
+            const auto* scope = result.getScopeByAstNode(*module);
+            ASSERT_NE(scope, nullptr);
+            const auto* external = scope->lookupLocal("External");
+            ASSERT_NE(external, nullptr);
+            EXPECT_EQ(external->getKind(), SymbolKind::VARIABLE);
         }
     }
 
@@ -1489,6 +1607,41 @@ type Invalid = Missing<Unknown>
             EXPECT_EQ(result->getImportedPackageByName("extra"), nullptr);
             EXPECT_EQ(result->getImportedPackageByName("absent"), nullptr);
             EXPECT_EQ(findImportedNode(*result, "External"), nullptr);
+        }
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, RejectsMissingAndCyclicAliasTargetsWithoutCommittingPartialBindings) {
+        const std::vector<std::pair<std::string_view, std::string_view>> cases = {
+            { R"({"valid":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"extra.tools.absent"}})", "Could not find imported alias target" },
+            { R"({"valid":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"extra.tools.enabled.member"}})",
+              "Could not find imported alias target" },
+            { R"({"valid":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"pkg.broken.broken"}})", "Cyclic imported alias" },
+            { R"({"valid":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"pkg.broken.link"},"link":{"category":"imported","source":"pkg.broken.broken"}})",
+              "Cyclic imported alias" },
+        };
+        for (const auto& [contents, diagnosticPrefix] : cases) {
+            SCOPED_TRACE(contents);
+            writeFile("dependency_source/broken.vni", contents);
+            for (const auto importSource : { "import pkg.broken.broken\n", "import pkg.broken.{valid, broken}\n", "import pkg.broken.*\n" }) {
+                SCOPED_TRACE(importSource);
+                std::optional<SemanticAnalysisResult> result;
+                ASSERT_NO_THROW(result.emplace(analyze(std::string("import pkg.api.value as kept\n") + importSource + "let valid = 0\nlet broken = 0\nexport kept\n")));
+
+                ASSERT_TRUE(result->hasErrors());
+                for (const auto& error : result->getErrors()) {
+                    EXPECT_TRUE(error.getMessage().starts_with(diagnosticPrefix)) << error.getMessage();
+                }
+                const auto* package = result->getImportedPackageByName("pkg");
+                ASSERT_NE(package, nullptr);
+                const auto* api = package->getModuleByName("api");
+                ASSERT_NE(api, nullptr);
+                EXPECT_EQ(findImportedNode(*result, "kept"), api->getIdentifierByName("value"));
+                EXPECT_EQ(package->getModuleByName("broken"), nullptr);
+                EXPECT_EQ(result->getImportedPackageByName("extra"), nullptr);
+                for (const auto name : { "valid", "broken", "link" }) {
+                    EXPECT_EQ(findImportedNode(*result, name), nullptr);
+                }
+            }
         }
     }
 
