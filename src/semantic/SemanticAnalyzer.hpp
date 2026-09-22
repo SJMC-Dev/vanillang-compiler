@@ -19,6 +19,7 @@
 #include "metadata/MetadataInfo.hpp"
 #include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticContext.hpp"
+#include "type/SemanticType.hpp"
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include <string>
 #include <string_view>
@@ -27,6 +28,7 @@
 namespace vnlc {
     class SemanticAnalyzer {
         friend class SemanticAnalyzerAccessTest;
+        friend class SemanticAnalyzerImportTest;
 
     private:
         const ModuleNode& module;
@@ -35,9 +37,9 @@ namespace vnlc {
         [[nodiscard]] static SymbolKind getImportedSymbolKind(const ImportedItem& item);
         [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
         [[nodiscard]] static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
+        [[nodiscard]] std::string getFullTypeNameByTypeNode(const TypeNode& typeNode) noexcept;
         static void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies);
         static void collectImportDependencies(const ImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const ImportedModule*>& visitedModules);
-
         void registerImportedScopes(const ImportedItem& item, const Scope* parent);
         void checkIdentifierExpressionUse(const IdentifierExpressionNode& exprNode, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         [[nodiscard]] bool checkAccessModifier(const MemberAccessExpressionNode& memberAccessNode);
@@ -57,7 +59,7 @@ namespace vnlc {
         void checkTypeAliasDeclaration(const TypeAliasDeclarationNode& typeAliasDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkStatement(const StatementNode& statement);
         void checkExpression(const ExpressionNode& expression);
-        void checkType(const TypeNode& type);
+        const SemanticType* checkType(const TypeNode& type);
         [[nodiscard]] TypeInferenceResult inferExpressionType(const ExpressionNode& expression);
         [[nodiscard]] TypeInferenceResult inferFunctionReturnType(const FunctionDeclarationNode& funcDecl);
 
