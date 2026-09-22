@@ -1,12 +1,12 @@
 #ifndef VNLC_ENUM_MEMBER_DECLARATION_NODE_HPP
 #define VNLC_ENUM_MEMBER_DECLARATION_NODE_HPP
 
-#include "ast/declaration/DeclarationNode.hpp"
+#include "ast/declaration/TypeDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include <vector>
 
 namespace vnlc {
-    class EnumMemberDeclarationNode : public DeclarationNode {
+    class EnumMemberDeclarationNode : public TypeDeclarationNode {
     private:
         EnumMemberDeclarationNode() = delete;
 

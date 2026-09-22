@@ -7,7 +7,7 @@ namespace vnlc {
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
-        : DeclarationNode(firstToken, lastToken),
+        : TypeDeclarationNode(firstToken, lastToken),
           name(std::move(name)),
           associatedValues(std::move(associatedValues)) {}
 
@@ -18,7 +18,7 @@ namespace vnlc {
         const Token& lastToken,
         std::vector<DeclarationItem::MetadataTerm>&& metadataTerms
     ) noexcept
-        : DeclarationNode(firstToken, lastToken, std::move(metadataTerms)),
+        : TypeDeclarationNode(firstToken, lastToken, std::move(metadataTerms)),
           name(std::move(name)),
           associatedValues(std::move(associatedValues)) {}
 
