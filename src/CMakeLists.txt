@@ -33,7 +33,6 @@ add_executable(
     ast/declaration/FunctionDeclarationNode.cpp
     ast/declaration/ValueDeclarationNode.cpp
     ast/declaration/TypeAliasDeclarationNode.cpp
-    ast/declaration/PropertyDeclarationNode.cpp
     ast/declaration/ClassDeclarationNode.cpp
     ast/declaration/InterfaceDeclarationNode.cpp
     ast/declaration/EnumMemberDeclarationNode.cpp

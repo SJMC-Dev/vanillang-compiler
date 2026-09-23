@@ -551,25 +551,27 @@ namespace vnlc {
 
             Token lastToken = peek();
 
-            std::unique_ptr<PropertyDeclarationNode> node;
+            std::unique_ptr<ValueDeclarationNode> node;
 
             if (context.hasMetadata) {
-                node = std::make_unique<PropertyDeclarationNode>(
+                node = std::make_unique<ValueDeclarationNode>(
+                    context.kind,
+                    ValueDeclarationType::Context::CLASS,
                     context.accessModifier,
-                    context.binding,
                     std::move(name),
-                    std::move(typeResult.type),
+                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
                     std::make_optional<std::unique_ptr<ExpressionNode>>(std::move(initializerResult.expression)),
                     firstToken,
                     lastToken,
                     std::move(context.metadataTerms)
                 );
             } else {
-                node = std::make_unique<PropertyDeclarationNode>(
+                node = std::make_unique<ValueDeclarationNode>(
+                    context.kind,
+                    ValueDeclarationType::Context::CLASS,
                     context.accessModifier,
-                    context.binding,
                     std::move(name),
-                    std::move(typeResult.type),
+                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
                     std::make_optional<std::unique_ptr<ExpressionNode>>(std::move(initializerResult.expression)),
                     firstToken,
                     lastToken
@@ -582,21 +584,31 @@ namespace vnlc {
         } else {
             Token lastToken = peek();
 
-            std::unique_ptr<PropertyDeclarationNode> node;
+            std::unique_ptr<ValueDeclarationNode> node;
 
             if (context.hasMetadata) {
-                node = std::make_unique<PropertyDeclarationNode>(
+                node = std::make_unique<ValueDeclarationNode>(
+                    context.kind,
+                    ValueDeclarationType::Context::CLASS,
                     context.accessModifier,
-                    context.binding,
                     std::move(name),
-                    std::move(typeResult.type),
+                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
                     std::nullopt,
                     firstToken,
                     lastToken,
                     std::move(context.metadataTerms)
                 );
             } else {
-                node = std::make_unique<PropertyDeclarationNode>(context.accessModifier, context.binding, std::move(name), std::move(typeResult.type), std::nullopt, firstToken, lastToken);
+                node = std::make_unique<ValueDeclarationNode>(
+                    context.kind,
+                    ValueDeclarationType::Context::CLASS,
+                    context.accessModifier,
+                    std::move(name),
+                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
+                    std::nullopt,
+                    firstToken,
+                    lastToken
+                );
             }
 
             return PropertyDeclarationParsingResult{
@@ -1532,8 +1544,8 @@ namespace vnlc {
             };
         } else {
             PropertyDeclarationParsingContext propertyDeclarationContext{
-                .accessModifier = static_cast<PropertyDeclarationType::AccessModifier>(accessModifier),
-                .binding = static_cast<PropertyDeclarationType::Binding>(binding),
+                .kind = binding == Binding::STATIC ? ValueDeclarationType::Kind::STATIC_PROPERTY : ValueDeclarationType::Kind::INSTANCE_PROPERTY,
+                .accessModifier = static_cast<ValueDeclarationType::AccessModifier>(accessModifier),
                 .hasMetadata = hasMetadata,
                 .metadataTerms = std::move(metadataTerms),
             };

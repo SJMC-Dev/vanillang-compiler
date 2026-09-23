@@ -1,12 +1,12 @@
 #ifndef VNLC_PROPERTY_DECLARATION_PARSING_RESULT_HPP
 #define VNLC_PROPERTY_DECLARATION_PARSING_RESULT_HPP
 
-#include "ast/declaration/PropertyDeclarationNode.hpp"
+#include "ast/declaration/ValueDeclarationNode.hpp"
 #include <memory>
 
 namespace vnlc {
     struct PropertyDeclarationParsingResult {
-        std::unique_ptr<PropertyDeclarationNode> declaration;
+        std::unique_ptr<ValueDeclarationNode> declaration;
     };
 } // namespace vnlc
 
