@@ -836,7 +836,11 @@ namespace vnlc {
             checkExpression(*varDecl.getInitializer().value());
         }
 
-        // TODO: Implement type checking and inference
+        if (varDecl.getType().has_value()) {
+            checkType(*varDecl.getType()->get());
+        }
+
+        // TODO: Implement type inference
     }
 
     void SemanticAnalyzer::checkFunctionDeclaration(const FunctionDeclarationNode& funcDecl, MetadataInfo metadataInfo) {
@@ -860,7 +864,11 @@ namespace vnlc {
             }
         }
 
-        // TODO: Implement return type checking and inference
+        if (funcDecl.getReturnType().has_value()) {
+            checkType(*funcDecl.getReturnType()->get());
+        }
+
+        // TODO: Implement return type inference
 
         context.popScope();
     }
