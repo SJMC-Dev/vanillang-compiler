@@ -24,6 +24,7 @@ Be sure that your working directory is the root directory of this project before
 
 ## Commits
 - Follow conventional commits when you need to write commit messages.
+- Commit source code and test code separately.
 
 ## Explanation
 - Always explain the reason why you make such changes according to `git diff`.
