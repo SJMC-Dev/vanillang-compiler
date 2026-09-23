@@ -68,4 +68,44 @@ namespace vnlc {
         EXPECT_FALSE(forStatement->getLoopVariable().getInitializer().has_value());
     }
 
+    TEST(ParserTest, PropertyDeclarationsUseValueDeclarationNode) {
+        std::stringstream input("class Example {\n    private value: string\n    static count: int = 0\n}\n");
+        Lexer lexer(input);
+        Parser parser(std::move(lexer));
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto module = parser.parse(config);
+        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 1);
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        ASSERT_NE(classDeclaration, nullptr);
+        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 2);
+
+        const auto* instanceProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get());
+        ASSERT_NE(instanceProperty, nullptr);
+        EXPECT_EQ(instanceProperty->getKind(), ValueDeclarationType::Kind::INSTANCE_PROPERTY);
+        EXPECT_EQ(instanceProperty->getContext(), ValueDeclarationType::Context::CLASS);
+        EXPECT_EQ(instanceProperty->getAccessModifier(), ValueDeclarationType::AccessModifier::PRIVATE);
+        EXPECT_TRUE(instanceProperty->getType().has_value());
+        EXPECT_FALSE(instanceProperty->getInitializer().has_value());
+
+        const auto* staticProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get());
+        ASSERT_NE(staticProperty, nullptr);
+        EXPECT_EQ(staticProperty->getKind(), ValueDeclarationType::Kind::STATIC_PROPERTY);
+        EXPECT_EQ(staticProperty->getContext(), ValueDeclarationType::Context::CLASS);
+        EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationType::AccessModifier::PUBLIC);
+        EXPECT_TRUE(staticProperty->getType().has_value());
+        EXPECT_TRUE(staticProperty->getInitializer().has_value());
+    }
+
 } // namespace vnlc
