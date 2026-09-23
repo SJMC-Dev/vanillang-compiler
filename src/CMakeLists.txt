@@ -62,7 +62,6 @@ add_executable(
     semantic/SemanticAnalysisResult.cpp
     semantic/SemanticAnalyzer.cpp
     scope/Scope.cpp
-    type/SemanticType.cpp
     type/PrimitiveType.cpp
     type/CustomizedType.cpp
     type/VoidType.cpp

@@ -4,41 +4,29 @@
 #include "ast/declaration/TypeDeclarationNode.hpp"
 #include "type/CustomizedTypeKind.hpp"
 #include "type/CustomizedTypeOrigin.hpp"
-#include "type/SemanticType.hpp"
+#include "type/Type.hpp"
 #include "vni/import/ImportedIdentifier.hpp"
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace vnlc {
-    class CustomizedType : public SemanticType {
+    class CustomizedType : public Type {
     private:
         CustomizedTypeKind customizedKind;
         CustomizedTypeOrigin origin;
         std::string fullTypeName;
-        std::vector<const SemanticType*> genericArguments;
+        std::vector<const Type*> genericArguments;
 
         const TypeDeclarationNode* localNode;
         const ImportedIdentifier* importedNode;
 
     public:
-        CustomizedType(
-            CustomizedTypeKind customizedKind,
-            std::string_view fullTypeName,
-            std::vector<const SemanticType*>&& genericArguments,
-            bool optional,
-            const TypeDeclarationNode* localNode
-        );
-        CustomizedType(
-            CustomizedTypeKind customizedKind,
-            std::string_view fullTypeName,
-            std::vector<const SemanticType*>&& genericArguments,
-            bool optional,
-            const ImportedIdentifier* importedNode
-        );
+        CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const Type*>&& genericArguments, const TypeDeclarationNode* localNode);
+        CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const Type*>&& genericArguments, const ImportedIdentifier* importedNode);
 
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;
-        [[nodiscard]] const std::vector<const SemanticType*> getGenericArguments() const noexcept;
+        [[nodiscard]] const std::vector<const Type*> getGenericArguments() const noexcept;
         [[nodiscard]] CustomizedTypeKind getCustomizedKind() const noexcept;
         [[nodiscard]] CustomizedTypeOrigin getOrigin() const noexcept;
 

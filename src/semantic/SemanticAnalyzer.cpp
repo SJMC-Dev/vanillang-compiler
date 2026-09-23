@@ -40,7 +40,7 @@
 #include "type/CustomizedTypeKind.hpp"
 #include "type/CustomizedTypeOrigin.hpp"
 #include "type/PrimitiveType.hpp"
-#include "type/SemanticType.hpp"
+#include "type/Type.hpp"
 #include "type/TypeExpressionType.hpp"
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include "vni/import/ImportedAlias.hpp"
@@ -123,16 +123,20 @@ namespace vnlc {
     }
 
     std::string SemanticAnalyzer::getFullTypeNameByTypeNode(const TypeNode& typeNode) noexcept {
+        std::string result = getUnwrappedTypeNameByTypeNode(typeNode);
+        if (!result.empty() && typeNode.hasQuestionMarkSuffix()) {
+            return fmt::format("vanillang.typesystem.Optional<{}>", result);
+        }
+        return result;
+    }
+
+    std::string SemanticAnalyzer::getUnwrappedTypeNameByTypeNode(const TypeNode& typeNode) noexcept {
         static const std::unordered_set<std::string_view> primitiveTypes = {
             "byte", "short", "int", "long", "float", "double", "bool", "string",
         };
 
         if (typeNode.getNameParts().size() == 1 && primitiveTypes.contains(typeNode.getNameParts().back()->getIdentifierString())) {
-            std::string result(typeNode.getNameParts().back()->getIdentifierString());
-            if (typeNode.hasQuestionMarkSuffix()) {
-                result.append("?");
-            }
-            return result;
+            return std::string(typeNode.getNameParts().back()->getIdentifierString());
         } else {
             std::stack<std::string> identifiers;
             std::string result;
@@ -228,10 +232,6 @@ namespace vnlc {
                 args.append(">");
                 result.append(args);
             }
-            if (typeNode.hasQuestionMarkSuffix()) {
-                result.append("?");
-            }
-
             return result;
         }
     }
@@ -354,7 +354,7 @@ namespace vnlc {
         const auto& prefix = memberAccessNode.getObject();
         const auto& member = memberAccessNode.getMember();
 
-        const SemanticType* prefixType = context.getInferredExpressionType(&prefix);
+        const Type* prefixType = context.getInferredExpressionType(&prefix);
         if (const auto* typeExpression = dynamic_cast<const TypeExpressionType*>(prefixType)) {
             prefixType = typeExpression->getExpressedType();
         }
@@ -406,7 +406,7 @@ namespace vnlc {
                 return nullptr;
             }
 
-            const auto* baseType = context.getSemanticTypeByTypeNode(classDecl->getBaseClass().value().get());
+            const auto* baseType = context.getTypeByTypeNode(classDecl->getBaseClass().value().get());
             const auto* baseCustomizedType = dynamic_cast<const CustomizedType*>(baseType);
             if (baseCustomizedType == nullptr) {
                 return nullptr;
@@ -1187,7 +1187,29 @@ namespace vnlc {
         }
     }
 
-    const SemanticType* SemanticAnalyzer::checkType(const TypeNode& type) {
+    const Type* SemanticAnalyzer::checkType(const TypeNode& type) {
+        const Type* resolvedType = checkUnwrappedType(type);
+        if (resolvedType == nullptr) {
+            return nullptr;
+        }
+
+        if (type.hasQuestionMarkSuffix()) {
+            const std::string fullName = fmt::format("vanillang.typesystem.Optional<{}>", resolvedType->getFullTypeName());
+            const CustomizedType* optionalType = context.getCustomizedTypeByFullTypeName(fullName);
+            if (optionalType == nullptr) {
+                auto customizedType =
+                    std::make_unique<CustomizedType>(CustomizedTypeKind::ENUM, fullName, std::vector<const Type*>{ resolvedType }, static_cast<const ImportedIdentifier*>(nullptr));
+                optionalType = customizedType.get();
+                context.registerCustomizedType(std::move(customizedType));
+            }
+            resolvedType = optionalType;
+        }
+
+        context.mapType(&type, resolvedType);
+        return resolvedType;
+    }
+
+    const Type* SemanticAnalyzer::checkUnwrappedType(const TypeNode& type) {
         const auto& nameParts = type.getNameParts();
         const auto isPrimitiveType = [](std::string_view name) {
             static const std::unordered_set<std::string_view> primitiveTypes = {
@@ -1252,7 +1274,7 @@ namespace vnlc {
             return nullptr;
         }
 
-        std::vector<const SemanticType*> genericArgumentTypeNodes;
+        std::vector<const Type*> genericArgumentTypeNodes;
 
         std::size_t errors = context.getErrors().size();
         for (const auto& genericArgument : type.getGenericArguments()) {
@@ -1262,31 +1284,21 @@ namespace vnlc {
             return nullptr;
         }
 
-        const std::string fullName = getFullTypeNameByTypeNode(type);
+        const std::string fullName = getUnwrappedTypeNameByTypeNode(type);
         if (isPrimitiveTypeReference) {
             const auto getPrimitiveType = [](std::string_view name) -> const PrimitiveType* {
                 if (name == "byte") return PrimitiveType::byteType();
-                if (name == "byte?") return PrimitiveType::optionalByteType();
                 if (name == "short") return PrimitiveType::shortType();
-                if (name == "short?") return PrimitiveType::optionalShortType();
                 if (name == "int") return PrimitiveType::intType();
-                if (name == "int?") return PrimitiveType::optionalIntType();
                 if (name == "long") return PrimitiveType::longType();
-                if (name == "long?") return PrimitiveType::optionalLongType();
                 if (name == "float") return PrimitiveType::floatType();
-                if (name == "float?") return PrimitiveType::optionalFloatType();
                 if (name == "double") return PrimitiveType::doubleType();
-                if (name == "double?") return PrimitiveType::optionalDoubleType();
                 if (name == "bool") return PrimitiveType::booleanType();
-                if (name == "bool?") return PrimitiveType::optionalBooleanType();
                 if (name == "string") return PrimitiveType::stringType();
-                if (name == "string?") return PrimitiveType::optionalStringType();
                 return nullptr;
             };
 
-            const SemanticType* semanticType = getPrimitiveType(fullName);
-            context.mapSemanticType(&type, semanticType);
-            return semanticType;
+            return getPrimitiveType(fullName);
         }
 
         const auto customizedKind = [&typeSymbol]() -> std::optional<CustomizedTypeKind> {
@@ -1313,23 +1325,21 @@ namespace vnlc {
 
         const CustomizedType* existingCustomizedType = context.getCustomizedTypeByFullTypeName(fullName);
         if (existingCustomizedType != nullptr) {
-            context.mapSemanticType(&type, existingCustomizedType);
             return existingCustomizedType;
         }
 
         std::unique_ptr<CustomizedType> customizedType;
         if (const auto* localNode = dynamic_cast<const TypeDeclarationNode*>(typeSymbol->getLocalNode())) {
-            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), type.hasQuestionMarkSuffix(), localNode);
+            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), localNode);
         } else if (const auto* importedNode = dynamic_cast<const ImportedIdentifier*>(typeSymbol->getImportedNode())) {
-            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), type.hasQuestionMarkSuffix(), importedNode);
+            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), importedNode);
         } else {
             return nullptr;
         }
 
-        const SemanticType* semanticType = customizedType.get();
+        const Type* resolvedType = customizedType.get();
         context.registerCustomizedType(std::move(customizedType));
-        context.mapSemanticType(&type, semanticType);
-        return semanticType;
+        return resolvedType;
     }
 
     TypeInferenceResult SemanticAnalyzer::inferExpressionType(const ExpressionNode& expression) {
@@ -1351,7 +1361,7 @@ namespace vnlc {
         auto customizedTypes = context.takeCustomizedTypeRegistry();
         auto scopes = context.takeLocalScopeMap();
         auto importedScopes = context.takeImportedScopeMap();
-        auto semanticTypes = context.takeSemanticTypeMap();
+        auto types = context.takeTypeMap();
         auto inferredValueTypes = context.takeInferredValueTypeMap();
         auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
         auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
@@ -1363,7 +1373,7 @@ namespace vnlc {
             std::move(customizedTypes),
             std::move(scopes),
             std::move(importedScopes),
-            std::move(semanticTypes),
+            std::move(types),
             std::move(inferredValueTypes),
             std::move(inferredFunctionReturnTypes),
             std::move(inferredExpressionTypes),

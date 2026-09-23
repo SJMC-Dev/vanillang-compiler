@@ -45,20 +45,20 @@ namespace vnlc {
         customizedTypeRegistry.emplace(customizedType->getFullTypeName(), std::move(customizedType));
     }
 
-    void SemanticContext::mapSemanticType(const TypeNode* typeNode, const SemanticType* semanticType) {
-        semanticTypeMap.emplace(typeNode, semanticType);
+    void SemanticContext::mapType(const TypeNode* typeNode, const Type* type) {
+        typeMap.emplace(typeNode, type);
     }
 
-    void SemanticContext::mapInferredValueType(const ValueDeclarationNode* valueDeclaration, const SemanticType* semanticType) {
-        inferredValueTypeMap.emplace(valueDeclaration, semanticType);
+    void SemanticContext::mapInferredValueType(const ValueDeclarationNode* valueDeclaration, const Type* type) {
+        inferredValueTypeMap.emplace(valueDeclaration, type);
     }
 
-    void SemanticContext::mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const SemanticType* semanticType) {
-        inferredFunctionReturnTypeMap.emplace(functionDeclaration, semanticType);
+    void SemanticContext::mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const Type* type) {
+        inferredFunctionReturnTypeMap.emplace(functionDeclaration, type);
     }
 
-    void SemanticContext::mapInferredExpressionType(const ExpressionNode* expressionNode, const SemanticType* semanticType) {
-        inferredExpressionTypeMap.emplace(expressionNode, semanticType);
+    void SemanticContext::mapInferredExpressionType(const ExpressionNode* expressionNode, const Type* type) {
+        inferredExpressionTypeMap.emplace(expressionNode, type);
     }
 
     void SemanticContext::collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages) {
@@ -88,15 +88,15 @@ namespace vnlc {
         return nullptr;
     }
 
-    const SemanticType* SemanticContext::getSemanticTypeByTypeNode(const TypeNode* typeNode) const {
-        auto it = semanticTypeMap.find(typeNode);
-        if (it != semanticTypeMap.end()) {
+    const Type* SemanticContext::getTypeByTypeNode(const TypeNode* typeNode) const {
+        auto it = typeMap.find(typeNode);
+        if (it != typeMap.end()) {
             return it->second;
         }
         return nullptr;
     }
 
-    const SemanticType* SemanticContext::getInferredExpressionType(const ExpressionNode* expressionNode) const {
+    const Type* SemanticContext::getInferredExpressionType(const ExpressionNode* expressionNode) const {
         auto it = inferredExpressionTypeMap.find(expressionNode);
         if (it != inferredExpressionTypeMap.end()) {
             return it->second;
@@ -280,19 +280,19 @@ namespace vnlc {
         return std::move(customizedTypeRegistry);
     }
 
-    std::unordered_map<const TypeNode*, const SemanticType*> SemanticContext::takeSemanticTypeMap() {
-        return std::move(semanticTypeMap);
+    std::unordered_map<const TypeNode*, const Type*> SemanticContext::takeTypeMap() {
+        return std::move(typeMap);
     }
 
-    std::unordered_map<const ValueDeclarationNode*, const SemanticType*> SemanticContext::takeInferredValueTypeMap() {
+    std::unordered_map<const ValueDeclarationNode*, const Type*> SemanticContext::takeInferredValueTypeMap() {
         return std::move(inferredValueTypeMap);
     }
 
-    std::unordered_map<const FunctionDeclarationNode*, const SemanticType*> SemanticContext::takeInferredFunctionReturnTypeMap() {
+    std::unordered_map<const FunctionDeclarationNode*, const Type*> SemanticContext::takeInferredFunctionReturnTypeMap() {
         return std::move(inferredFunctionReturnTypeMap);
     }
 
-    std::unordered_map<const ExpressionNode*, const SemanticType*> SemanticContext::takeInferredExpressionTypeMap() {
+    std::unordered_map<const ExpressionNode*, const Type*> SemanticContext::takeInferredExpressionTypeMap() {
         return std::move(inferredExpressionTypeMap);
     }
 } // namespace vnlc

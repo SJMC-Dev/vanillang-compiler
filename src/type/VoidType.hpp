@@ -1,13 +1,11 @@
 #ifndef VNLC_VOID_TYPE_HPP
 #define VNLC_VOID_TYPE_HPP
 
-#include "type/SemanticType.hpp"
+#include "type/Type.hpp"
 
 namespace vnlc {
-    class VoidType : public SemanticType {
+    class VoidType : public Type {
     public:
-        VoidType();
-
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;
     };
 } // namespace vnlc

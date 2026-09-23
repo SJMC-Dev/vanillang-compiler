@@ -2,30 +2,16 @@
 #include "type/CustomizedTypeOrigin.hpp"
 
 namespace vnlc {
-    CustomizedType::CustomizedType(
-        CustomizedTypeKind customizedKind,
-        std::string_view fullTypeName,
-        std::vector<const SemanticType*>&& genericArguments,
-        bool optional,
-        const TypeDeclarationNode* localNode
-    )
-        : SemanticType(optional),
-          customizedKind(customizedKind),
+    CustomizedType::CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const Type*>&& genericArguments, const TypeDeclarationNode* localNode)
+        : customizedKind(customizedKind),
           origin(CustomizedTypeOrigin::LOCAL),
           fullTypeName(fullTypeName),
           genericArguments(std::move(genericArguments)),
           localNode(localNode),
           importedNode(nullptr) {}
 
-    CustomizedType::CustomizedType(
-        CustomizedTypeKind customizedKind,
-        std::string_view fullTypeName,
-        std::vector<const SemanticType*>&& genericArguments,
-        bool optional,
-        const ImportedIdentifier* importedNode
-    )
-        : SemanticType(optional),
-          customizedKind(customizedKind),
+    CustomizedType::CustomizedType(CustomizedTypeKind customizedKind, std::string_view fullTypeName, std::vector<const Type*>&& genericArguments, const ImportedIdentifier* importedNode)
+        : customizedKind(customizedKind),
           origin(CustomizedTypeOrigin::IMPORTED),
           fullTypeName(fullTypeName),
           genericArguments(std::move(genericArguments)),
@@ -44,7 +30,7 @@ namespace vnlc {
         return fullTypeName;
     }
 
-    const std::vector<const SemanticType*> CustomizedType::getGenericArguments() const noexcept {
+    const std::vector<const Type*> CustomizedType::getGenericArguments() const noexcept {
         return genericArguments;
     }
 
