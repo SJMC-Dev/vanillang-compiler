@@ -54,9 +54,9 @@ namespace vnlc {
         const Token testToken(TokenType::IDENTIFIER, "test", 1, 1, 0);
         const VoidType testVoidType;
 
-        using TypeMap = std::unordered_map<const TypeNode*, const SemanticType*>;
-        using InferredValueTypeMap = std::unordered_map<const ValueDeclarationNode*, const SemanticType*>;
-        using InferredFunctionReturnTypeMap = std::unordered_map<const FunctionDeclarationNode*, const SemanticType*>;
+        using TypeMap = std::unordered_map<const TypeNode*, const Type*>;
+        using InferredValueTypeMap = std::unordered_map<const ValueDeclarationNode*, const Type*>;
+        using InferredFunctionReturnTypeMap = std::unordered_map<const FunctionDeclarationNode*, const Type*>;
 
         std::unique_ptr<IdentifierNode> makeIdentifier(std::string_view name) {
             return std::make_unique<IdentifierNode>(name, testToken, testToken);
@@ -163,8 +163,8 @@ namespace vnlc {
         }
 
         SemanticAnalysisResult
-        makeSemanticResult(TypeMap&& semanticTypeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
-            return SemanticAnalysisResult({}, {}, {}, {}, {}, {}, std::move(semanticTypeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {}, {});
+        makeSemanticResult(TypeMap&& typeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
+            return SemanticAnalysisResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {}, {});
         }
 
         ImportDeclarationItem makeImportItem(std::initializer_list<std::string_view> prefix) {
@@ -799,8 +799,8 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesClassWithMembersAndModifiers) {
         const auto config = makeGeneratorConfig(testDirectory);
-        CustomizedType baseType(CustomizedTypeKind::CLASS, "package.Base", std::vector<const SemanticType*>{}, false, static_cast<const TypeDeclarationNode*>(nullptr));
-        CustomizedType interfaceType(CustomizedTypeKind::INTERFACE, "package.Readable", std::vector<const SemanticType*>{}, false, static_cast<const TypeDeclarationNode*>(nullptr));
+        CustomizedType baseType(CustomizedTypeKind::CLASS, "package.Base", std::vector<const Type*>{}, static_cast<const TypeDeclarationNode*>(nullptr));
+        CustomizedType interfaceType(CustomizedTypeKind::INTERFACE, "package.Readable", std::vector<const Type*>{}, static_cast<const TypeDeclarationNode*>(nullptr));
         auto baseClass = makeType("Base");
         const auto* baseClassNode = baseClass.get();
         auto implementedInterface = makeType("Readable");
