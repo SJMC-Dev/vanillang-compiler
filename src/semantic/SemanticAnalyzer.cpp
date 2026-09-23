@@ -1198,6 +1198,7 @@ namespace vnlc {
             const CustomizedType* optionalType = context.getCustomizedTypeByFullTypeName(fullName);
             if (optionalType == nullptr) {
                 auto customizedType =
+                    // TODO: replace nullptr with actual imported identifier node after implementing package prelude
                     std::make_unique<CustomizedType>(CustomizedTypeKind::ENUM, fullName, std::vector<const Type*>{ resolvedType }, static_cast<const ImportedIdentifier*>(nullptr));
                 optionalType = customizedType.get();
                 context.registerCustomizedType(std::move(customizedType));
