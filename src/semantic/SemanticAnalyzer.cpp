@@ -5,9 +5,21 @@
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/TypeDeclarationNode.hpp"
+#include "ast/expression/BinaryExpressionNode.hpp"
+#include "ast/expression/ConditionalExpressionNode.hpp"
+#include "ast/expression/DictLiteralExpressionNode.hpp"
+#include "ast/expression/FunctionCallExpressionNode.hpp"
 #include "ast/expression/IdentifierExpressionNode.hpp"
+#include "ast/expression/ListLikeLiteralExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
+#include "ast/expression/RangeExpressionNode.hpp"
+#include "ast/expression/SelectorLiteralExpressionNode.hpp"
+#include "ast/expression/SimpleLiteralExpressionNode.hpp"
+#include "ast/expression/StringLiteralExpressionNode.hpp"
+#include "ast/expression/SubscriptExpressionNode.hpp"
 #include "ast/expression/SuperExpressionNode.hpp"
+#include "ast/expression/ThisExpressionNode.hpp"
+#include "ast/expression/UnaryExpressionNode.hpp"
 #include "ast/statement/BlockStatementNode.hpp"
 #include "ast/statement/BreakStatementNode.hpp"
 #include "ast/statement/ContinueStatementNode.hpp"
@@ -1103,7 +1115,76 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkExpression(const ExpressionNode& expression) {
-        // TODO: Implement expression checking process
+        if (auto* expr = dynamic_cast<const BinaryExpressionNode*>(&expression)) {
+            // TODO: Implement binary expression checking
+            checkExpression(expr->getLeft());
+            checkExpression(expr->getRight());
+        } else if (auto* expr = dynamic_cast<const ConditionalExpressionNode*>(&expression)) {
+            // TODO: Implement conditional expression checking
+            checkExpression(expr->getCondition());
+            checkExpression(expr->getThenExpression());
+            checkExpression(expr->getElseExpression());
+        } else if (auto* expr = dynamic_cast<const DictLiteralExpressionNode*>(&expression)) {
+            // TODO: Implement dictionary literal expression checking
+            for (const auto& entry : expr->getEntries()) {
+                checkExpression(*entry.second);
+            }
+        } else if (auto* expr = dynamic_cast<const FunctionCallExpressionNode*>(&expression)) {
+            // TODO: Implement function call expression checking
+            checkExpression(expr->getCallee());
+            for (const auto& argument : expr->getArguments()) {
+                checkExpression(*argument);
+            }
+            if (expr->getContext().has_value()) {
+                checkExpression(*expr->getContext().value());
+            }
+        } else if (auto* expr = dynamic_cast<const IdentifierExpressionNode*>(&expression)) {
+            // TODO: Implement identifier expression checking
+        } else if (auto* expr = dynamic_cast<const ListLikeLiteralExpressionNode*>(&expression)) {
+            // TODO: Implement list-like literal expression checking
+            for (const auto& element : expr->getElements()) {
+                checkExpression(*element);
+            }
+        } else if (auto* expr = dynamic_cast<const MemberAccessExpressionNode*>(&expression)) {
+            // TODO: Implement member access expression checking
+            checkExpression(expr->getObject());
+            checkExpression(expr->getMember());
+        } else if (auto* expr = dynamic_cast<const RangeExpressionNode*>(&expression)) {
+            // TODO: Implement range expression checking
+            if (expr->getStart().has_value()) {
+                checkExpression(*expr->getStart().value());
+            }
+            if (expr->getEnd().has_value()) {
+                checkExpression(*expr->getEnd().value());
+            }
+        } else if (auto* expr = dynamic_cast<const SelectorLiteralExpressionNode*>(&expression)) {
+            // TODO: Implement selector literal expression checking
+            for (const auto& argument : expr->getArguments()) {
+                checkExpression(*argument.second);
+            }
+        } else if (auto* expr = dynamic_cast<const SimpleLiteralExpressionNode*>(&expression)) {
+            // TODO: Implement simple literal expression checking
+        } else if (auto* expr = dynamic_cast<const StringLiteralExpressionNode*>(&expression)) {
+            // TODO: Implement string literal expression checking
+            for (const auto& part : expr->getParts()) {
+                if (const auto* nestedExpression = std::get_if<std::unique_ptr<ExpressionNode>>(&part)) {
+                    checkExpression(**nestedExpression);
+                }
+            }
+        } else if (auto* expr = dynamic_cast<const SubscriptExpressionNode*>(&expression)) {
+            // TODO: Implement subscript expression checking
+            checkExpression(expr->getObject());
+            checkExpression(expr->getIndex());
+        } else if (auto* expr = dynamic_cast<const SuperExpressionNode*>(&expression)) {
+            // TODO: Implement super expression checking
+        } else if (auto* expr = dynamic_cast<const ThisExpressionNode*>(&expression)) {
+            // TODO: Implement this expression checking
+        } else if (auto* expr = dynamic_cast<const UnaryExpressionNode*>(&expression)) {
+            // TODO: Implement unary expression checking
+            checkExpression(expr->getOperand());
+        } else {
+            context.reportError(expression, "Unknown expression type");
+        }
     }
 
     const SemanticType* SemanticAnalyzer::checkType(const TypeNode& type) {
