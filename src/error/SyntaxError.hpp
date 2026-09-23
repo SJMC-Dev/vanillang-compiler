@@ -7,7 +7,7 @@
 namespace vnlc {
     class SyntaxError : public Error {
     public:
-        SyntaxError(std::string_view message, int line, int column) : Error(fmt::format("Syntax error at line {}, column {}: {}", line, column, message)) {}
+        SyntaxError(std::string_view message, std::size_t line, std::size_t column) : Error(fmt::format("Syntax error at line {}, column {}: {}", line, column, message)) {}
     };
 } // namespace vnlc
 
