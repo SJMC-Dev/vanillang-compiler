@@ -1173,8 +1173,12 @@ namespace vnlc {
 
         std::vector<const SemanticType*> genericArgumentTypeNodes;
 
+        std::size_t errors = context.getErrors().size();
         for (const auto& genericArgument : type.getGenericArguments()) {
             genericArgumentTypeNodes.emplace_back(checkType(*genericArgument));
+        }
+        if (context.getErrors().size() > errors) {
+            return nullptr;
         }
 
         const std::string fullName = getFullTypeNameByTypeNode(type);
