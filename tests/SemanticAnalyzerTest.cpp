@@ -3,6 +3,7 @@
 #include "ast/statement/ExpressionStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "collector/Collector.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
@@ -11,8 +12,6 @@
 #include "type/CustomizedTypeKind.hpp"
 #include "type/PrimitiveType.hpp"
 #include "type/TypeExpressionType.hpp"
-#include "vni/import/ImportedAlias.hpp"
-#include "vni/import/ImportedLet.hpp"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -21,6 +20,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -51,11 +51,19 @@ namespace vnlc {
             return parser.parse(config);
         }
 
+        CollectionResult collectModule(std::string_view source, const Config& config) {
+            std::stringstream input{ std::string(source) };
+            Lexer lexer(input);
+            Collector collector(std::move(lexer));
+            return collector.collect(config);
+        }
+
     } // namespace
 
     class SemanticAnalyzerAccessTest : public testing::Test {
     protected:
         const Config config = makeConfig("access.vnl");
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         std::unique_ptr<ModuleNode> module;
         std::unique_ptr<ClassDeclarationNode> baseClass;
         std::unique_ptr<ClassDeclarationNode> privateShadow;
@@ -152,7 +160,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
                 token,
                 token
             );
-            analyzer = std::make_unique<SemanticAnalyzer>(*module);
+            analyzer = std::make_unique<SemanticAnalyzer>(*module, imports);
             auto& context = analyzer->context;
             context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
             std::vector<const ClassDeclarationNode*> classes{ baseClass.get(), privateShadow.get() };
@@ -444,7 +452,8 @@ type Identity<T> = T
         const auto config = makeConfig("generic_arguments.vnl");
         auto module = parseModule(source, config);
 
-        SemanticAnalyzer analyzer(*module);
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
 
         ASSERT_FALSE(result.hasErrors());
@@ -459,7 +468,8 @@ type ExtraArgument = Box<Missing, Missing>
         const auto config = makeConfig("generic_argument_errors.vnl");
         auto module = parseModule(source, config);
 
-        SemanticAnalyzer analyzer(*module);
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
 
         ASSERT_TRUE(result.hasErrors());
@@ -475,7 +485,8 @@ type Invalid = Missing<Unknown>
         const auto config = makeConfig("invalid_generic_type.vnl");
         auto module = parseModule(source, config);
 
-        SemanticAnalyzer analyzer(*module);
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
 
         ASSERT_TRUE(result.hasErrors());
@@ -492,7 +503,8 @@ func test() {
         const auto config = makeConfig("primitive_type_expression.vnl");
         auto module = parseModule(source, config);
 
-        SemanticAnalyzer analyzer(*module);
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
 
         ASSERT_FALSE(result.hasErrors());
@@ -576,6 +588,7 @@ func test() {
         std::filesystem::path testDirectory;
         Config config = makeConfig("imports.vnl");
         std::unique_ptr<ModuleNode> module;
+        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
 
         void SetUp() override {
             const auto* testInfo = testing::UnitTest::GetInstance()->current_test_info();
@@ -627,15 +640,28 @@ func test() {
 })");
         }
 
-        SemanticAnalysisResult analyze(std::string_view source) {
+        void prepareImports(std::string_view source) {
+            auto collection = collectModule(source, config);
+            EXPECT_TRUE(collection.getErrors().empty());
+            imports = collection.takeImports();
+        }
+
+        const ImportedPackage* getImportedPackageByName(std::string_view name) const {
+            const auto it = imports.find(std::string(name));
+            return it == imports.end() ? nullptr : it->second.get();
+        }
+
+        SemanticAnalysisResult analyze(std::string_view source, std::optional<std::string_view> importSource = std::nullopt) {
+            prepareImports(importSource.value_or(source));
             module = parseModule(source, config);
-            SemanticAnalyzer analyzer(*module);
+            SemanticAnalyzer analyzer(*module, imports);
             return analyzer.analyze(config);
         }
 
         template <typename Callback> void withAliasType(std::string_view source, Callback&& callback) {
+            prepareImports(source);
             module = parseModule(source, config);
-            SemanticAnalyzer analyzer(*module);
+            SemanticAnalyzer analyzer(*module, imports);
             auto& context = analyzer.context;
             context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
             for (const auto& importDecl : module->getImportDeclarations()) {
@@ -985,7 +1011,7 @@ func test() {
         const auto* localScope = result.getScopeByAstNode(*module);
         ASSERT_NE(localScope, nullptr);
         EXPECT_EQ(localScope->getOrigin(), ScopeOrigin::LOCAL);
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1087,7 +1113,7 @@ func test() {
         ASSERT_NE(external, nullptr);
         EXPECT_EQ(external->getKind(), SymbolKind::IMPORT_ALIAS);
         EXPECT_EQ(result.getScopeByImportedNode(*external->getImportedNode()), nullptr);
-        const auto* extraPackage = result.getImportedPackageByName("extra");
+        const auto* extraPackage = getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         EXPECT_EQ(result.getScopeByImportedNode(*extraPackage), nullptr);
         for (const auto name : { "api", "Box", "T", "apply", "input", "Ready", "payload", "extra", "External" }) {
@@ -1137,7 +1163,7 @@ func test() {
             const auto* node = findImportedNode(result, name);
             ASSERT_NE(node, nullptr);
             EXPECT_EQ(result.getScopeByImportedNode(*node), nullptr);
-            const auto* package = result.getImportedPackageByName("pkg");
+            const auto* package = getImportedPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             EXPECT_EQ(result.getScopeByImportedNode(*package), nullptr);
         }
@@ -1185,10 +1211,10 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, UpdatesExistingImportedPackageScopesWhenNewModulesAreLoaded) {
+    TEST_F(SemanticAnalyzerImportTest, DeclaresScopesForModulesAcrossSeparateImports) {
         const auto result = analyze("import pkg.api as api\nimport pkg.sub.other.flag\n");
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1207,13 +1233,13 @@ func test() {
         EXPECT_EQ(otherScope->findParent(), subScope);
     }
 
-    TEST_F(SemanticAnalyzerImportTest, UpdatesExistingScopesWhenIndirectImportsExtendAnotherPackage) {
+    TEST_F(SemanticAnalyzerImportTest, DeclaresScopesForIndirectModulesInAnImportedPackage) {
         writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"extra.types.Remote"}})");
         writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":["T"],"originalType":"T"}})");
         const auto result = analyze("import extra.tools as tools\nimport pkg.api.value\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("extra");
+        const auto* package = getImportedPackageByName("extra");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1239,29 +1265,22 @@ func test() {
         EXPECT_EQ(localScope->lookupLocal("Remote"), nullptr);
     }
 
-    TEST_F(SemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMemberAndRetainsItsModule) {
+    TEST_F(SemanticAnalyzerImportTest, DeclaresOnlyTheTerminalMember) {
         const auto result = analyze("import pkg.api.value\nlet pkg = 0\nlet api = 0\nexport value\n");
 
         ASSERT_FALSE(result.hasErrors());
         EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
         EXPECT_EQ(findImportedNode(result, "api"), nullptr);
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
-        EXPECT_EQ(package->getName(), "pkg");
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(importedModule->getName(), "api");
-        EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
-        EXPECT_NE(importedModule->getIdentifierByName("count"), nullptr);
         const auto* scope = result.getScopeByAstNode(*module);
         ASSERT_NE(scope, nullptr);
         EXPECT_EQ(scope->lookupLocal("count"), nullptr);
         const auto* member = importedModule->getIdentifierByName("value");
         ASSERT_NE(member, nullptr);
         EXPECT_EQ(findImportedNode(result, "value"), member);
-        const auto* value = dynamic_cast<const ImportedLet*>(member);
-        ASSERT_NE(value, nullptr);
-        EXPECT_EQ(value->getType(), "int");
     }
 
     TEST_F(SemanticAnalyzerImportTest, DoesNotDeclarePathPrefixesInTheModuleScope) {
@@ -1277,13 +1296,10 @@ func test() {
         const auto result = analyze("import pkg.api\nlet pkg = 0\nlet value = 0\nexport api\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
-        EXPECT_NE(importedModule->getIdentifierByName("value"), nullptr);
-        EXPECT_NE(importedModule->getIdentifierByName("count"), nullptr);
         EXPECT_EQ(findImportedNode(result, "api"), importedModule);
         EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
         EXPECT_EQ(findImportedNode(result, "value"), nullptr);
@@ -1292,7 +1308,7 @@ func test() {
         EXPECT_EQ(scope->lookupLocal("count"), nullptr);
     }
 
-    TEST_F(SemanticAnalyzerImportTest, RegistersEveryIdentifierKindAgainstTheCompleteModuleTree) {
+    TEST_F(SemanticAnalyzerImportTest, DeclaresImportedSymbolsWithTheirKindsAndOriginalTargets) {
         writeFile(
             "dependency_source/api.vni",
             R"({
@@ -1322,11 +1338,10 @@ func test() {
                 const auto result = analyze(source);
 
                 ASSERT_FALSE(result.hasErrors());
-                const auto* package = result.getImportedPackageByName("pkg");
+                const auto* package = getImportedPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* importedModule = package->getModuleByName("api");
                 ASSERT_NE(importedModule, nullptr);
-                EXPECT_EQ(importedModule->getIdentifiers().size(), identifiers.size());
                 const auto* scope = result.getScopeByAstNode(*module);
                 ASSERT_NE(scope, nullptr);
                 EXPECT_EQ(scope->lookupLocal("pkg"), nullptr);
@@ -1338,17 +1353,15 @@ func test() {
                 EXPECT_EQ(symbol->getOrigin(), SymbolOrigin::IMPORTED);
                 EXPECT_EQ(symbol->getLocalNode(), nullptr);
                 if (name == "External") {
-                    const auto* extraPackage = result.getImportedPackageByName("extra");
+                    const auto* extraPackage = getImportedPackageByName("extra");
                     ASSERT_NE(extraPackage, nullptr);
                     const auto* toolsModule = extraPackage->getModuleByName("tools");
                     ASSERT_NE(toolsModule, nullptr);
                     EXPECT_EQ(symbol->getImportedNode(), toolsModule->getIdentifierByName("enabled"));
-                    EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName(name)), nullptr);
                 } else {
                     EXPECT_EQ(symbol->getImportedNode(), importedModule->getIdentifierByName(name));
                 }
                 for (const auto& [otherName, otherKind] : identifiers) {
-                    EXPECT_NE(importedModule->getIdentifierByName(otherName), nullptr);
                     if (aliased || otherName != name) {
                         EXPECT_EQ(scope->lookupLocal(otherName), nullptr);
                     }
@@ -1357,7 +1370,7 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, ReusesIdentifierNodesAcrossModuleAndPackageImports) {
+    TEST_F(SemanticAnalyzerImportTest, BindsRepeatedImportsToTheSameTargets) {
         for (const auto source : {
                  "import pkg.api.value\nimport pkg.api.count\nimport pkg.api.value as renamed\nimport pkg.api as library\nimport pkg as package\n",
                  "import pkg as package\nimport pkg.api as library\nimport pkg.api.value\nimport pkg.api.count\nimport pkg.api.value as renamed\n",
@@ -1368,11 +1381,10 @@ func test() {
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = result.getImportedPackageByName("pkg");
+            const auto* package = getImportedPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             const auto* importedModule = package->getModuleByName("api");
             ASSERT_NE(importedModule, nullptr);
-            EXPECT_EQ(importedModule->getIdentifiers().size(), 2);
             const auto* value = importedModule->getIdentifierByName("value");
             const auto* count = importedModule->getIdentifierByName("count");
             ASSERT_NE(value, nullptr);
@@ -1389,7 +1401,7 @@ func test() {
         const auto result = analyze("import pkg.api.value as renamed\nimport pkg.api as library\nlet value = 0\nlet api = 0\nlet pkg = 0\nexport renamed, library\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1445,7 +1457,7 @@ func test() {
             const auto result = analyze(std::string(source) + "type ClassResult = selected<int>\ntype AliasResult = Alias<int>\n");
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = result.getImportedPackageByName("extra");
+            const auto* package = getImportedPackageByName("extra");
             ASSERT_NE(package, nullptr);
             const auto* typesModule = package->getModuleByName("types");
             ASSERT_NE(typesModule, nullptr);
@@ -1481,7 +1493,7 @@ func test() {
         const auto result = analyze("import pkg.{api.{self as m, value as v}, sub.other}\nlet pkg = 0\nlet api = 0\nlet sub = 0\nlet value = 0\nexport m, v, other\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1506,38 +1518,23 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, ImportsCompletePackagesAndPackageSelf) {
+    TEST_F(SemanticAnalyzerImportTest, BindsPackagesAndPackageSelf) {
         for (const auto source : { "import pkg as library\nexport library\n", "import pkg.{self as library}\nexport library\n" }) {
             SCOPED_TRACE(source);
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = result.getImportedPackageByName("pkg");
+            const auto* package = getImportedPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             EXPECT_EQ(findImportedNode(result, "library"), package);
-            EXPECT_NE(package->getModuleByName("api"), nullptr);
-            const auto* subPackage = package->getSubPackageByName("sub");
-            ASSERT_NE(subPackage, nullptr);
-            EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
-            EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
             EXPECT_EQ(findImportedNode(result, "api"), nullptr);
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, RetainsMultipleModulesAndPackagesAfterTheAnalyzerIsDestroyed) {
+    TEST_F(SemanticAnalyzerImportTest, RetainsImportedBindingsAfterTheAnalyzerIsDestroyed) {
         const auto result = analyze("import pkg.api.value\nimport pkg.sub.other.flag\nimport pkg.sub.second.caption\nimport extra.tools.enabled\nexport value, flag, caption, enabled\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
-        ASSERT_NE(package, nullptr);
-        EXPECT_NE(package->getModuleByName("api"), nullptr);
-        const auto* subPackage = package->getSubPackageByName("sub");
-        ASSERT_NE(subPackage, nullptr);
-        EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
-        EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
-        const auto* extraPackage = result.getImportedPackageByName("extra");
-        ASSERT_NE(extraPackage, nullptr);
-        EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
         for (const auto name : { "value", "flag", "caption", "enabled" }) {
             const auto* binding = findImportedNode(result, name);
             ASSERT_NE(binding, nullptr);
@@ -1545,24 +1542,17 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, LoadsIndirectImportsWithoutDeclaringTheirBindings) {
+    TEST_F(SemanticAnalyzerImportTest, DoesNotDeclareIndirectImportBindings) {
         writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"External":{"category":"imported","source":"extra.tools.enabled"}})");
 
         const auto result = analyze("import pkg.api.value\nlet enabled = 0\nlet tools = 0\nlet extra = 0\nexport value, enabled, tools, extra\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
         EXPECT_EQ(findImportedNode(result, "value"), importedModule->getIdentifierByName("value"));
-        const auto* extraPackage = result.getImportedPackageByName("extra");
-        ASSERT_NE(extraPackage, nullptr);
-        const auto* toolsModule = extraPackage->getModuleByName("tools");
-        ASSERT_NE(toolsModule, nullptr);
-        const auto* enabled = dynamic_cast<const ImportedLet*>(toolsModule->getIdentifierByName("enabled"));
-        ASSERT_NE(enabled, nullptr);
-        EXPECT_EQ(enabled->getType(), "bool");
         const auto* scope = result.getScopeByAstNode(*module);
         ASSERT_NE(scope, nullptr);
         EXPECT_EQ(scope->lookupLocal("External"), nullptr);
@@ -1574,102 +1564,14 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, ScansTypeDependenciesInEveryNestedIdentifierCollection) {
-        writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":[],"originalType":"pkg.sub.other.Target"}})");
-        writeFile("dependency_source/sub/other.vni", R"({"Target":{"category":"typealias","genericParameters":[],"originalType":"int"}})");
-        for (
-            const auto contents : {
-                R"({"category":"let","type":"extra.types.Remote"})",
-                R"({"category":"func","returnType":"extra.types.Remote","native":false,"parameters":{}})",
-                R"({"category":"func","returnType":"void","native":false,"parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}})",
-                R"({"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}})",
-                R"({"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}})",
-                R"({"category":"class","genericParameters":[],"properties":{},"methods":{},"baseClass":"extra.types.Remote","implementedInterfaces":[],"final":false})",
-                R"({"category":"class","genericParameters":[],"properties":{},"methods":{},"baseClass":null,"implementedInterfaces":["extra.types.Remote"],"final":false})",
-                R"({"category":"class","genericParameters":[],"properties":{"property":{"category":"property","type":"extra.types.Remote","static":false,"accessModifier":"public"}},"methods":{},"baseClass":null,"implementedInterfaces":[],"final":false})",
-                R"({"category":"class","genericParameters":[],"properties":{},"methods":{"method":{"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}}},"baseClass":null,"implementedInterfaces":[],"final":false})",
-                R"({"category":"class","genericParameters":[],"properties":{},"methods":{"method":{"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}}},"baseClass":null,"implementedInterfaces":[],"final":false})",
-                R"({"category":"interface","genericParameters":[],"methods":{"method":{"category":"method","returnType":"extra.types.Remote","native":false,"static":false,"accessModifier":"public","parameters":{}}}})",
-                R"({"category":"interface","genericParameters":[],"methods":{"method":{"category":"method","returnType":"void","native":false,"static":false,"accessModifier":"public","parameters":{"input":{"category":"parameter","type":"extra.types.Remote"}}}}})",
-                R"({"category":"enum","genericParameters":[],"members":{"member":{"category":"enummember","associatedValues":{"value":{"category":"enumvalue","type":"extra.types.Remote"}}}}})",
-                R"({"category":"enummember","associatedValues":{"value":{"category":"enumvalue","type":"extra.types.Remote"}}})",
-                R"({"category":"typealias","genericParameters":[],"originalType":"extra.types.Remote"})",
-                R"({"category":"property","type":"extra.types.Remote","static":false,"accessModifier":"public"})",
-                R"({"category":"parameter","type":"extra.types.Remote"})",
-            }) {
-            SCOPED_TRACE(contents);
-            writeFile("dependency_source/api.vni", std::string(R"({"value":{"category":"let","type":"int"},"holder":)") + contents + "}");
-
-            const auto result = analyze("import pkg.api.value\nexport value\n");
-
-            ASSERT_FALSE(result.hasErrors());
-            const auto* extraPackage = result.getImportedPackageByName("extra");
-            ASSERT_NE(extraPackage, nullptr);
-            const auto* typesModule = extraPackage->getModuleByName("types");
-            ASSERT_NE(typesModule, nullptr);
-            EXPECT_NE(typesModule->getIdentifierByName("Remote"), nullptr);
-            const auto* package = result.getImportedPackageByName("pkg");
-            ASSERT_NE(package, nullptr);
-            const auto* subPackage = package->getSubPackageByName("sub");
-            ASSERT_NE(subPackage, nullptr);
-            const auto* otherModule = subPackage->getModuleByName("other");
-            ASSERT_NE(otherModule, nullptr);
-            EXPECT_NE(otherModule->getIdentifierByName("Target"), nullptr);
-            const auto* scope = result.getScopeByAstNode(*module);
-            ASSERT_NE(scope, nullptr);
-            EXPECT_NE(scope->lookupLocal("value"), nullptr);
-            for (const auto name : { "holder", "Remote", "Target", "types", "other", "extra" }) {
-                EXPECT_EQ(scope->lookupLocal(name), nullptr);
-            }
-        }
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, LoadsEveryQualifiedTypeInGenericArgumentsAndNullableTypes) {
-        writeFile("dependency_source/api.vni", R"({"Alias":{"category":"typealias","genericParameters":["T"],"originalType":"pkg.sub.other.Pair<T, List<extra.types.Remote?>>?"}})");
-        writeFile("dependency_source/sub/other.vni", R"({"Pair":{"category":"typealias","genericParameters":["A","B"],"originalType":"A"}})");
-        writeFile("another_source/types.vni", R"({"Remote":{"category":"typealias","genericParameters":[],"originalType":"int"}})");
-
-        const auto result = analyze("import pkg.api.Alias\nexport Alias\n");
-
-        ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
-        ASSERT_NE(package, nullptr);
-        const auto* subPackage = package->getSubPackageByName("sub");
-        ASSERT_NE(subPackage, nullptr);
-        const auto* otherModule = subPackage->getModuleByName("other");
-        ASSERT_NE(otherModule, nullptr);
-        EXPECT_NE(otherModule->getIdentifierByName("Pair"), nullptr);
-        const auto* extraPackage = result.getImportedPackageByName("extra");
-        ASSERT_NE(extraPackage, nullptr);
-        const auto* typesModule = extraPackage->getModuleByName("types");
-        ASSERT_NE(typesModule, nullptr);
-        EXPECT_NE(typesModule->getIdentifierByName("Remote"), nullptr);
-        const auto* scope = result.getScopeByAstNode(*module);
-        ASSERT_NE(scope, nullptr);
-        for (const auto name : { "Pair", "Remote", "T", "A", "B", "List" }) {
-            EXPECT_EQ(scope->lookupLocal(name), nullptr);
-        }
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, FollowsTransitiveRepeatedAndCyclicIndirectImports) {
+    TEST_F(SemanticAnalyzerImportTest, BindsReexportedNamesThroughRepeatedAndCyclicModuleDependencies) {
         writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"pkg.sub.other.bridge"},"repeated":{"category":"imported","source":"pkg.sub.other.bridge"}})");
         writeFile("dependency_source/sub/other.vni", R"({"bridge":{"category":"imported","source":"extra.tools.enabled"},"back":{"category":"imported","source":"pkg.api.External"}})");
 
         const auto result = analyze("import pkg.api.External\nexport External\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
-        ASSERT_NE(package, nullptr);
-        const auto* importedModule = package->getModuleByName("api");
-        ASSERT_NE(importedModule, nullptr);
-        EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName("External")), nullptr);
-        const auto* subPackage = package->getSubPackageByName("sub");
-        ASSERT_NE(subPackage, nullptr);
-        const auto* otherModule = subPackage->getModuleByName("other");
-        ASSERT_NE(otherModule, nullptr);
-        EXPECT_NE(otherModule->getIdentifierByName("bridge"), nullptr);
-        EXPECT_NE(otherModule->getIdentifierByName("back"), nullptr);
-        const auto* extraPackage = result.getImportedPackageByName("extra");
+        const auto* extraPackage = getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         const auto* toolsModule = extraPackage->getModuleByName("tools");
         ASSERT_NE(toolsModule, nullptr);
@@ -1684,7 +1586,7 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, LoadsPackagesAndModulesReferencedByIndirectImports) {
+    TEST_F(SemanticAnalyzerImportTest, BindsReexportedPackagesAndModules) {
         for (const auto source : { "extra", "extra.tools", "pkg.sub" }) {
             SCOPED_TRACE(source);
             writeFile("dependency_source/api.vni", std::string(R"({"External":{"category":"imported","source":")") + source + R"("}})");
@@ -1694,17 +1596,14 @@ func test() {
             ASSERT_FALSE(result.hasErrors());
             const ImportedItem* target = nullptr;
             if (std::string_view(source) == "pkg.sub") {
-                const auto* package = result.getImportedPackageByName("pkg");
+                const auto* package = getImportedPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* subPackage = package->getSubPackageByName("sub");
                 ASSERT_NE(subPackage, nullptr);
                 target = subPackage;
-                EXPECT_NE(subPackage->getModuleByName("other"), nullptr);
-                EXPECT_NE(subPackage->getModuleByName("second"), nullptr);
             } else {
-                const auto* extraPackage = result.getImportedPackageByName("extra");
+                const auto* extraPackage = getImportedPackageByName("extra");
                 ASSERT_NE(extraPackage, nullptr);
-                EXPECT_NE(extraPackage->getModuleByName("tools"), nullptr);
                 target = std::string_view(source) == "extra" ? static_cast<const ImportedItem*>(extraPackage) : extraPackage->getModuleByName("tools");
             }
             const auto* scope = result.getScopeByAstNode(*module);
@@ -1720,7 +1619,7 @@ func test() {
             if (std::string_view(source) == "extra") {
                 EXPECT_EQ(targetScope->findParent(), nullptr);
             } else {
-                const auto* parentPackage = result.getImportedPackageByName(std::string_view(source) == "pkg.sub" ? "pkg" : "extra");
+                const auto* parentPackage = getImportedPackageByName(std::string_view(source) == "pkg.sub" ? "pkg" : "extra");
                 ASSERT_NE(parentPackage, nullptr);
                 const auto* parentScope = result.getScopeByImportedNode(*parentPackage);
                 ASSERT_NE(parentScope, nullptr);
@@ -1744,17 +1643,14 @@ func test() {
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = result.getImportedPackageByName("pkg");
+            const auto* package = getImportedPackageByName("pkg");
             ASSERT_NE(package, nullptr);
-            const auto* importedModule = package->getModuleByName("api");
-            ASSERT_NE(importedModule, nullptr);
-            EXPECT_NE(dynamic_cast<const ImportedAlias*>(importedModule->getIdentifierByName("External")), nullptr);
             const auto* subPackage = package->getSubPackageByName("sub");
             ASSERT_NE(subPackage, nullptr);
             const auto* otherModule = subPackage->getModuleByName("other");
             ASSERT_NE(otherModule, nullptr);
             EXPECT_EQ(findImportedNode(result, "flag"), otherModule->getIdentifierByName("flag"));
-            const auto* extraPackage = result.getImportedPackageByName("extra");
+            const auto* extraPackage = getImportedPackageByName("extra");
             ASSERT_NE(extraPackage, nullptr);
             const auto* toolsModule = extraPackage->getModuleByName("tools");
             ASSERT_NE(toolsModule, nullptr);
@@ -1766,26 +1662,6 @@ func test() {
             const auto* external = scope->lookupLocal("External");
             ASSERT_NE(external, nullptr);
             EXPECT_EQ(external->getKind(), SymbolKind::VARIABLE);
-        }
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, DoesNotCommitImportsWithMissingOrMalformedIndirectDependencies) {
-        writeFile("another_source/broken.vni", "invalid json");
-        for (const auto source : { "absent.tools.enabled", "extra.missing.enabled", "extra.broken.enabled", "", ".extra.tools.enabled", "extra..tools.enabled", "extra.tools.enabled." }) {
-            SCOPED_TRACE(source);
-            writeFile(
-                "dependency_source/api.vni",
-                std::string(R"({"External":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":")") + source + R"("}})"
-            );
-            std::optional<SemanticAnalysisResult> result;
-            ASSERT_NO_THROW(result.emplace(analyze("import pkg.api.External\nlet External = 0\n")));
-
-            ASSERT_TRUE(result->hasErrors());
-            ASSERT_EQ(result->getErrors().size(), 1);
-            EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
-            EXPECT_EQ(result->getImportedPackageByName("extra"), nullptr);
-            EXPECT_EQ(result->getImportedPackageByName("absent"), nullptr);
-            EXPECT_EQ(findImportedNode(*result, "External"), nullptr);
         }
     }
 
@@ -1808,15 +1684,14 @@ func test() {
 
                 ASSERT_TRUE(result->hasErrors());
                 for (const auto& error : result->getErrors()) {
+                    EXPECT_EQ(error.getPhase(), DiagnosticPhase::SEMANTIC);
                     EXPECT_TRUE(error.getMessage().starts_with(diagnosticPrefix)) << error.getMessage();
                 }
-                const auto* package = result->getImportedPackageByName("pkg");
+                const auto* package = getImportedPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* api = package->getModuleByName("api");
                 ASSERT_NE(api, nullptr);
                 EXPECT_EQ(findImportedNode(*result, "kept"), api->getIdentifierByName("value"));
-                EXPECT_EQ(package->getModuleByName("broken"), nullptr);
-                EXPECT_EQ(result->getImportedPackageByName("extra"), nullptr);
                 for (const auto name : { "valid", "broken", "link" }) {
                     EXPECT_EQ(findImportedNode(*result, name), nullptr);
                 }
@@ -1824,25 +1699,7 @@ func test() {
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, FailedIndirectImportsPreserveEarlierBindingsWithoutCommittingDependencies) {
-        writeFile("dependency_source/broken.vni", R"({"External":{"category":"imported","source":"extra.tools.enabled"},"broken":{"category":"imported","source":"pkg.sub.missing.value"}})");
-
-        const auto result = analyze("import pkg.api as kept\nimport pkg.broken as staged\nlet staged = 0\nexport kept\n");
-
-        ASSERT_TRUE(result.hasErrors());
-        ASSERT_EQ(result.getErrors().size(), 1);
-        const auto* package = result.getImportedPackageByName("pkg");
-        ASSERT_NE(package, nullptr);
-        const auto* importedModule = package->getModuleByName("api");
-        ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(findImportedNode(result, "kept"), importedModule);
-        EXPECT_EQ(package->getModuleByName("broken"), nullptr);
-        EXPECT_EQ(package->getSubPackageByName("sub"), nullptr);
-        EXPECT_EQ(result.getImportedPackageByName("extra"), nullptr);
-        EXPECT_EQ(findImportedNode(result, "staged"), nullptr);
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, ReportsInvalidImportsWithoutRetainingPartialTrees) {
+    TEST_F(SemanticAnalyzerImportTest, ReportsInvalidImportsAsSemanticErrors) {
         for (const auto source : {
                  "import absent.api\n",
                  "import pkg.absent\n",
@@ -1855,55 +1712,19 @@ func test() {
              }) {
             SCOPED_TRACE(source);
             std::optional<SemanticAnalysisResult> result;
-            ASSERT_NO_THROW(result.emplace(analyze(source)));
+            ASSERT_NO_THROW(result.emplace(analyze(source, "import pkg\n")));
 
             ASSERT_TRUE(result->hasErrors());
-            EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
-            EXPECT_EQ(result->getImportedPackageByName("absent"), nullptr);
-            EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
-            EXPECT_EQ(findImportedNode(*result, "value"), nullptr);
+            for (const auto& error : result->getErrors()) {
+                EXPECT_EQ(error.getPhase(), DiagnosticPhase::SEMANTIC);
+            }
+            for (const auto name : { "api", "value" }) {
+                EXPECT_EQ(findImportedNode(*result, name), nullptr);
+            }
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, ReportsMalformedModuleInterfacesAsSemanticErrors) {
-        for (const auto contents : { "invalid json", "[]", R"({"value":{"category":"let","type":123}})", R"({"value":{"category":null}})" }) {
-            SCOPED_TRACE(contents);
-            writeFile("dependency_source/broken.vni", contents);
-            std::optional<SemanticAnalysisResult> result;
-            ASSERT_NO_THROW(result.emplace(analyze("import pkg.broken\n")));
-
-            ASSERT_TRUE(result->hasErrors());
-            EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
-            EXPECT_EQ(findImportedNode(*result, "broken"), nullptr);
-        }
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, RejectsMalformedUnselectedIdentifiersWhenImportingAModuleOrIdentifier) {
-        writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"unused":{"category":"let","type":123}})");
-        for (const auto source : { "import pkg.api\n", "import pkg.api.value\n" }) {
-            SCOPED_TRACE(source);
-            const auto result = analyze(source);
-
-            ASSERT_TRUE(result.hasErrors());
-            EXPECT_EQ(result.getImportedPackageByName("pkg"), nullptr);
-            const auto* scope = result.getScopeByAstNode(*module);
-            ASSERT_NE(scope, nullptr);
-            EXPECT_EQ(scope->lookupLocal("api"), nullptr);
-            EXPECT_EQ(scope->lookupLocal("value"), nullptr);
-        }
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, ReportsMissingDependencyDirectoriesAsSemanticErrors) {
-        std::filesystem::remove_all(testDirectory / "dependency_source");
-        std::optional<SemanticAnalysisResult> result;
-        ASSERT_NO_THROW(result.emplace(analyze("import pkg.api\n")));
-
-        ASSERT_TRUE(result->hasErrors());
-        EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
-        EXPECT_EQ(findImportedNode(*result, "api"), nullptr);
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImport) {
+    TEST_F(SemanticAnalyzerImportTest, RejectsDuplicateBindingsWithinOneImportAsSemanticErrors) {
         for (const auto source : {
                  "import pkg.api.{value, value}\n",
                  "import pkg.{api.value as same, sub.other.flag as same}\n",
@@ -1914,9 +1735,13 @@ func test() {
             const auto result = analyze(source);
 
             ASSERT_TRUE(result.hasErrors());
-            EXPECT_EQ(result.getImportedPackageByName("pkg"), nullptr);
-            EXPECT_EQ(findImportedNode(result, "value"), nullptr);
-            EXPECT_EQ(findImportedNode(result, "same"), nullptr);
+            for (const auto& error : result.getErrors()) {
+                EXPECT_EQ(error.getPhase(), DiagnosticPhase::SEMANTIC);
+                EXPECT_TRUE(error.getMessage().starts_with("Redeclaration of symbol"));
+            }
+            for (const auto name : { "value", "count", "same" }) {
+                EXPECT_EQ(findImportedNode(result, name), nullptr);
+            }
         }
     }
 
@@ -1931,57 +1756,29 @@ func test() {
 
             ASSERT_TRUE(result.hasErrors());
             EXPECT_NE(findImportedNode(result, "value"), nullptr);
-            EXPECT_NE(result.getImportedPackageByName("pkg"), nullptr);
+            for (const auto& error : result.getErrors()) {
+                EXPECT_EQ(error.getPhase(), DiagnosticPhase::SEMANTIC);
+                EXPECT_EQ(error.getMessage(), "Redeclaration of symbol 'value'");
+            }
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsAndDoNotCommitNewBranches) {
-        const auto result = analyze("import pkg.api as kept\nimport pkg.sub.{other as staged, missing}\nlet staged = 0\nexport kept\n");
+    TEST_F(SemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsWithoutDeclaringPartialNames) {
+        const auto result = analyze("import pkg.api as kept\nimport pkg.sub.{other as staged, missing}\nlet staged = 0\nexport kept\n", "import pkg\n");
 
-        ASSERT_TRUE(result.hasErrors());
         ASSERT_EQ(result.getErrors().size(), 1);
-        const auto* package = result.getImportedPackageByName("pkg");
+        EXPECT_EQ(result.getErrors().front().getPhase(), DiagnosticPhase::SEMANTIC);
+        EXPECT_EQ(result.getErrors().front().getMessage(), "Could not find imported package, module or identifier 'missing'");
+        const auto* package = getImportedPackageByName("pkg");
         ASSERT_NE(package, nullptr);
-        const auto* importedModule = package->getModuleByName("api");
-        ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(findImportedNode(result, "kept"), importedModule);
-        EXPECT_EQ(package->getSubPackageByName("sub"), nullptr);
-        EXPECT_EQ(findImportedNode(result, "staged"), nullptr);
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, PreservesModuleNamesWhenReadingSymbolicLinks) {
-        writeFile("shared/original.vni", R"({"linked":{"category":"let","type":"int"}})");
-        std::error_code error;
-        std::filesystem::create_symlink(testDirectory / "shared/original.vni", testDirectory / "dependency_source/linkedApi.vni", error);
-        if (error) {
-            GTEST_SKIP() << error.message();
-        }
-
-        const auto result = analyze("import pkg.linkedApi.{self, linked}\nexport linkedApi, linked\n");
-
-        ASSERT_FALSE(result.hasErrors());
-        const auto* package = result.getImportedPackageByName("pkg");
-        ASSERT_NE(package, nullptr);
-        const auto* importedModule = package->getModuleByName("linkedApi");
-        ASSERT_NE(importedModule, nullptr);
-        EXPECT_EQ(importedModule->getName(), "linkedApi");
-        EXPECT_EQ(findImportedNode(result, "linkedApi"), importedModule);
-        EXPECT_EQ(findImportedNode(result, "linked"), importedModule->getIdentifierByName("linked"));
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, ReportsCyclicPackageDirectoriesAsSemanticErrors) {
-        std::error_code error;
-        std::filesystem::create_directory_symlink(testDirectory / "dependency_source", testDirectory / "dependency_source/loop", error);
-        if (error) {
-            GTEST_SKIP() << error.message();
-        }
-
-        std::optional<SemanticAnalysisResult> result;
-        ASSERT_NO_THROW(result.emplace(analyze("import pkg\n")));
-
-        ASSERT_TRUE(result->hasErrors());
-        EXPECT_EQ(result->getImportedPackageByName("pkg"), nullptr);
-        EXPECT_EQ(findImportedNode(*result, "pkg"), nullptr);
+        EXPECT_EQ(findImportedNode(result, "kept"), package->getModuleByName("api"));
+        const auto* scope = result.getScopeByAstNode(*module);
+        ASSERT_NE(scope, nullptr);
+        const auto* staged = scope->lookupLocal("staged");
+        ASSERT_NE(staged, nullptr);
+        EXPECT_EQ(staged->getOrigin(), SymbolOrigin::LOCAL);
+        EXPECT_NE(staged->getLocalNode(), nullptr);
+        EXPECT_EQ(staged->getImportedNode(), nullptr);
     }
 
 } // namespace vnlc

@@ -165,15 +165,7 @@ namespace vnlc {
 
         SemanticAnalysisResult
         makeSemanticResult(TypeMap&& typeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
-            return SemanticAnalysisResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {}, {});
-        }
-
-        ImportDeclarationItem makeImportItem(std::initializer_list<std::string_view> prefix) {
-            ImportDeclarationItem importItem;
-            for (const auto name : prefix) {
-                importItem.namePrefix.push_back(makeIdentifier(name));
-            }
-            return importItem;
+            return SemanticAnalysisResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {});
         }
 
         Config makeGeneratorConfig(const std::filesystem::path& testDirectory) {
@@ -565,7 +557,6 @@ namespace vnlc {
 })"
         );
 
-        const auto importItem = makeImportItem({ "package", "api" });
         ModuleInterfaceFileReader reader(filePath);
         const auto module = reader.read();
 
@@ -634,7 +625,6 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnEmptyFile) {
         const auto filePath = writeFile("empty.vni", "");
-        const auto importItem = makeImportItem({ "module" });
         ModuleInterfaceFileReader reader(filePath);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
@@ -643,7 +633,6 @@ namespace vnlc {
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnDirectory) {
         const auto directory = testDirectory / "directory.vni";
         std::filesystem::create_directories(directory);
-        const auto importItem = makeImportItem({ "module" });
         ModuleInterfaceFileReader reader(directory);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
@@ -651,7 +640,6 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnWrongExtension) {
         const auto filePath = writeFile("module.vnl", "{}");
-        const auto importItem = makeImportItem({ "module" });
         ModuleInterfaceFileReader reader(filePath);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
@@ -659,7 +647,6 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnInvalidJson) {
         const auto filePath = writeFile("module.vni", "{");
-        const auto importItem = makeImportItem({ "module" });
         ModuleInterfaceFileReader reader(filePath);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
@@ -674,15 +661,12 @@ namespace vnlc {
     }
 })"
         );
-        const auto importItem = makeImportItem({ "module" });
         ModuleInterfaceFileReader reader(filePath);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
     }
 
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnNonexistentFile) {
-        const auto importItem = makeImportItem({ "module" });
-
         EXPECT_THROW(ModuleInterfaceFileReader(testDirectory / "missing.vni"), std::filesystem::filesystem_error);
     }
 
@@ -693,11 +677,10 @@ namespace vnlc {
         Config config{};
         config.dependencyPackageRootPaths.emplace("available", dependencyRoot / "available");
 
-        const auto importItem = makeImportItem({ "missing", "module" });
         std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> packages;
         PackageReader reader(packages);
 
-        EXPECT_THROW(reader.readPackageFromSource(importItem, config), PackageReaderError);
+        EXPECT_THROW(reader.readPackageFromPath("missing.module", config), PackageReaderError);
     }
 
     TEST_F(VniTest, PackageReaderReadsModuleInsidePackage) {
@@ -717,10 +700,9 @@ namespace vnlc {
         Config config{};
         config.dependencyPackageRootPaths.emplace("package", packageRoot);
 
-        const auto importItem = makeImportItem({ "package", "api" });
         std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> packages;
         PackageReader reader(packages);
-        reader.readPackageFromSource(importItem, config);
+        reader.readPackageFromPath("package.api", config);
 
         const auto package = packages.find("package");
         ASSERT_NE(package, packages.end());

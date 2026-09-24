@@ -66,6 +66,17 @@ add_executable(
 )
 
 add_executable(
+    vnlctest_collector
+    ${PROJECT_SOURCE_DIR}/src/diagnostic/Diagnostic.cpp
+    ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
+    ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${VNI_IMPORT_FILES}
+    ${OUTLINE_FILES}
+    ${COLLECTOR_FILES}
+    CollectorTest.cpp
+)
+
+add_executable(
     vnlctest_semantic
     ${PROJECT_SOURCE_DIR}/src/diagnostic/Diagnostic.cpp
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
@@ -107,6 +118,12 @@ target_include_directories(
 )
 
 target_include_directories(
+    vnlctest_collector
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
+target_include_directories(
     vnlctest_semantic
     PRIVATE
     "${PROJECT_SOURCE_DIR}/src"
@@ -129,6 +146,15 @@ target_link_libraries(
 
 target_link_libraries(
     vnlctest_parser
+    PRIVATE
+    GTest::gtest_main
+    fmt::fmt
+    nlohmann_json::nlohmann_json
+    CLI11::CLI11
+)
+
+target_link_libraries(
+    vnlctest_collector
     PRIVATE
     GTest::gtest_main
     fmt::fmt
@@ -163,5 +189,6 @@ target_compile_definitions(
 include(GoogleTest)
 gtest_discover_tests(vnlctest_lexer)
 gtest_discover_tests(vnlctest_parser)
+gtest_discover_tests(vnlctest_collector)
 gtest_discover_tests(vnlctest_semantic)
 gtest_discover_tests(vnlctest_vni)
