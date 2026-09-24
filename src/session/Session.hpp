@@ -1,7 +1,7 @@
 #ifndef VNLC_SESSION_HPP
 #define VNLC_SESSION_HPP
 
-#include "ast/AstNode.hpp"
+#include "ast/module/ModuleNode.hpp"
 #include "config/Config.hpp"
 #include "diagnostic/Diagnostic.hpp"
 #include "vni/import/ImportedPackage.hpp"
@@ -16,7 +16,7 @@ namespace vnlc {
         const Config config;
         std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         std::vector<Diagnostic> collectionErrors;
-        std::unique_ptr<AstNode> ast;
+        std::unique_ptr<ModuleNode> ast;
 
     public:
         Session(Config&& config);

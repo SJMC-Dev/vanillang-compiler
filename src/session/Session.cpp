@@ -4,6 +4,8 @@
 #include "lexer/Lexer.hpp"
 #include "log/Logger.hpp"
 #include "parser/Parser.hpp"
+#include "semantic/SemanticAnalysisResult.hpp"
+#include "semantic/SemanticAnalyzer.hpp"
 #include <fstream>
 
 namespace vnlc {
@@ -26,5 +28,8 @@ namespace vnlc {
         Lexer lexer(input);
         Parser parser(std::move(lexer));
         ast = parser.parse(config);
+
+        SemanticAnalyzer semanticAnalyzer(*ast, imports);
+        SemanticAnalysisResult semantic = semanticAnalyzer.analyze(config);
     }
 } // namespace vnlc
