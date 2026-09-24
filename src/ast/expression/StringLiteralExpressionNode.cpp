@@ -2,17 +2,17 @@
 
 namespace vnlc {
     StringLiteralExpressionNode::StringLiteralExpressionNode(
-        StringLiteralExpressionType type,
+        StringLiteralExpressionKind kind,
         std::vector<std::variant<std::string, std::unique_ptr<ExpressionNode>>>&& parts,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
         : LiteralExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           parts(std::move(parts)) {}
 
-    const StringLiteralExpressionType StringLiteralExpressionNode::getType() const noexcept {
-        return type;
+    const StringLiteralExpressionKind StringLiteralExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     const std::vector<std::variant<std::string, std::unique_ptr<ExpressionNode>>>& StringLiteralExpressionNode::getParts() const noexcept {

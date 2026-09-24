@@ -7,7 +7,7 @@ add_executable(
     session/Session.cpp
     token/Token.cpp
     util/RunningModeUtil.cpp
-    util/TokenTypeUtil.cpp
+    util/TokenKindUtil.cpp
     ast/AstNode.cpp
     ast/module/ModuleNode.cpp
     ast/expression/BinaryExpressionNode.cpp

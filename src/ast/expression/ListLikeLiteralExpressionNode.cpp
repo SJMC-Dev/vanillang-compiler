@@ -2,17 +2,17 @@
 
 namespace vnlc {
     ListLikeLiteralExpressionNode::ListLikeLiteralExpressionNode(
-        ListLikeLiteralExpressionType type,
+        ListLikeLiteralExpressionKind kind,
         std::vector<std::unique_ptr<ExpressionNode>>&& elements,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
         : LiteralExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           elements(std::move(elements)) {}
 
-    const ListLikeLiteralExpressionType ListLikeLiteralExpressionNode::getType() const noexcept {
-        return type;
+    const ListLikeLiteralExpressionKind ListLikeLiteralExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     const std::vector<std::unique_ptr<ExpressionNode>>& ListLikeLiteralExpressionNode::getElements() const noexcept {

@@ -10,7 +10,7 @@ namespace vnlc {
     ) noexcept
         : ControlFlowStatementNode(firstToken, lastToken),
           switchExpression(std::move(switchExpression)),
-          switchType(SwitchStatementType::LITERAL_MATCH),
+          switchKind(SwitchStatementKind::LITERAL_MATCH),
           literalMatchItems(std::move(literalMatchItems)),
           typeMatchItems(),
           defaultCaseBody(std::move(defaultCaseBody)) {}
@@ -24,7 +24,7 @@ namespace vnlc {
     ) noexcept
         : ControlFlowStatementNode(firstToken, lastToken),
           switchExpression(std::move(switchExpression)),
-          switchType(SwitchStatementType::TYPE_MATCH),
+          switchKind(SwitchStatementKind::TYPE_MATCH),
           literalMatchItems(),
           typeMatchItems(std::move(typeMatchItems)),
           defaultCaseBody(std::move(defaultCaseBody)) {}
@@ -33,8 +33,8 @@ namespace vnlc {
         return *switchExpression;
     }
 
-    const SwitchStatementType SwitchStatementNode::getSwitchType() const noexcept {
-        return switchType;
+    const SwitchStatementKind SwitchStatementNode::getSwitchKind() const noexcept {
+        return switchKind;
     }
 
     const std::vector<SwitchStatementItem::LiteralMatchItem>& SwitchStatementNode::getLiteralMatchItems() const noexcept {

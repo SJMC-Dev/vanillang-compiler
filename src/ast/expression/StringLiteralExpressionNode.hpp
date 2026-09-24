@@ -2,7 +2,7 @@
 #define VNLC_STRING_LITERAL_EXPRESSION_NODE_HPP
 
 #include "ast/expression/LiteralExpressionNode.hpp"
-#include "ast/expression/StringLiteralExpressionType.hpp"
+#include "ast/expression/StringLiteralExpressionKind.hpp"
 #include <memory>
 #include <variant>
 #include <vector>
@@ -12,18 +12,18 @@ namespace vnlc {
     private:
         StringLiteralExpressionNode() = delete;
 
-        StringLiteralExpressionType type;
+        StringLiteralExpressionKind kind;
         std::vector<std::variant<std::string, std::unique_ptr<ExpressionNode>>> parts;
 
     public:
         StringLiteralExpressionNode(
-            StringLiteralExpressionType type,
+            StringLiteralExpressionKind kind,
             std::vector<std::variant<std::string, std::unique_ptr<ExpressionNode>>>&& parts,
             const Token& firstToken,
             const Token& lastToken
         ) noexcept;
 
-        [[nodiscard]] const StringLiteralExpressionType getType() const noexcept;
+        [[nodiscard]] const StringLiteralExpressionKind getKind() const noexcept;
         [[nodiscard]] const std::vector<std::variant<std::string, std::unique_ptr<ExpressionNode>>>& getParts() const noexcept;
     };
 } // namespace vnlc

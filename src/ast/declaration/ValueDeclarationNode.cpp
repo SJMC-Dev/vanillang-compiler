@@ -1,11 +1,11 @@
 #include "ValueDeclarationNode.hpp"
-#include "ast/declaration/ValueDeclarationType.hpp"
+#include "ast/declaration/ValueDeclarationKind.hpp"
 
 namespace vnlc {
     ValueDeclarationNode::ValueDeclarationNode(
-        ValueDeclarationType::Kind kind,
-        ValueDeclarationType::Context context,
-        ValueDeclarationType::AccessModifier accessModifier,
+        ValueDeclarationKind::Kind kind,
+        ValueDeclarationKind::Context context,
+        ValueDeclarationKind::AccessModifier accessModifier,
         std::unique_ptr<IdentifierNode>&& name,
         std::optional<std::unique_ptr<TypeNode>>&& type,
         std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
@@ -21,9 +21,9 @@ namespace vnlc {
           initializer(std::move(initializer)) {}
 
     ValueDeclarationNode::ValueDeclarationNode(
-        ValueDeclarationType::Kind kind,
-        ValueDeclarationType::Context context,
-        ValueDeclarationType::AccessModifier accessModifier,
+        ValueDeclarationKind::Kind kind,
+        ValueDeclarationKind::Context context,
+        ValueDeclarationKind::AccessModifier accessModifier,
         std::unique_ptr<IdentifierNode>&& name,
         std::optional<std::unique_ptr<TypeNode>>&& type,
         std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
@@ -39,15 +39,15 @@ namespace vnlc {
           type(std::move(type)),
           initializer(std::move(initializer)) {}
 
-    const ValueDeclarationType::Kind ValueDeclarationNode::getKind() const noexcept {
+    const ValueDeclarationKind::Kind ValueDeclarationNode::getKind() const noexcept {
         return kind;
     }
 
-    const ValueDeclarationType::Context ValueDeclarationNode::getContext() const noexcept {
+    const ValueDeclarationKind::Context ValueDeclarationNode::getContext() const noexcept {
         return context;
     }
 
-    const ValueDeclarationType::AccessModifier ValueDeclarationNode::getAccessModifier() const noexcept {
+    const ValueDeclarationKind::AccessModifier ValueDeclarationNode::getAccessModifier() const noexcept {
         return accessModifier;
     }
 

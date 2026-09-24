@@ -30,11 +30,11 @@ namespace vnlc {
         void advanceRaw();
         void skipNewlines();
 
-        [[nodiscard]] bool check(TokenType expectedType);
+        [[nodiscard]] bool check(TokenKind expectedKind);
         [[nodiscard]] bool checkGeneralizedIdentifier();
-        [[nodiscard]] bool checkAny(const std::unordered_set<TokenType>& expectedTypes);
-        [[nodiscard]] bool match(TokenType expectedType);
-        [[nodiscard]] bool matchAny(const std::unordered_set<TokenType>& expectedTypes);
+        [[nodiscard]] bool checkAny(const std::unordered_set<TokenKind>& expectedKinds);
+        [[nodiscard]] bool match(TokenKind expectedKind);
+        [[nodiscard]] bool matchAny(const std::unordered_set<TokenKind>& expectedKinds);
         [[nodiscard]] bool consumeRightAngleInType();
 
         [[nodiscard]] std::unique_ptr<IdentifierNode> constructCurrentIdentifierNode();

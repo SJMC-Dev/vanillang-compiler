@@ -2,10 +2,10 @@
 
 namespace vnlc {
     FunctionDeclarationNode::FunctionDeclarationNode(
-        FunctionDeclarationType::Kind kind,
-        FunctionDeclarationType::Context context,
-        FunctionDeclarationType::AccessModifier accessModifier,
-        FunctionDeclarationType::Binding binding,
+        FunctionDeclarationKind::Kind kind,
+        FunctionDeclarationKind::Context context,
+        FunctionDeclarationKind::AccessModifier accessModifier,
+        FunctionDeclarationKind::Binding binding,
         std::unique_ptr<IdentifierNode>&& name,
         std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
         std::optional<std::unique_ptr<TypeNode>>&& returnType,
@@ -24,10 +24,10 @@ namespace vnlc {
           body(std::move(body)) {}
 
     FunctionDeclarationNode::FunctionDeclarationNode(
-        FunctionDeclarationType::Kind kind,
-        FunctionDeclarationType::Context context,
-        FunctionDeclarationType::AccessModifier accessModifier,
-        FunctionDeclarationType::Binding binding,
+        FunctionDeclarationKind::Kind kind,
+        FunctionDeclarationKind::Context context,
+        FunctionDeclarationKind::AccessModifier accessModifier,
+        FunctionDeclarationKind::Binding binding,
         std::unique_ptr<IdentifierNode>&& name,
         std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
         std::optional<std::unique_ptr<TypeNode>>&& returnType,
@@ -46,19 +46,19 @@ namespace vnlc {
           returnType(std::move(returnType)),
           body(std::move(body)) {}
 
-    const FunctionDeclarationType::Kind FunctionDeclarationNode::getKind() const noexcept {
+    const FunctionDeclarationKind::Kind FunctionDeclarationNode::getKind() const noexcept {
         return kind;
     }
 
-    const FunctionDeclarationType::Context FunctionDeclarationNode::getContext() const noexcept {
+    const FunctionDeclarationKind::Context FunctionDeclarationNode::getContext() const noexcept {
         return context;
     }
 
-    const FunctionDeclarationType::AccessModifier FunctionDeclarationNode::getAccessModifier() const noexcept {
+    const FunctionDeclarationKind::AccessModifier FunctionDeclarationNode::getAccessModifier() const noexcept {
         return accessModifier;
     }
 
-    const FunctionDeclarationType::Binding FunctionDeclarationNode::getBinding() const noexcept {
+    const FunctionDeclarationKind::Binding FunctionDeclarationNode::getBinding() const noexcept {
         return binding;
     }
 

@@ -2,19 +2,19 @@
 
 namespace vnlc {
     MemberAccessExpressionNode::MemberAccessExpressionNode(
-        MemberAccessExpressionType type,
+        MemberAccessExpressionKind kind,
         std::unique_ptr<ExpressionNode>&& object,
         std::unique_ptr<IdentifierExpressionNode>&& member,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
         : ExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           object(std::move(object)),
           member(std::move(member)) {}
 
-    const MemberAccessExpressionType MemberAccessExpressionNode::getType() const noexcept {
-        return type;
+    const MemberAccessExpressionKind MemberAccessExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     const ExpressionNode& MemberAccessExpressionNode::getObject() const noexcept {

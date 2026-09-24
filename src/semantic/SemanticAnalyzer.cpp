@@ -495,9 +495,9 @@ namespace vnlc {
 
         bool isStaticMember = false;
         if (const auto* valueDecl = dynamic_cast<const ValueDeclarationNode*>(memberDeclaration)) {
-            isStaticMember = valueDecl->getKind() == ValueDeclarationType::Kind::STATIC_PROPERTY;
+            isStaticMember = valueDecl->getKind() == ValueDeclarationKind::Kind::STATIC_PROPERTY;
         } else if (const auto* funcDecl = dynamic_cast<const FunctionDeclarationNode*>(memberDeclaration)) {
-            isStaticMember = funcDecl->getBinding() == FunctionDeclarationType::Binding::STATIC;
+            isStaticMember = funcDecl->getBinding() == FunctionDeclarationKind::Binding::STATIC;
         }
         if (isStaticMember || isSuperAccess) {
             return true;
@@ -608,7 +608,7 @@ namespace vnlc {
             DeclarationNode* declNode = topIdentifierDecl.get();
 
             if (auto* varDecl = dynamic_cast<ValueDeclarationNode*>(declNode)) {
-                if (varDecl->getKind() == ValueDeclarationType::Kind::LET) {
+                if (varDecl->getKind() == ValueDeclarationKind::Kind::LET) {
                     checkValueDeclaration(*varDecl);
                 } else {
                     context.reportError(*varDecl, fmt::format("Top-level value declaration must be a variable"));
@@ -834,14 +834,14 @@ namespace vnlc {
     void SemanticAnalyzer::checkValueDeclaration(const ValueDeclarationNode& varDecl, MetadataInfo metadataInfo) {
         auto kind = varDecl.getKind();
         const bool hasInitializer = varDecl.getInitializer().has_value();
-        const bool requiresInitializer = kind == ValueDeclarationType::Kind::LET || kind == ValueDeclarationType::Kind::STATIC_PROPERTY;
+        const bool requiresInitializer = kind == ValueDeclarationKind::Kind::LET || kind == ValueDeclarationKind::Kind::STATIC_PROPERTY;
 
         if (requiresInitializer && !hasInitializer) {
-            context.reportError(varDecl, kind == ValueDeclarationType::Kind::STATIC_PROPERTY ? "Static properties must be initialized" : "Variables must be initialized");
+            context.reportError(varDecl, kind == ValueDeclarationKind::Kind::STATIC_PROPERTY ? "Static properties must be initialized" : "Variables must be initialized");
         } else if (!requiresInitializer && hasInitializer) {
             context.reportError(
                 varDecl,
-                kind == ValueDeclarationType::Kind::INSTANCE_PROPERTY ? "Instance properties cannot have initializers" : "Value declarations of this kind cannot have initializers"
+                kind == ValueDeclarationKind::Kind::INSTANCE_PROPERTY ? "Instance properties cannot have initializers" : "Value declarations of this kind cannot have initializers"
             );
         }
 
@@ -869,7 +869,7 @@ namespace vnlc {
             checkValueDeclaration(*param);
         }
 
-        if (funcDecl.getKind() == FunctionDeclarationType::Kind::REGULAR && funcDecl.getContext() != FunctionDeclarationType::Context::INTERFACE) {
+        if (funcDecl.getKind() == FunctionDeclarationKind::Kind::REGULAR && funcDecl.getContext() != FunctionDeclarationKind::Context::INTERFACE) {
             if (funcDecl.getBody().has_value()) {
                 checkStatement(*funcDecl.getBody().value());
             } else {
@@ -1076,11 +1076,11 @@ namespace vnlc {
 
             checkExpression(stmt->getSwitchExpression());
 
-            if (stmt->getSwitchType() == SwitchStatementType::LITERAL_MATCH) {
+            if (stmt->getSwitchKind() == SwitchStatementKind::LITERAL_MATCH) {
                 for (const auto& item : stmt->getLiteralMatchItems()) {
                     checkStatement(*item.body);
                 }
-            } else if (stmt->getSwitchType() == SwitchStatementType::TYPE_MATCH) {
+            } else if (stmt->getSwitchKind() == SwitchStatementKind::TYPE_MATCH) {
                 for (const auto& item : stmt->getTypeMatchItems()) {
                     checkType(*item.type);
                     checkStatement(*item.body);

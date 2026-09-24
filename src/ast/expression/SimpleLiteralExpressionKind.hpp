@@ -1,8 +1,8 @@
-#ifndef VNLC_SIMPLE_LITERAL_EXPRESSION_TYPE_HPP
-#define VNLC_SIMPLE_LITERAL_EXPRESSION_TYPE_HPP
+#ifndef VNLC_SIMPLE_LITERAL_EXPRESSION_KIND_HPP
+#define VNLC_SIMPLE_LITERAL_EXPRESSION_KIND_HPP
 
 namespace vnlc {
-    enum class SimpleLiteralExpressionType {
+    enum class SimpleLiteralExpressionKind {
         DECIMAL_BYTE,
         DECIMAL_SHORT,
         DECIMAL_INTEGER,
@@ -20,4 +20,4 @@ namespace vnlc {
     };
 }
 
-#endif // VNLC_SIMPLE_LITERAL_EXPRESSION_TYPE_HPP
+#endif // VNLC_SIMPLE_LITERAL_EXPRESSION_KIND_HPP

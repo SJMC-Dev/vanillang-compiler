@@ -1,13 +1,13 @@
 #include "SimpleLiteralExpressionNode.hpp"
 
 namespace vnlc {
-    SimpleLiteralExpressionNode::SimpleLiteralExpressionNode(SimpleLiteralExpressionType type, std::string_view literal, const Token& firstToken, const Token& lastToken) noexcept
+    SimpleLiteralExpressionNode::SimpleLiteralExpressionNode(SimpleLiteralExpressionKind kind, std::string_view literal, const Token& firstToken, const Token& lastToken) noexcept
         : LiteralExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           literal(std::string(literal)) {}
 
-    const SimpleLiteralExpressionType SimpleLiteralExpressionNode::getType() const noexcept {
-        return type;
+    const SimpleLiteralExpressionKind SimpleLiteralExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     std::string_view SimpleLiteralExpressionNode::getLiteral() const noexcept {

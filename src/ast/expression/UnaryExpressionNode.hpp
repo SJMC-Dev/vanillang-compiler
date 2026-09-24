@@ -2,7 +2,7 @@
 #define VNLC_UNARY_EXPRESSION_NODE_HPP
 
 #include "ast/expression/ExpressionNode.hpp"
-#include "ast/expression/UnaryExpressionType.hpp"
+#include "ast/expression/UnaryExpressionKind.hpp"
 #include <memory>
 
 namespace vnlc {
@@ -10,13 +10,13 @@ namespace vnlc {
     private:
         UnaryExpressionNode() = delete;
 
-        UnaryExpressionType type;
+        UnaryExpressionKind kind;
         std::unique_ptr<ExpressionNode> operand;
 
     public:
-        UnaryExpressionNode(UnaryExpressionType type, std::unique_ptr<ExpressionNode>&& operand, const Token& firstToken, const Token& lastToken) noexcept;
+        UnaryExpressionNode(UnaryExpressionKind kind, std::unique_ptr<ExpressionNode>&& operand, const Token& firstToken, const Token& lastToken) noexcept;
 
-        [[nodiscard]] const UnaryExpressionType getType() const noexcept;
+        [[nodiscard]] const UnaryExpressionKind getKind() const noexcept;
         [[nodiscard]] const ExpressionNode& getOperand() const noexcept;
     };
 } // namespace vnlc

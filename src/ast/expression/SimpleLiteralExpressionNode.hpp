@@ -2,20 +2,20 @@
 #define VNLC_SIMPLE_LITERAL_EXPRESSION_NODE_HPP
 
 #include "ast/expression/LiteralExpressionNode.hpp"
-#include "ast/expression/SimpleLiteralExpressionType.hpp"
+#include "ast/expression/SimpleLiteralExpressionKind.hpp"
 
 namespace vnlc {
     class SimpleLiteralExpressionNode : public LiteralExpressionNode {
     private:
         SimpleLiteralExpressionNode() = delete;
 
-        SimpleLiteralExpressionType type;
+        SimpleLiteralExpressionKind kind;
         std::string literal;
 
     public:
-        SimpleLiteralExpressionNode(SimpleLiteralExpressionType type, std::string_view literal, const Token& firstToken, const Token& lastToken) noexcept;
+        SimpleLiteralExpressionNode(SimpleLiteralExpressionKind kind, std::string_view literal, const Token& firstToken, const Token& lastToken) noexcept;
 
-        [[nodiscard]] const SimpleLiteralExpressionType getType() const noexcept;
+        [[nodiscard]] const SimpleLiteralExpressionKind getKind() const noexcept;
         [[nodiscard]] std::string_view getLiteral() const noexcept;
     };
 } // namespace vnlc

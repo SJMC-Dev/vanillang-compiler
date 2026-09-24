@@ -3,19 +3,19 @@
 
 namespace vnlc {
     BinaryExpressionNode::BinaryExpressionNode(
-        BinaryExpressionType type,
+        BinaryExpressionKind kind,
         std::unique_ptr<ExpressionNode>&& left,
         std::unique_ptr<ExpressionNode>&& right,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
         : ExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           left(std::move(left)),
           right(std::move(right)) {}
 
-    const BinaryExpressionType BinaryExpressionNode::getType() const noexcept {
-        return type;
+    const BinaryExpressionKind BinaryExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     const ExpressionNode& BinaryExpressionNode::getLeft() const noexcept {

@@ -113,7 +113,7 @@ namespace vnlc {
         }
 
         functionObj.emplace("parameters", parametersObj);
-        functionObj.emplace("native", function->getKind() == FunctionDeclarationType::Kind::NATIVE);
+        functionObj.emplace("native", function->getKind() == FunctionDeclarationKind::Kind::NATIVE);
 
         return functionObj;
     }
@@ -273,17 +273,17 @@ namespace vnlc {
             }
         }
 
-        propertyObj.emplace("static", property->getKind() == ValueDeclarationType::Kind::STATIC_PROPERTY);
+        propertyObj.emplace("static", property->getKind() == ValueDeclarationKind::Kind::STATIC_PROPERTY);
 
         std::string accessModifier;
         switch (property->getAccessModifier()) {
-            case ValueDeclarationType::AccessModifier::PUBLIC:
+            case ValueDeclarationKind::AccessModifier::PUBLIC:
                 accessModifier = "public";
                 break;
-            case ValueDeclarationType::AccessModifier::PROTECTED:
+            case ValueDeclarationKind::AccessModifier::PROTECTED:
                 accessModifier = "protected";
                 break;
-            case ValueDeclarationType::AccessModifier::PRIVATE:
+            case ValueDeclarationKind::AccessModifier::PRIVATE:
                 accessModifier = "private";
                 break;
         }
@@ -321,18 +321,18 @@ namespace vnlc {
         }
 
         methodObj.emplace("parameters", parametersObj);
-        methodObj.emplace("native", method->getKind() == FunctionDeclarationType::Kind::NATIVE);
-        methodObj.emplace("static", method->getBinding() == FunctionDeclarationType::Binding::STATIC);
+        methodObj.emplace("native", method->getKind() == FunctionDeclarationKind::Kind::NATIVE);
+        methodObj.emplace("static", method->getBinding() == FunctionDeclarationKind::Binding::STATIC);
 
         std::string accessModifier;
         switch (method->getAccessModifier()) {
-            case FunctionDeclarationType::AccessModifier::PUBLIC:
+            case FunctionDeclarationKind::AccessModifier::PUBLIC:
                 accessModifier = "public";
                 break;
-            case FunctionDeclarationType::AccessModifier::PROTECTED:
+            case FunctionDeclarationKind::AccessModifier::PROTECTED:
                 accessModifier = "protected";
                 break;
-            case FunctionDeclarationType::AccessModifier::PRIVATE:
+            case FunctionDeclarationKind::AccessModifier::PRIVATE:
                 accessModifier = "private";
                 break;
         }

@@ -3,7 +3,7 @@
 
 #include "ast/statement/ControlFlowStatementNode.hpp"
 #include "ast/statement/SwitchStatementItem.hpp"
-#include "ast/statement/SwitchStatementType.hpp"
+#include "ast/statement/SwitchStatementKind.hpp"
 #include <memory>
 #include <vector>
 
@@ -13,9 +13,9 @@ namespace vnlc {
         SwitchStatementNode() = delete;
 
         std::unique_ptr<ExpressionNode> switchExpression;
-        SwitchStatementType switchType;
-        std::vector<SwitchStatementItem::LiteralMatchItem> literalMatchItems; // empty if switchType is TYPE_MATCH
-        std::vector<SwitchStatementItem::TypeMatchItem> typeMatchItems;       // empty if switchType is LITERAL_MATCH
+        SwitchStatementKind switchKind;
+        std::vector<SwitchStatementItem::LiteralMatchItem> literalMatchItems; // empty if switchKind is TYPE_MATCH
+        std::vector<SwitchStatementItem::TypeMatchItem> typeMatchItems;       // empty if switchKind is LITERAL_MATCH
         std::optional<std::unique_ptr<StatementNode>> defaultCaseBody;
 
     public:
@@ -36,7 +36,7 @@ namespace vnlc {
         ) noexcept;
 
         [[nodiscard]] const ExpressionNode& getSwitchExpression() const noexcept;
-        [[nodiscard]] const SwitchStatementType getSwitchType() const noexcept;
+        [[nodiscard]] const SwitchStatementKind getSwitchKind() const noexcept;
         [[nodiscard]] const std::vector<SwitchStatementItem::LiteralMatchItem>& getLiteralMatchItems() const noexcept;
         [[nodiscard]] const std::vector<SwitchStatementItem::TypeMatchItem>& getTypeMatchItems() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<StatementNode>>& getDefaultCaseBody() const noexcept;

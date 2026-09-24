@@ -1,8 +1,8 @@
-#ifndef VNLC_VALUE_DECLARATION_TYPE_HPP
-#define VNLC_VALUE_DECLARATION_TYPE_HPP
+#ifndef VNLC_VALUE_DECLARATION_KIND_HPP
+#define VNLC_VALUE_DECLARATION_KIND_HPP
 
 namespace vnlc {
-    namespace ValueDeclarationType {
+    namespace ValueDeclarationKind {
         enum class Kind {
             LET,
             LOOP_VARIABLE,
@@ -26,7 +26,7 @@ namespace vnlc {
             PROTECTED,
             PRIVATE,
         };
-    }; // namespace ValueDeclarationType
+    }; // namespace ValueDeclarationKind
 } // namespace vnlc
 
-#endif // VNLC_VALUE_DECLARATION_TYPE_HPP
+#endif // VNLC_VALUE_DECLARATION_KIND_HPP

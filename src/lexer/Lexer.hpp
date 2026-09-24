@@ -4,7 +4,7 @@
 #include "lexer/LexerMode.hpp"
 #include "token/Token.hpp"
 
-#include "util/TokenTypeUtil.hpp"
+#include "util/TokenKindUtil.hpp"
 #include <istream>
 #include <stack>
 #include <string>
@@ -18,7 +18,7 @@ namespace vnlc {
         std::stack<int> parenthesisCounterStack;
         int parenthesisCounter;
 
-        static const std::unordered_map<std::string_view, TokenType> keywords;
+        static const std::unordered_map<std::string_view, TokenKind> keywords;
 
         std::istream& source;
         std::string currentLine;
@@ -60,7 +60,7 @@ namespace vnlc {
         [[nodiscard]] bool hasNext() const;
         [[nodiscard]] Token next();
 
-        friend bool TokenTypeUtil::isGeneralizedIdentifier(TokenType type);
+        friend bool TokenKindUtil::isGeneralizedIdentifier(TokenKind type);
     };
 } // namespace vnlc
 

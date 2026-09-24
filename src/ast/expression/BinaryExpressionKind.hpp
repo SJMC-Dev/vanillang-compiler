@@ -1,8 +1,8 @@
-#ifndef VNLC_BINARY_EXPRESSION_TYPE_HPP
-#define VNLC_BINARY_EXPRESSION_TYPE_HPP
+#ifndef VNLC_BINARY_EXPRESSION_KIND_HPP
+#define VNLC_BINARY_EXPRESSION_KIND_HPP
 
 namespace vnlc {
-    enum class BinaryExpressionType {
+    enum class BinaryExpressionKind {
         ASSIGNMENT,
         ADDITION_ASSIGNMENT,
         SUBTRACTION_ASSIGNMENT,
@@ -44,4 +44,4 @@ namespace vnlc {
     };
 }
 
-#endif // VNLC_BINARY_EXPRESSION_TYPE_HPP
+#endif // VNLC_BINARY_EXPRESSION_KIND_HPP

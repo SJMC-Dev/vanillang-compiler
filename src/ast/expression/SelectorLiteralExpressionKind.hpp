@@ -1,8 +1,8 @@
-#ifndef VNLC_SELECTOR_LITERAL_EXPRESSION_TYPE_HPP
-#define VNLC_SELECTOR_LITERAL_EXPRESSION_TYPE_HPP
+#ifndef VNLC_SELECTOR_LITERAL_EXPRESSION_KIND_HPP
+#define VNLC_SELECTOR_LITERAL_EXPRESSION_KIND_HPP
 
 namespace vnlc {
-    enum class SelectorLiteralExpressionType {
+    enum class SelectorLiteralExpressionKind {
         NEAREST_PLAYER,   // @p
         RANDOM_PLAYER,    // @r
         ALL_PLAYERS,      // @a
@@ -12,4 +12,4 @@ namespace vnlc {
     };
 }
 
-#endif // VNLC_SELECTOR_LITERAL_EXPRESSION_TYPE_HPP
+#endif // VNLC_SELECTOR_LITERAL_EXPRESSION_KIND_HPP

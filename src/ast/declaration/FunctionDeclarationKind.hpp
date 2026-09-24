@@ -1,8 +1,8 @@
-#ifndef VNLC_FUNCTION_DECLARATION_TYPE_HPP
-#define VNLC_FUNCTION_DECLARATION_TYPE_HPP
+#ifndef VNLC_FUNCTION_DECLARATION_KIND_HPP
+#define VNLC_FUNCTION_DECLARATION_KIND_HPP
 
 namespace vnlc {
-    namespace FunctionDeclarationType {
+    namespace FunctionDeclarationKind {
         enum class Kind {
             REGULAR,
             NATIVE,
@@ -24,7 +24,7 @@ namespace vnlc {
             INSTANCE,
             STATIC,
         };
-    }; // namespace FunctionDeclarationType
+    }; // namespace FunctionDeclarationKind
 } // namespace vnlc
 
-#endif // VNLC_FUNCTION_DECLARATION_TYPE_HPP
+#endif // VNLC_FUNCTION_DECLARATION_KIND_HPP

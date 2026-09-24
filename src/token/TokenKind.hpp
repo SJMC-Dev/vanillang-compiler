@@ -1,8 +1,8 @@
-#ifndef VNLC_TOKEN_TYPE_HPP
-#define VNLC_TOKEN_TYPE_HPP
+#ifndef VNLC_TOKEN_KIND_HPP
+#define VNLC_TOKEN_KIND_HPP
 
 namespace vnlc {
-    enum class TokenType {
+    enum class TokenKind {
         IDENTIFIER,
 
         NUMBER,
@@ -172,4 +172,4 @@ namespace vnlc {
     };
 }
 
-#endif // VNLC_TOKEN_TYPE_HPP
+#endif // VNLC_TOKEN_KIND_HPP

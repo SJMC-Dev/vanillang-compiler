@@ -2,13 +2,13 @@
 #include <utility>
 
 namespace vnlc {
-    UnaryExpressionNode::UnaryExpressionNode(UnaryExpressionType type, std::unique_ptr<ExpressionNode>&& operand, const Token& firstToken, const Token& lastToken) noexcept
+    UnaryExpressionNode::UnaryExpressionNode(UnaryExpressionKind kind, std::unique_ptr<ExpressionNode>&& operand, const Token& firstToken, const Token& lastToken) noexcept
         : ExpressionNode(firstToken, lastToken),
-          type(type),
+          kind(kind),
           operand(std::move(operand)) {}
 
-    const UnaryExpressionType UnaryExpressionNode::getType() const noexcept {
-        return type;
+    const UnaryExpressionKind UnaryExpressionNode::getKind() const noexcept {
+        return kind;
     }
 
     const ExpressionNode& UnaryExpressionNode::getOperand() const noexcept {
