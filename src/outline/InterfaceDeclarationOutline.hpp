@@ -4,7 +4,6 @@
 #include "outline/TypeDeclarationOutline.hpp"
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace vnlc {
     class InterfaceDeclarationOutline : public TypeDeclarationOutline {
@@ -12,13 +11,11 @@ namespace vnlc {
         InterfaceDeclarationOutline() = delete;
 
         std::string name;
-        std::vector<std::string> genericParameterNames;
 
     public:
-        InterfaceDeclarationOutline(std::string&& name, std::vector<std::string>&& genericParameterNames, const Token& firstToken, const Token& lastToken) noexcept;
+        InterfaceDeclarationOutline(std::string&& name, const Token& firstToken, const Token& lastToken) noexcept;
 
         [[nodiscard]] std::string_view getName() const noexcept;
-        [[nodiscard]] const std::vector<std::string>& getGenericParameterNames() const noexcept;
     };
 } // namespace vnlc
 

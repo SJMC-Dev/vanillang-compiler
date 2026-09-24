@@ -4,6 +4,7 @@
 namespace vnlc {
     enum class DiagnosticPhase {
         LEXEME,
+        COLLECTOR,
         SYNTAX,
         SEMANTIC,
         CODEGEN,

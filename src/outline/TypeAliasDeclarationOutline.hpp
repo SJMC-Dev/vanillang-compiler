@@ -4,7 +4,6 @@
 #include "outline/TypeDeclarationOutline.hpp"
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace vnlc {
     class TypeAliasDeclarationOutline : public TypeDeclarationOutline {
@@ -12,13 +11,11 @@ namespace vnlc {
         TypeAliasDeclarationOutline() = delete;
 
         std::string aliasName;
-        std::vector<std::string> genericParameterNames;
 
     public:
-        TypeAliasDeclarationOutline(std::string&& aliasName, std::vector<std::string>&& genericParameterNames, const Token& firstToken, const Token& lastToken) noexcept;
+        TypeAliasDeclarationOutline(std::string&& aliasName, const Token& firstToken, const Token& lastToken) noexcept;
 
         [[nodiscard]] std::string_view getAliasName() const noexcept;
-        [[nodiscard]] const std::vector<std::string>& getGenericParameterNames() const noexcept;
     };
 } // namespace vnlc
 

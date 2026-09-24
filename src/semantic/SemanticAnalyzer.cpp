@@ -35,8 +35,6 @@
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
 #include "ast/typeref/PrimitiveTypeReferenceNode.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
-#include "error/ModuleInterfaceReaderError.hpp"
-#include "error/PackageReaderError.hpp"
 #include "symbol/SymbolAccessModifier.hpp"
 #include "symbol/SymbolKind.hpp"
 #include "symbol/SymbolOrigin.hpp"
@@ -59,12 +57,10 @@
 #include "vni/import/ImportedParameter.hpp"
 #include "vni/import/ImportedProperty.hpp"
 #include "vni/import/ImportedTypeAlias.hpp"
-#include "vni/import/PackageReader.hpp"
 #include <algorithm>
 #include <fmt/core.h>
 #include <functional>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <stack>
 #include <string>
@@ -72,7 +68,7 @@
 #include <unordered_set>
 
 namespace vnlc {
-    SemanticAnalyzer::SemanticAnalyzer(const ModuleNode& module) : module(module) {}
+    SemanticAnalyzer::SemanticAnalyzer(const ModuleNode& module, const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& imports) : module(module), imports(imports) {}
 
     const PrimitiveType* SemanticAnalyzer::getPrimitiveType(PrimitiveTypeReferenceKind kind) {
         switch (kind) {
@@ -146,6 +142,14 @@ namespace vnlc {
         if (accessModifier == "private") return SymbolAccessModifier::PRIVATE;
         if (accessModifier == "protected") return SymbolAccessModifier::PROTECTED;
         return SymbolAccessModifier::PUBLIC;
+    }
+
+    const ImportedPackage* SemanticAnalyzer::getImportedPackageByName(std::string_view name) const {
+        auto it = imports.find(std::string(name));
+        if (it != imports.end()) {
+            return it->second.get();
+        }
+        return nullptr;
     }
 
     std::string SemanticAnalyzer::getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept {
@@ -262,69 +266,6 @@ namespace vnlc {
             result.append(args);
         }
         return result;
-    }
-
-    void SemanticAnalyzer::collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies) {
-        constexpr std::string_view delimiters = "<>,? \t\r\n";
-        auto begin = type.find_first_not_of(delimiters);
-        while (begin != std::string_view::npos) {
-            auto end = type.find_first_of(delimiters, begin);
-            const auto name = type.substr(begin, end == std::string_view::npos ? type.size() - begin : end - begin);
-            if (name.find('.') != std::string_view::npos) {
-                dependencies.emplace(name);
-            }
-            begin = end == std::string_view::npos ? end : type.find_first_not_of(delimiters, end);
-        }
-    }
-
-    void SemanticAnalyzer::collectImportDependencies(const ImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const ImportedModule*>& visitedModules) {
-        const auto collectChildren = [&](const auto& children) {
-            for (const auto& [name, child] : children) {
-                collectImportDependencies(*child, dependencies, visitedModules);
-            }
-        };
-
-        if (const auto* package = dynamic_cast<const ImportedPackage*>(&item)) {
-            collectChildren(package->getSubPackages());
-            collectChildren(package->getModules());
-        } else if (const auto* module = dynamic_cast<const ImportedModule*>(&item)) {
-            if (visitedModules.insert(module).second) {
-                collectChildren(module->getIdentifiers());
-            }
-        } else if (const auto* alias = dynamic_cast<const ImportedAlias*>(&item)) {
-            dependencies.emplace(alias->getSource());
-        } else if (const auto* variable = dynamic_cast<const ImportedLet*>(&item)) {
-            collectTypeDependencies(variable->getType(), dependencies);
-        } else if (const auto* property = dynamic_cast<const ImportedProperty*>(&item)) {
-            collectTypeDependencies(property->getType(), dependencies);
-        } else if (const auto* parameter = dynamic_cast<const ImportedParameter*>(&item)) {
-            collectTypeDependencies(parameter->getType(), dependencies);
-        } else if (const auto* enumValue = dynamic_cast<const ImportedEnumValue*>(&item)) {
-            collectTypeDependencies(enumValue->getType(), dependencies);
-        } else if (const auto* function = dynamic_cast<const ImportedFunc*>(&item)) {
-            collectTypeDependencies(function->getReturnType(), dependencies);
-            collectChildren(function->getParameters());
-        } else if (const auto* method = dynamic_cast<const ImportedMethod*>(&item)) {
-            collectTypeDependencies(method->getReturnType(), dependencies);
-            collectChildren(method->getParameters());
-        } else if (const auto* classType = dynamic_cast<const ImportedClass*>(&item)) {
-            if (classType->getBaseClass().has_value()) {
-                collectTypeDependencies(classType->getBaseClass().value(), dependencies);
-            }
-            for (const auto& interfaceType : classType->getImplementedInterfaces()) {
-                collectTypeDependencies(interfaceType, dependencies);
-            }
-            collectChildren(classType->getProperties());
-            collectChildren(classType->getMethods());
-        } else if (const auto* interfaceType = dynamic_cast<const ImportedInterface*>(&item)) {
-            collectChildren(interfaceType->getMethods());
-        } else if (const auto* enumType = dynamic_cast<const ImportedEnum*>(&item)) {
-            collectChildren(enumType->getMembers());
-        } else if (const auto* enumMember = dynamic_cast<const ImportedEnumMember*>(&item)) {
-            collectChildren(enumMember->getAssociatedValues());
-        } else if (const auto* typeAlias = dynamic_cast<const ImportedTypeAlias*>(&item)) {
-            collectTypeDependencies(typeAlias->getOriginalType(), dependencies);
-        }
     }
 
     void SemanticAnalyzer::registerImportedScopes(const ImportedItem& item, const Scope* parent) {
@@ -660,42 +601,8 @@ namespace vnlc {
         context.popScope();
     }
 
-    void SemanticAnalyzer::checkImport(const ImportDeclarationNode& importDecl, const Config& config) {
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> packages;
+    void SemanticAnalyzer::checkImport(const ImportDeclarationNode& importDecl, const Config&) {
         const auto& importItem = importDecl.getNamePartsListWithAliases();
-        try {
-            PackageReader reader(packages);
-            reader.readPackageFromSource(importItem, config);
-
-            std::unordered_set<const ImportedModule*> visitedModules;
-            std::unordered_set<std::string> loadedPaths;
-            while (true) {
-                std::unordered_set<std::string> dependencies;
-                for (const auto& [name, package] : packages) {
-                    collectImportDependencies(*package, dependencies, visitedModules);
-                }
-                if (dependencies.empty()) {
-                    break;
-                }
-                for (const auto& dependency : dependencies) {
-                    if (loadedPaths.insert(dependency).second) {
-                        reader.readPackageFromPath(dependency, config);
-                    }
-                }
-            }
-        } catch (const PackageReaderError& error) {
-            context.reportError(error.locate() ? static_cast<const AstNode&>(*error.locate()) : importDecl, error.what());
-            return;
-        } catch (const ModuleInterfaceFileReaderError& error) {
-            context.reportError(importDecl, error.what());
-            return;
-        } catch (const std::filesystem::filesystem_error& error) {
-            context.reportError(importDecl, error.what());
-            return;
-        } catch (const nlohmann::json::exception& error) {
-            context.reportError(importDecl, error.what());
-            return;
-        }
 
         struct ImportBinding {
             std::string name;
@@ -742,8 +649,7 @@ namespace vnlc {
                     }
                 }
 
-                const auto package = packages.find(path.front());
-                target = package == packages.end() ? nullptr : package->second.get();
+                target = getImportedPackageByName(path.front());
                 for (std::size_t index = 1; target != nullptr && index < path.size(); ++index) {
                     target = findChild(target, path[index]);
                 }
@@ -767,8 +673,7 @@ namespace vnlc {
                         continue;
                     }
                     if (target == nullptr) {
-                        auto package = packages.find(std::string(name));
-                        target = package == packages.end() ? nullptr : package->second.get();
+                        target = getImportedPackageByName(name);
                     } else {
                         target = findChild(target, name);
                     }
@@ -824,18 +729,15 @@ namespace vnlc {
         }
 
         std::unordered_set<const ImportedPackage*> scopedPackages;
-        for (const auto& [name, stagedPackage] : packages) {
-            const auto* package = context.getImportedPackageByName(name);
-            if (package != nullptr && context.getScopeByImportedNode(package) != nullptr) {
-                scopedPackages.insert(package);
-            }
-        }
-        context.collectImportedPackages(std::move(packages));
+
         for (const auto& binding : bindings) {
-            const auto* package = context.getImportedPackageByName(binding.path.front());
+            const auto* package = getImportedPackageByName(binding.path.front());
             const ImportedItem* target = package;
-            for (std::size_t index = 1; index < binding.path.size(); ++index) {
+            for (std::size_t index = 1; target != nullptr && index < binding.path.size(); ++index) {
                 target = findChild(target, binding.path[index]);
+            }
+            if (target == nullptr) {
+                continue;
             }
 
             context.currentScope().declare(Symbol(getImportedSymbolKind(*target), SymbolAccessModifier::PUBLIC, binding.name, target));
@@ -843,11 +745,10 @@ namespace vnlc {
                 scopedPackages.insert(package);
             }
         }
+
         for (const auto* package : scopedPackages) {
             registerImportedScopes(*package, nullptr);
         }
-
-        // TODO: implement importing subpackages, modules, or identifiers from .vnl in the same root package
     }
 
     void SemanticAnalyzer::checkExport(const ExportDeclarationNode& exportDecl) {
@@ -1382,7 +1283,6 @@ namespace vnlc {
         auto inferredValueTypes = context.takeInferredValueTypeMap();
         auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
         auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
-        auto importedPackages = context.takeImportedPackages();
         return SemanticAnalysisResult(
             std::move(std::get<0>(diagnostics)),
             std::move(std::get<1>(diagnostics)),
@@ -1393,8 +1293,7 @@ namespace vnlc {
             std::move(types),
             std::move(inferredValueTypes),
             std::move(inferredFunctionReturnTypes),
-            std::move(inferredExpressionTypes),
-            std::move(importedPackages)
+            std::move(inferredExpressionTypes)
         );
     }
 } // namespace vnlc

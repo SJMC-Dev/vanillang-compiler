@@ -10,7 +10,6 @@
 #include "scope/Scope.hpp"
 #include "type/CustomizedType.hpp"
 #include "type/Type.hpp"
-#include "vni/import/ImportedPackage.hpp"
 #include <memory>
 #include <string>
 #include <string_view>
@@ -35,8 +34,6 @@ namespace vnlc {
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
 
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> importedPackages;
-
         std::size_t loopDepth = 0;
         std::size_t switchDepth = 0;
 
@@ -50,7 +47,6 @@ namespace vnlc {
         void reportError(const AstNode& node, std::string_view message);
         void reportWarning(const AstNode& node, std::string_view message);
         void reportNote(const AstNode& node, std::string_view message);
-
         void pushScope(std::unique_ptr<Scope>&& scope);
         void popScope();
         Scope& getOrCreateImportedScope(ScopeKind kind, const Scope* parent, const ImportedItem& importedNode);
@@ -61,9 +57,6 @@ namespace vnlc {
         void mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const Type* type);
         void mapInferredExpressionType(const ExpressionNode* expressionNode, const Type* type);
 
-        void collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages);
-
-        [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
         [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
         [[nodiscard]] const Type* getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const;
         [[nodiscard]] const Type* getInferredExpressionType(const ExpressionNode* expressionNode) const;
@@ -92,7 +85,6 @@ namespace vnlc {
         [[nodiscard]] std::tuple<std::vector<Diagnostic>, std::vector<Diagnostic>, std::vector<Diagnostic>> takeDiagnostics();
         [[nodiscard]] std::unordered_map<const AstNode*, std::unique_ptr<Scope>> takeLocalScopeMap();
         [[nodiscard]] std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> takeImportedScopeMap();
-        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> takeImportedPackages();
         [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<CustomizedType>> takeCustomizedTypeRegistry();
         [[nodiscard]] std::unordered_map<const TypeReferenceNode*, const Type*> takeTypeMap();
         [[nodiscard]] std::unordered_map<const ValueDeclarationNode*, const Type*> takeInferredValueTypeMap();

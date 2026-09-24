@@ -67,6 +67,8 @@ add_executable(
     outline/EnumDeclarationOutline.cpp
     outline/EnumMemberDeclarationOutline.cpp
     outline/TypeAliasDeclarationOutline.cpp
+    collector/CollectionResult.cpp
+    collector/Collector.cpp
     parser/Parser.cpp
     diagnostic/Diagnostic.cpp
     symbol/Symbol.cpp

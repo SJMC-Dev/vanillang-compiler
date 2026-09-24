@@ -10,7 +10,6 @@
 #include "scope/Scope.hpp"
 #include "type/CustomizedType.hpp"
 #include "type/Type.hpp"
-#include "vni/import/ImportedPackage.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -30,8 +29,6 @@ namespace vnlc {
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
 
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> importedPackages;
-
     public:
         SemanticAnalysisResult(
             std::vector<Diagnostic>&& errors,
@@ -43,8 +40,7 @@ namespace vnlc {
             std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
             std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
             std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
-            std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap,
-            std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages
+            std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
         );
         SemanticAnalysisResult(const SemanticAnalysisResult&) = default;
         SemanticAnalysisResult& operator=(const SemanticAnalysisResult&) = default;
@@ -62,7 +58,6 @@ namespace vnlc {
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode& node) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem& node) const;
         [[nodiscard]] const Type* getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const;
-        [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view packageName) const;
         [[nodiscard]] const Type* getInferredValueType(const ValueDeclarationNode* valueDeclaration) const;
         [[nodiscard]] const Type* getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const;
         [[nodiscard]] const Type* getInferredExpressionType(const ExpressionNode* expressionNode) const;

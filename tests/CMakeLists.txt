@@ -47,6 +47,14 @@ file(GLOB_RECURSE VNI_IMPORT_FILES CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/src/vni/import/*.cpp
 )
 
+file(GLOB_RECURSE OUTLINE_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/outline/*.cpp
+)
+
+file(GLOB_RECURSE COLLECTOR_FILES CONFIGURE_DEPENDS
+    ${PROJECT_SOURCE_DIR}/src/collector/*.cpp
+)
+
 add_executable(
     vnlctest_parser
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
@@ -71,6 +79,8 @@ add_executable(
     ${METADATA_FILES}
     ${TYPE_FILES}
     ${VNI_IMPORT_FILES}
+    ${OUTLINE_FILES}
+    ${COLLECTOR_FILES}
     SemanticAnalyzerTest.cpp
 )
 

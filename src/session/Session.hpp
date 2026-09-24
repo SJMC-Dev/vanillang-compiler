@@ -3,17 +3,20 @@
 
 #include "ast/AstNode.hpp"
 #include "config/Config.hpp"
-#include "vni/import/ImportedItem.hpp"
+#include "diagnostic/Diagnostic.hpp"
+#include "vni/import/ImportedPackage.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace vnlc {
     class Session {
     private:
         const Config config;
+        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        std::vector<Diagnostic> collectionErrors;
         std::unique_ptr<AstNode> ast;
-        std::unordered_map<std::string, std::unique_ptr<ImportedItem>> imports;
 
     public:
         Session(Config&& config);

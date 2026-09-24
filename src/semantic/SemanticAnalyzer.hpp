@@ -22,9 +22,12 @@
 #include "semantic/SemanticContext.hpp"
 #include "type/Type.hpp"
 #include "type/typeinf/TypeInferenceResult.hpp"
+#include "vni/import/ImportedItem.hpp"
+#include "vni/import/ImportedPackage.hpp"
+#include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace vnlc {
     class PrimitiveType;
@@ -35,16 +38,16 @@ namespace vnlc {
 
     private:
         const ModuleNode& module;
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& imports;
         SemanticContext context;
 
         [[nodiscard]] static SymbolKind getImportedSymbolKind(const ImportedItem& item);
         [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
         [[nodiscard]] static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
         [[nodiscard]] static const PrimitiveType* getPrimitiveType(PrimitiveTypeReferenceKind kind);
+        [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
         [[nodiscard]] std::string getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
         [[nodiscard]] std::string getUnwrappedTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
-        static void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies);
-        static void collectImportDependencies(const ImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const ImportedModule*>& visitedModules);
         void registerImportedScopes(const ImportedItem& item, const Scope* parent);
         void checkIdentifierExpressionUse(const IdentifierExpressionNode& exprNode, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         [[nodiscard]] bool checkAccessModifier(const MemberAccessExpressionNode& memberAccessNode);
@@ -70,6 +73,7 @@ namespace vnlc {
 
     public:
         explicit SemanticAnalyzer(const ModuleNode& module);
+        SemanticAnalyzer(const ModuleNode& module, const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& imports);
 
         SemanticAnalyzer() = delete;
         SemanticAnalyzer(const SemanticAnalyzer&) = delete;

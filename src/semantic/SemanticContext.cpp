@@ -61,25 +61,6 @@ namespace vnlc {
         inferredExpressionTypeMap.emplace(expressionNode, type);
     }
 
-    void SemanticContext::collectImportedPackages(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages) {
-        for (auto& [name, package] : importedPackages) {
-            auto existing = this->importedPackages.find(name);
-            if (existing == this->importedPackages.end()) {
-                this->importedPackages.emplace(name, std::move(package));
-            } else {
-                existing->second->merge(std::move(*package));
-            }
-        }
-    }
-
-    const ImportedPackage* SemanticContext::getImportedPackageByName(std::string_view name) const {
-        auto it = importedPackages.find(std::string(name));
-        if (it != importedPackages.end()) {
-            return it->second.get();
-        }
-        return nullptr;
-    }
-
     const CustomizedType* SemanticContext::getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const {
         auto it = customizedTypeRegistry.find(fullTypeName);
         if (it != customizedTypeRegistry.end()) {
@@ -270,10 +251,6 @@ namespace vnlc {
 
     std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> SemanticContext::takeImportedScopeMap() {
         return std::move(importedScopeMap);
-    }
-
-    std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> SemanticContext::takeImportedPackages() {
-        return std::move(importedPackages);
     }
 
     std::unordered_map<std::string, std::unique_ptr<CustomizedType>> SemanticContext::takeCustomizedTypeRegistry() {

@@ -13,8 +13,7 @@ namespace vnlc {
         std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
         std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
         std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
-        std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap,
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>&& importedPackages
+        std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
     )
         : errors(std::move(errors)),
           warnings(std::move(warnings)),
@@ -25,8 +24,7 @@ namespace vnlc {
           typeMap(std::move(typeMap)),
           inferredValueTypeMap(std::move(inferredValueTypeMap)),
           inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
-          inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)),
-          importedPackages(std::move(importedPackages)) {}
+          inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)) {}
 
     bool SemanticAnalysisResult::hasErrors() const {
         return !errors.empty();
@@ -78,14 +76,6 @@ namespace vnlc {
         auto it = typeMap.find(typeNode);
         if (it != typeMap.end()) {
             return it->second;
-        }
-        return nullptr;
-    }
-
-    const ImportedPackage* SemanticAnalysisResult::getImportedPackageByName(std::string_view packageName) const {
-        auto it = importedPackages.find(std::string(packageName));
-        if (it != importedPackages.end()) {
-            return it->second.get();
         }
         return nullptr;
     }

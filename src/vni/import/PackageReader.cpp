@@ -7,10 +7,6 @@
 namespace vnlc {
     PackageReader::PackageReader(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& packages) : packages(packages) {}
 
-    void PackageReader::readPackageFromSource(const ImportDeclarationItem& importItem, const Config& config) {
-        readRecursivelyFromSource(importItem, config.dependencyPackageRootPaths, {}, nullptr);
-    }
-
     void PackageReader::readPackageFromPath(std::string_view path, const Config& config) {
         readFromPath(path, config.dependencyPackageRootPaths);
     }
@@ -78,85 +74,6 @@ namespace vnlc {
 
         std::unordered_set<std::filesystem::path> activePackagePaths;
         readPackageContents(currentPath, *currentPackage, activePackagePaths);
-    }
-
-    void PackageReader::readRecursivelyFromSource(
-        const ImportDeclarationItem& importItem,
-        const std::unordered_map<std::string, std::filesystem::path>& rootPaths,
-        std::filesystem::path currentPath,
-        ImportedPackage* currentPackage
-    ) {
-        if (importItem.self) {
-            if (currentPackage) {
-                std::unordered_set<std::filesystem::path> activePackagePaths;
-                readPackageContents(currentPath, *currentPackage, activePackagePaths);
-            }
-            return;
-        }
-
-        for (const auto& namePrefixNode : importItem.namePrefix) {
-            std::string namePrefix = std::string(namePrefixNode->getIdentifierString());
-            if (importItem.wildcard && namePrefix == "*") {
-                return;
-            }
-
-            if (!currentPackage) {
-                auto rootPath = rootPaths.find(namePrefix);
-                if (rootPath == rootPaths.end()) {
-                    throw PackageReaderError(fmt::format("Could not find package with name: {}", namePrefix), namePrefixNode.get());
-                }
-                currentPath = rootPath->second;
-                if (!std::filesystem::is_directory(currentPath)) {
-                    throw PackageReaderError(fmt::format("Package path {} is not a directory", currentPath.string()), namePrefixNode.get());
-                }
-                if (packages.find(namePrefix) == packages.end()) {
-                    packages.emplace(
-                        namePrefix,
-                        std::make_unique<ImportedPackage>(
-                            namePrefix,
-                            std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>(),
-                            std::unordered_map<std::string, std::unique_ptr<ImportedModule>>()
-                        )
-                    );
-                }
-
-                currentPackage = packages[namePrefix].get();
-            } else {
-                std::filesystem::path packagePath = currentPath / namePrefix;
-                if (!std::filesystem::is_directory(packagePath)) {
-                    std::filesystem::path modulePath = currentPath / (namePrefix + ".vni");
-                    if (!std::filesystem::is_regular_file(modulePath)) {
-                        throw PackageReaderError(fmt::format("Could not find package or module with name: {}", namePrefix), namePrefixNode.get());
-                    }
-                    if (!currentPackage->getModules().contains(namePrefix)) {
-                        ModuleInterfaceFileReader moduleReader(modulePath);
-                        currentPackage->addModule(moduleReader.read());
-                    }
-                    return;
-                }
-
-                if (!currentPackage->getSubPackages().contains(namePrefix)) {
-                    currentPackage->addSubPackage(
-                        std::make_unique<ImportedPackage>(
-                            namePrefix,
-                            std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>(),
-                            std::unordered_map<std::string, std::unique_ptr<ImportedModule>>()
-                        )
-                    );
-                }
-                currentPackage = currentPackage->getSubPackages().at(namePrefix).get();
-                currentPath = std::move(packagePath);
-            }
-        }
-
-        if (currentPackage && importItem.nameSuffixes.empty() && !importItem.wildcard) {
-            std::unordered_set<std::filesystem::path> activePackagePaths;
-            readPackageContents(currentPath, *currentPackage, activePackagePaths);
-        }
-
-        for (const auto& suffix : importItem.nameSuffixes) {
-            readRecursivelyFromSource(*suffix, rootPaths, currentPath, currentPackage);
-        }
     }
 
     void PackageReader::readPackageContents(const std::filesystem::path& packagePath, ImportedPackage& package, std::unordered_set<std::filesystem::path>& activePackagePaths) {

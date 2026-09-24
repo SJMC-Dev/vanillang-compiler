@@ -14,20 +14,12 @@ namespace vnlc {
         EnumDeclarationOutline() = delete;
 
         std::string name;
-        std::vector<std::string> genericParameterNames;
         std::vector<std::unique_ptr<EnumMemberDeclarationOutline>> memberDeclarations;
 
     public:
-        EnumDeclarationOutline(
-            std::string&& name,
-            std::vector<std::string>&& genericParameterNames,
-            std::vector<std::unique_ptr<EnumMemberDeclarationOutline>>&& memberDeclarations,
-            const Token& firstToken,
-            const Token& lastToken
-        ) noexcept;
+        EnumDeclarationOutline(std::string&& name, std::vector<std::unique_ptr<EnumMemberDeclarationOutline>>&& memberDeclarations, const Token& firstToken, const Token& lastToken) noexcept;
 
         [[nodiscard]] std::string_view getName() const noexcept;
-        [[nodiscard]] const std::vector<std::string>& getGenericParameterNames() const noexcept;
         [[nodiscard]] const std::vector<std::unique_ptr<EnumMemberDeclarationOutline>>& getMemberDeclarations() const noexcept;
     };
 } // namespace vnlc
