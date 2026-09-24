@@ -14,7 +14,8 @@ namespace vnlc {
     private:
         std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& packages;
 
-        void readFromPath(std::string_view path, const std::unordered_map<std::string, std::filesystem::path>& rootPaths);
+        void readFromCurrentRootPackage(std::string_view path);
+        void readFromAnotherRootPackage(std::string_view path, const std::unordered_map<std::string, std::filesystem::path>& rootPaths);
 
         void readPackageContents(const std::filesystem::path& packagePath, ImportedPackage& package, std::unordered_set<std::filesystem::path>& activePackagePaths);
 

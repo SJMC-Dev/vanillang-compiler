@@ -8,10 +8,14 @@ namespace vnlc {
     PackageReader::PackageReader(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& packages) : packages(packages) {}
 
     void PackageReader::readPackageFromPath(std::string_view path, const Config& config) {
-        readFromPath(path, config.dependencyPackageRootPaths);
+        readFromAnotherRootPackage(path, config.dependencyPackageRootPaths);
     }
 
-    void PackageReader::readFromPath(std::string_view path, const std::unordered_map<std::string, std::filesystem::path>& rootPaths) {
+    void readFromCurrentRootPackage(std::string_view path) {
+        // TODO: implement reading packages and modules in the same root package
+    }
+
+    void PackageReader::readFromAnotherRootPackage(std::string_view path, const std::unordered_map<std::string, std::filesystem::path>& rootPaths) {
         std::vector<std::string> names;
         for (std::size_t start = 0;;) {
             std::size_t end = path.find('.', start);
