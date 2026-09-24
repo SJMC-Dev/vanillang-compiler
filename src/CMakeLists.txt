@@ -59,6 +59,14 @@ add_executable(
     ast/typeref/PrimitiveTypeReferenceNode.cpp
     ast/typeref/TypeReferenceNode.cpp
     ast/identifier/IdentifierNode.cpp
+    localdecl/DeclarationOutline.cpp
+    localdecl/ModuleOutline.cpp
+    localdecl/TypeDeclarationOutline.cpp
+    localdecl/ClassDeclarationOutline.cpp
+    localdecl/InterfaceDeclarationOutline.cpp
+    localdecl/EnumDeclarationOutline.cpp
+    localdecl/EnumMemberDeclarationOutline.cpp
+    localdecl/TypeAliasDeclarationOutline.cpp
     parser/Parser.cpp
     diagnostic/Diagnostic.cpp
     symbol/Symbol.cpp
