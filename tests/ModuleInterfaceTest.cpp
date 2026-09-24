@@ -9,7 +9,8 @@
 #include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/identifier/IdentifierNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include "config/RunningMode.hpp"
 #include "error/ModuleInterfaceReaderError.hpp"
@@ -54,7 +55,7 @@ namespace vnlc {
         const Token testToken(TokenKind::IDENTIFIER, "test", 1, 1, 0);
         const VoidType testVoidType;
 
-        using TypeMap = std::unordered_map<const TypeNode*, const Type*>;
+        using TypeMap = std::unordered_map<const TypeReferenceNode*, const Type*>;
         using InferredValueTypeMap = std::unordered_map<const ValueDeclarationNode*, const Type*>;
         using InferredFunctionReturnTypeMap = std::unordered_map<const FunctionDeclarationNode*, const Type*>;
 
@@ -62,10 +63,10 @@ namespace vnlc {
             return std::make_unique<IdentifierNode>(name, testToken, testToken);
         }
 
-        std::unique_ptr<TypeNode> makeType(std::string_view name) {
+        std::unique_ptr<TypeReferenceNode> makeType(std::string_view name) {
             std::vector<std::unique_ptr<IdentifierNode>> nameParts;
             nameParts.push_back(makeIdentifier(name));
-            return std::make_unique<TypeNode>(false, std::move(nameParts), std::vector<std::unique_ptr<TypeNode>>{}, testToken, testToken);
+            return std::make_unique<CustomizedTypeReferenceNode>(false, std::move(nameParts), std::vector<std::unique_ptr<TypeReferenceNode>>{}, testToken, testToken);
         }
 
         std::vector<DeclarationItem::MetadataTerm> makeMetadata() {
@@ -80,7 +81,7 @@ namespace vnlc {
             ValueDeclarationKind::Context context,
             ValueDeclarationKind::AccessModifier accessModifier,
             std::string_view name,
-            std::optional<std::unique_ptr<TypeNode>>&& type = std::nullopt
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& type = std::nullopt
         ) {
             return std::make_unique<ValueDeclarationNode>(kind, context, accessModifier, makeIdentifier(name), std::move(type), std::nullopt, testToken, testToken);
         }
@@ -90,7 +91,7 @@ namespace vnlc {
             ValueDeclarationKind::Context context,
             ValueDeclarationKind::AccessModifier accessModifier,
             std::string_view name,
-            std::optional<std::unique_ptr<TypeNode>>&& type,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& type,
             std::vector<DeclarationItem::MetadataTerm>&& metadata
         ) {
             return std::make_unique<ValueDeclarationNode>(kind, context, accessModifier, makeIdentifier(name), std::move(type), std::nullopt, testToken, testToken, std::move(metadata));
@@ -103,7 +104,7 @@ namespace vnlc {
             FunctionDeclarationKind::Binding binding,
             std::string_view name,
             std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
-            std::optional<std::unique_ptr<TypeNode>>&& returnType,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
             std::vector<DeclarationItem::MetadataTerm>&& metadata = {}
         ) {
             return std::make_unique<FunctionDeclarationNode>(
@@ -124,8 +125,8 @@ namespace vnlc {
         std::unique_ptr<ClassDeclarationNode> makeClass(
             bool final,
             std::string_view name,
-            std::optional<std::unique_ptr<TypeNode>>&& baseClass,
-            std::vector<std::unique_ptr<TypeNode>>&& implementedInterfaces,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& baseClass,
+            std::vector<std::unique_ptr<TypeReferenceNode>>&& implementedInterfaces,
             std::vector<std::unique_ptr<IdentifierNode>>&& genericParameters,
             std::vector<std::unique_ptr<DeclarationNode>>&& memberDeclarations,
             std::vector<DeclarationItem::MetadataTerm>&& metadata = {}
@@ -158,7 +159,7 @@ namespace vnlc {
         }
 
         std::unique_ptr<TypeAliasDeclarationNode>
-        makeTypeAlias(std::string_view name, std::vector<std::unique_ptr<IdentifierNode>>&& genericParameters, std::unique_ptr<TypeNode>&& originalType) {
+        makeTypeAlias(std::string_view name, std::vector<std::unique_ptr<IdentifierNode>>&& genericParameters, std::unique_ptr<TypeReferenceNode>&& originalType) {
             return std::make_unique<TypeAliasDeclarationNode>(makeIdentifier(name), std::move(genericParameters), std::move(originalType), testToken, testToken);
         }
 
@@ -757,9 +758,9 @@ namespace vnlc {
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesNativeFuncWithParameter) {
         const auto config = makeGeneratorConfig(testDirectory);
         auto parameterType = makeType("int");
-        const auto* parameterTypeNode = parameterType.get();
+        const auto* parameterTypeReferenceNode = parameterType.get();
         auto returnType = makeType("void");
-        const auto* returnTypeNode = returnType.get();
+        const auto* returnTypeReferenceNode = returnType.get();
 
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
         parameters.push_back(makeValue(
@@ -781,8 +782,8 @@ namespace vnlc {
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
-                { parameterTypeNode, PrimitiveType::intType() },
-                { returnTypeNode, &testVoidType },
+                { parameterTypeReferenceNode, PrimitiveType::intType() },
+                { returnTypeReferenceNode, &testVoidType },
             }
         );
 
@@ -806,11 +807,11 @@ namespace vnlc {
         auto implementedInterface = makeType("Readable");
         const auto* implementedInterfaceNode = implementedInterface.get();
         auto propertyType = makeType("int");
-        const auto* propertyTypeNode = propertyType.get();
+        const auto* propertyTypeReferenceNode = propertyType.get();
         auto methodReturnType = makeType("string");
-        const auto* methodReturnTypeNode = methodReturnType.get();
+        const auto* methodReturnTypeReferenceNode = methodReturnType.get();
 
-        std::vector<std::unique_ptr<TypeNode>> implementedInterfaces;
+        std::vector<std::unique_ptr<TypeReferenceNode>> implementedInterfaces;
         implementedInterfaces.push_back(std::move(implementedInterface));
 
         std::vector<std::unique_ptr<IdentifierNode>> genericParameters;
@@ -849,8 +850,8 @@ namespace vnlc {
             {
                 { baseClassNode, &baseType },
                 { implementedInterfaceNode, &interfaceType },
-                { propertyTypeNode, PrimitiveType::intType() },
-                { methodReturnTypeNode, PrimitiveType::stringType() },
+                { propertyTypeReferenceNode, PrimitiveType::intType() },
+                { methodReturnTypeReferenceNode, PrimitiveType::stringType() },
             }
         );
 
@@ -880,7 +881,7 @@ namespace vnlc {
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesInterfaceWithMethod) {
         const auto config = makeGeneratorConfig(testDirectory);
         auto returnType = makeType("void");
-        const auto* returnTypeNode = returnType.get();
+        const auto* returnTypeReferenceNode = returnType.get();
 
         std::vector<std::unique_ptr<IdentifierNode>> genericParameters;
         genericParameters.push_back(makeIdentifier("T"));
@@ -899,7 +900,7 @@ namespace vnlc {
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
-                { returnTypeNode, &testVoidType },
+                { returnTypeReferenceNode, &testVoidType },
             }
         );
 
@@ -918,7 +919,7 @@ namespace vnlc {
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesEnumWithMemberAndValue) {
         const auto config = makeGeneratorConfig(testDirectory);
         auto valueType = makeType("int");
-        const auto* valueTypeNode = valueType.get();
+        const auto* valueTypeReferenceNode = valueType.get();
 
         std::vector<std::unique_ptr<ValueDeclarationNode>> associatedValues;
         associatedValues.push_back(makeValue(
@@ -939,7 +940,7 @@ namespace vnlc {
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
-                { valueTypeNode, PrimitiveType::intType() },
+                { valueTypeReferenceNode, PrimitiveType::intType() },
             }
         );
 
@@ -958,7 +959,7 @@ namespace vnlc {
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesTypeAliasCategory) {
         const auto config = makeGeneratorConfig(testDirectory);
         auto originalType = makeType("List<T>");
-        const auto* originalTypeNode = originalType.get();
+        const auto* originalTypeReferenceNode = originalType.get();
 
         std::vector<std::unique_ptr<IdentifierNode>> genericParameters;
         genericParameters.push_back(makeIdentifier("T"));
@@ -967,7 +968,7 @@ namespace vnlc {
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
-                { originalTypeNode, PrimitiveType::intType() },
+                { originalTypeReferenceNode, PrimitiveType::intType() },
             }
         );
 

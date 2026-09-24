@@ -2,6 +2,7 @@
 #include "ast/declaration/ClassDeclarationNode.hpp"
 #include "ast/statement/ExpressionStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
+#include "ast/typeref/CustomizedTypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
@@ -131,7 +132,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
                 false,
                 std::make_unique<IdentifierNode>("Base", token, token),
                 std::nullopt,
-                std::vector<std::unique_ptr<TypeNode>>{},
+                std::vector<std::unique_ptr<TypeReferenceNode>>{},
                 std::vector<std::unique_ptr<IdentifierNode>>{},
                 std::move(members),
                 token,
@@ -144,8 +145,8 @@ class GenericPrivateShadow<privateMember> extends Base {}
             privateShadow = std::make_unique<ClassDeclarationNode>(
                 false,
                 std::make_unique<IdentifierNode>("PrivateShadow", token, token),
-                std::make_unique<TypeNode>(false, std::move(baseName), std::vector<std::unique_ptr<TypeNode>>{}, token, token),
-                std::vector<std::unique_ptr<TypeNode>>{},
+                std::make_unique<CustomizedTypeReferenceNode>(false, std::move(baseName), std::vector<std::unique_ptr<TypeReferenceNode>>{}, token, token),
+                std::vector<std::unique_ptr<TypeReferenceNode>>{},
                 std::vector<std::unique_ptr<IdentifierNode>>{},
                 std::move(members),
                 token,
@@ -172,7 +173,8 @@ class GenericPrivateShadow<privateMember> extends Base {}
             }
             for (const auto* classDeclaration : classes) {
                 if (!classDeclaration->getBaseClass().has_value()) continue;
-                const auto* baseType = classDeclaration->getBaseClass().value().get();
+                const auto* baseType = dynamic_cast<const CustomizedTypeReferenceNode*>(classDeclaration->getBaseClass().value().get());
+                ASSERT_NE(baseType, nullptr);
                 if (const auto* resolvedType = findType(baseType->getNameParts().front()->getIdentifierString())) {
                     context.mapType(baseType, resolvedType);
                 }
@@ -481,6 +483,21 @@ type Invalid = Missing<Unknown>
         EXPECT_EQ(result.getErrors().front().getMessage(), "Use of undeclared type 'Missing'");
     }
 
+    TEST(SemanticAnalyzerTest, AcceptsPrimitiveTypeExpressions) {
+        constexpr std::string_view source = R"(
+func test() {
+    let value = int
+}
+)";
+        const auto config = makeConfig("primitive_type_expression.vnl");
+        auto module = parseModule(source, config);
+
+        SemanticAnalyzer analyzer(*module);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+    }
+
     TEST(SemanticContextTest, RetainsPoppedScopesAndTheirParents) {
         const auto config = makeConfig("scopes.vnl");
         const auto module = parseModule("class Sample {}", config);
@@ -668,7 +685,7 @@ type Invalid = Missing<Unknown>
         std::string getFullTypeNameByAlias(std::string_view source) {
             std::string fullName;
             withAliasType(source, [&fullName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
-                fullName = analyzer.getFullTypeNameByTypeNode(typeAlias.getOriginalType());
+                fullName = analyzer.getFullTypeNameByTypeReferenceNode(typeAlias.getOriginalType());
             });
             return fullName;
         }
@@ -677,7 +694,7 @@ type Invalid = Missing<Unknown>
             return analyzer.context;
         }
 
-        const Type* checkedType(SemanticAnalyzer& analyzer, const TypeNode& type) const {
+        const Type* checkedType(SemanticAnalyzer& analyzer, const TypeReferenceNode& type) const {
             return analyzer.checkType(type);
         }
 
@@ -736,10 +753,10 @@ type Invalid = Missing<Unknown>
         EXPECT_EQ(getFullTypeNameByAlias("type Result = int?\n"), "vanillang.typesystem.Optional<int>");
     }
 
-    TEST_F(SemanticAnalyzerImportTest, MapsPrimitiveTypeNodesToSharedTypes) {
+    TEST_F(SemanticAnalyzerImportTest, MapsPrimitiveTypeReferenceNodesToSharedTypes) {
         withAliasType("type Result = int\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
-            const auto* type = context.getTypeByTypeNode(&typeAlias.getOriginalType());
+            const auto* type = context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType());
             ASSERT_NE(type, nullptr);
             EXPECT_EQ(type, PrimitiveType::intType());
             EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), type);
@@ -760,7 +777,7 @@ type Invalid = Missing<Unknown>
             withAliasType("type Result = " + primitiveName + "?\n", [this, primitiveType, &primitiveName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
                 auto& context = semanticContext(analyzer);
                 ASSERT_TRUE(context.getErrors().empty());
-                const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeNode(&typeAlias.getOriginalType()));
+                const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
                 ASSERT_NE(optionalType, nullptr);
                 EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
                 EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<" + primitiveName + ">");
@@ -776,7 +793,7 @@ type Invalid = Missing<Unknown>
         withAliasType("class Box<T> {}\ntype Result = Box<int?>?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
             ASSERT_TRUE(context.getErrors().empty());
-            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeNode(&typeAlias.getOriginalType()));
+            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
             ASSERT_NE(optionalType, nullptr);
             EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
             const auto boxName = std::string(module->getFullName()) + ".Box<vanillang.typesystem.Optional<int>>";
@@ -794,7 +811,8 @@ type Invalid = Missing<Unknown>
             ASSERT_NE(optionalIntType, nullptr);
             EXPECT_EQ(optionalIntType->getCustomizedKind(), CustomizedTypeKind::ENUM);
             EXPECT_EQ(optionalIntType->getFullTypeName(), "vanillang.typesystem.Optional<int>");
-            EXPECT_EQ(context.getTypeByTypeNode(typeAlias.getOriginalType().getGenericArguments().front().get()), optionalIntType);
+            const auto& originalType = dynamic_cast<const CustomizedTypeReferenceNode&>(typeAlias.getOriginalType());
+            EXPECT_EQ(context.getTypeByTypeReferenceNode(originalType.getGenericArguments().front().get()), optionalIntType);
             ASSERT_EQ(optionalIntType->getGenericArguments().size(), 1);
             EXPECT_EQ(optionalIntType->getGenericArguments().front(), PrimitiveType::intType());
             EXPECT_EQ(context.getCustomizedTypeByFullTypeName(std::string(optionalType->getFullTypeName())), optionalType);
@@ -807,7 +825,7 @@ type Invalid = Missing<Unknown>
         withAliasType("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int>?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
             ASSERT_TRUE(context.getErrors().empty());
-            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeNode(&typeAlias.getOriginalType()));
+            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
             ASSERT_NE(optionalType, nullptr);
             EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
             EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<pkg.api.Box<int>>");
@@ -831,7 +849,7 @@ type Invalid = Missing<Unknown>
         withAliasType("type Result<T> = T?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
             ASSERT_TRUE(context.getErrors().empty());
-            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeNode(&typeAlias.getOriginalType()));
+            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
             ASSERT_NE(optionalType, nullptr);
             EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
             EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<T>");
@@ -852,12 +870,12 @@ type Invalid = Missing<Unknown>
         const auto& originalAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*declarations.at(1));
         const auto& firstAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*declarations.at(2));
         const auto& secondAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*declarations.at(3));
-        const auto* originalType = result.getTypeByTypeNode(&originalAlias.getOriginalType());
-        const auto* optionalType = dynamic_cast<const CustomizedType*>(result.getTypeByTypeNode(&firstAlias.getOriginalType()));
+        const auto* originalType = result.getTypeByTypeReferenceNode(&originalAlias.getOriginalType());
+        const auto* optionalType = dynamic_cast<const CustomizedType*>(result.getTypeByTypeReferenceNode(&firstAlias.getOriginalType()));
         ASSERT_NE(originalType, nullptr);
         ASSERT_NE(optionalType, nullptr);
         EXPECT_NE(originalType, optionalType);
-        EXPECT_EQ(result.getTypeByTypeNode(&secondAlias.getOriginalType()), optionalType);
+        EXPECT_EQ(result.getTypeByTypeReferenceNode(&secondAlias.getOriginalType()), optionalType);
         ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
         EXPECT_EQ(optionalType->getGenericArguments().front(), originalType);
         EXPECT_EQ(result.getCustomizedTypeByFullTypeName(std::string(originalType->getFullTypeName())), originalType);
@@ -872,7 +890,7 @@ type Invalid = Missing<Unknown>
         }
         for (std::size_t index = 1; index < module->getTopIdentifierDeclarations().size(); ++index) {
             const auto& alias = dynamic_cast<const TypeAliasDeclarationNode&>(*module->getTopIdentifierDeclarations()[index]);
-            EXPECT_EQ(result.getTypeByTypeNode(&alias.getOriginalType()), nullptr);
+            EXPECT_EQ(result.getTypeByTypeReferenceNode(&alias.getOriginalType()), nullptr);
         }
         const auto boxName = std::string(module->getFullName()) + ".Box<vanillang.typesystem.Optional<Missing>>";
         EXPECT_EQ(result.getCustomizedTypeByFullTypeName("vanillang.typesystem.Optional<Missing>"), nullptr);
@@ -892,11 +910,11 @@ type Invalid = Missing<Unknown>
                     auto& context = semanticContext(analyzer);
                     ASSERT_TRUE(context.getErrors().empty());
                     const auto& firstAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*module->getTopIdentifierDeclarations().front());
-                    const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeNode(&firstAlias.getOriginalType()));
+                    const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&firstAlias.getOriginalType()));
                     ASSERT_NE(optionalType, nullptr);
                     EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
                     EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<int>");
-                    EXPECT_EQ(context.getTypeByTypeNode(&secondAlias.getOriginalType()), optionalType);
+                    EXPECT_EQ(context.getTypeByTypeReferenceNode(&secondAlias.getOriginalType()), optionalType);
                     EXPECT_EQ(context.getCustomizedTypeByFullTypeName("vanillang.typesystem.Optional<int>"), optionalType);
                     ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
                     EXPECT_EQ(optionalType->getGenericArguments().front(), PrimitiveType::intType());
@@ -908,7 +926,7 @@ type Invalid = Missing<Unknown>
     TEST_F(SemanticAnalyzerImportTest, RegistersLocalCustomizedTypesAndReusesExistingPointers) {
         withAliasType("class Box<T> {}\ntype Result = Box<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
-            const auto* resolvedType = context.getTypeByTypeNode(&typeAlias.getOriginalType());
+            const auto* resolvedType = context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType());
             const auto* customizedType = dynamic_cast<const CustomizedType*>(resolvedType);
             ASSERT_NE(customizedType, nullptr);
             EXPECT_EQ(customizedType->getCustomizedKind(), CustomizedTypeKind::CLASS);
@@ -922,7 +940,7 @@ type Invalid = Missing<Unknown>
         });
     }
 
-    TEST_F(SemanticAnalyzerImportTest, ReusesCustomizedTypesAcrossDifferentTypeNodes) {
+    TEST_F(SemanticAnalyzerImportTest, ReusesCustomizedTypesAcrossDifferentTypeReferenceNodes) {
         withAliasType("class Box<T> {}\ntype First = Box<int>\ntype Second = Box<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& secondAlias) {
             const TypeAliasDeclarationNode* firstAlias = nullptr;
             for (const auto& declaration : module->getTopIdentifierDeclarations()) {
@@ -934,7 +952,7 @@ type Invalid = Missing<Unknown>
             }
             ASSERT_NE(firstAlias, nullptr);
             auto& context = semanticContext(analyzer);
-            EXPECT_EQ(context.getTypeByTypeNode(&firstAlias->getOriginalType()), context.getTypeByTypeNode(&secondAlias.getOriginalType()));
+            EXPECT_EQ(context.getTypeByTypeReferenceNode(&firstAlias->getOriginalType()), context.getTypeByTypeReferenceNode(&secondAlias.getOriginalType()));
         });
     }
 
@@ -942,7 +960,7 @@ type Invalid = Missing<Unknown>
         writeScopedModule();
         withAliasType("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
-            const auto* resolvedType = context.getTypeByTypeNode(&typeAlias.getOriginalType());
+            const auto* resolvedType = context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType());
             const auto* customizedType = dynamic_cast<const CustomizedType*>(resolvedType);
             ASSERT_NE(customizedType, nullptr);
             EXPECT_EQ(customizedType->getCustomizedKind(), CustomizedTypeKind::CLASS);

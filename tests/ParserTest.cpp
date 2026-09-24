@@ -1,9 +1,15 @@
 #include "parser/Parser.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/expression/IdentifierExpressionNode.hpp"
 #include "ast/expression/NoneExpressionNode.hpp"
+#include "ast/expression/PrimitiveTypeExpressionKind.hpp"
+#include "ast/expression/PrimitiveTypeExpressionNode.hpp"
 #include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/statement/ForStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
+#include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include <filesystem>
 #include <fstream>
@@ -149,6 +155,71 @@ namespace vnlc {
         ASSERT_NE(rangeExpression, nullptr);
         ASSERT_TRUE(rangeExpression->getEnd().has_value());
         EXPECT_NE(dynamic_cast<const NoneExpressionNode*>(rangeExpression->getEnd().value().get()), nullptr);
+    }
+
+    TEST(ParserTest, DistinguishesPrimitiveAndCustomizedTypeReferences) {
+        std::stringstream input(
+            "class Example {}\n"
+            "func test() {\n"
+            "    let primitiveType = int\n"
+            "    let identifier = value\n"
+            "    let primitiveValue: int? = none\n"
+            "    let customizedValue: Example = none\n"
+            "}\n"
+        );
+        Lexer lexer(input);
+        Parser parser(std::move(lexer));
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto module = parser.parse(config);
+        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 2);
+
+        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
+        ASSERT_NE(function, nullptr);
+        ASSERT_TRUE(function->getBody().has_value());
+
+        const auto& statements = function->getBody().value()->getStatements();
+        ASSERT_EQ(statements.size(), 4);
+
+        const auto* primitiveExpressionStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[0].get());
+        ASSERT_NE(primitiveExpressionStatement, nullptr);
+        ASSERT_TRUE(primitiveExpressionStatement->getVariableDeclaration().getInitializer().has_value());
+        const auto* primitiveExpression = dynamic_cast<const PrimitiveTypeExpressionNode*>(primitiveExpressionStatement->getVariableDeclaration().getInitializer().value().get());
+        ASSERT_NE(primitiveExpression, nullptr);
+        EXPECT_EQ(primitiveExpression->getKind(), PrimitiveTypeExpressionKind::INT);
+
+        const auto* identifierStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[1].get());
+        ASSERT_NE(identifierStatement, nullptr);
+        ASSERT_TRUE(identifierStatement->getVariableDeclaration().getInitializer().has_value());
+        EXPECT_NE(dynamic_cast<const IdentifierExpressionNode*>(identifierStatement->getVariableDeclaration().getInitializer().value().get()), nullptr);
+
+        const auto* primitiveValueStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[2].get());
+        ASSERT_NE(primitiveValueStatement, nullptr);
+        ASSERT_TRUE(primitiveValueStatement->getVariableDeclaration().getType().has_value());
+        const auto* primitiveReference = dynamic_cast<const PrimitiveTypeReferenceNode*>(primitiveValueStatement->getVariableDeclaration().getType().value().get());
+        ASSERT_NE(primitiveReference, nullptr);
+        EXPECT_EQ(primitiveReference->getKind(), PrimitiveTypeReferenceKind::INT);
+        EXPECT_TRUE(primitiveReference->hasQuestionMarkSuffix());
+
+        const auto* customizedValueStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[3].get());
+        ASSERT_NE(customizedValueStatement, nullptr);
+        ASSERT_TRUE(customizedValueStatement->getVariableDeclaration().getType().has_value());
+        const auto* customizedReference = dynamic_cast<const CustomizedTypeReferenceNode*>(customizedValueStatement->getVariableDeclaration().getType().value().get());
+        ASSERT_NE(customizedReference, nullptr);
+        ASSERT_EQ(customizedReference->getNameParts().size(), 1);
+        EXPECT_EQ(customizedReference->getNameParts().front()->getIdentifierString(), "Example");
+        EXPECT_FALSE(customizedReference->hasQuestionMarkSuffix());
+        EXPECT_TRUE(customizedReference->getGenericArguments().empty());
     }
 
 } // namespace vnlc
