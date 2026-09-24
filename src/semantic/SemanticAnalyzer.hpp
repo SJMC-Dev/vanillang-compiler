@@ -14,7 +14,8 @@
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/module/ModuleNode.hpp"
 #include "ast/statement/StatementNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include "metadata/MetadataInfo.hpp"
 #include "semantic/SemanticAnalysisResult.hpp"
@@ -26,6 +27,8 @@
 #include <unordered_set>
 
 namespace vnlc {
+    class PrimitiveType;
+
     class SemanticAnalyzer {
         friend class SemanticAnalyzerAccessTest;
         friend class SemanticAnalyzerImportTest;
@@ -37,8 +40,9 @@ namespace vnlc {
         [[nodiscard]] static SymbolKind getImportedSymbolKind(const ImportedItem& item);
         [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
         [[nodiscard]] static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
-        [[nodiscard]] std::string getFullTypeNameByTypeNode(const TypeNode& typeNode) noexcept;
-        [[nodiscard]] std::string getUnwrappedTypeNameByTypeNode(const TypeNode& typeNode) noexcept;
+        [[nodiscard]] static const PrimitiveType* getPrimitiveType(PrimitiveTypeReferenceKind kind);
+        [[nodiscard]] std::string getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
+        [[nodiscard]] std::string getUnwrappedTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
         static void collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies);
         static void collectImportDependencies(const ImportedItem& item, std::unordered_set<std::string>& dependencies, std::unordered_set<const ImportedModule*>& visitedModules);
         void registerImportedScopes(const ImportedItem& item, const Scope* parent);
@@ -59,8 +63,8 @@ namespace vnlc {
         void checkTypeAliasDeclaration(const TypeAliasDeclarationNode& typeAliasDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkStatement(const StatementNode& statement);
         void checkExpression(const ExpressionNode& expression);
-        const Type* checkType(const TypeNode& type);
-        const Type* checkUnwrappedType(const TypeNode& type);
+        const Type* checkType(const TypeReferenceNode& type);
+        const Type* checkUnwrappedType(const TypeReferenceNode& type);
         [[nodiscard]] TypeInferenceResult inferExpressionType(const ExpressionNode& expression);
         [[nodiscard]] TypeInferenceResult inferFunctionReturnType(const FunctionDeclarationNode& funcDecl);
 

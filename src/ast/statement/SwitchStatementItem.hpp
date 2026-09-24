@@ -3,7 +3,7 @@
 
 #include "ast/expression/ExpressionNode.hpp"
 #include "ast/statement/StatementNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include <memory>
 #include <optional>
 
@@ -15,7 +15,7 @@ namespace vnlc {
         };
 
         struct TypeMatchItem {
-            std::unique_ptr<TypeNode> type;
+            std::unique_ptr<TypeReferenceNode> type;
             std::unique_ptr<StatementNode> body;
             std::optional<std::unique_ptr<ExpressionNode>> guardExpression;
         };

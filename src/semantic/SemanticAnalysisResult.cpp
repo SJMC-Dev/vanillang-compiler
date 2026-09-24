@@ -10,7 +10,7 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<CustomizedType>>&& customizedTypes,
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>>&& localScopeMap,
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>>&& importedScopeMap,
-        std::unordered_map<const TypeNode*, const Type*>&& typeMap,
+        std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
         std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
         std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
         std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap,
@@ -74,7 +74,7 @@ namespace vnlc {
         return it == importedScopeMap.end() ? nullptr : it->second.get();
     }
 
-    const Type* SemanticAnalysisResult::getTypeByTypeNode(const TypeNode* typeNode) const {
+    const Type* SemanticAnalysisResult::getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const {
         auto it = typeMap.find(typeNode);
         if (it != typeMap.end()) {
             return it->second;

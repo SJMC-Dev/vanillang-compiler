@@ -18,6 +18,7 @@ add_executable(
     ast/expression/LiteralExpressionNode.cpp
     ast/expression/MemberAccessExpressionNode.cpp
     ast/expression/NoneExpressionNode.cpp
+    ast/expression/PrimitiveTypeExpressionNode.cpp
     ast/expression/PrimaryExpressionNode.cpp
     ast/expression/RangeExpressionNode.cpp
     ast/expression/SubscriptExpressionNode.cpp
@@ -54,7 +55,9 @@ add_executable(
     ast/statement/ContinueStatementNode.cpp
     ast/statement/ReloadStatementNode.cpp
     ast/statement/SwitchStatementNode.cpp
-    ast/type/TypeNode.cpp
+    ast/typeref/CustomizedTypeReferenceNode.cpp
+    ast/typeref/PrimitiveTypeReferenceNode.cpp
+    ast/typeref/TypeReferenceNode.cpp
     ast/identifier/IdentifierNode.cpp
     parser/Parser.cpp
     diagnostic/Diagnostic.cpp

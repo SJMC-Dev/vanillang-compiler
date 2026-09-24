@@ -13,6 +13,7 @@
 #include "ast/expression/ListLikeLiteralExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/expression/NoneExpressionNode.hpp"
+#include "ast/expression/PrimitiveTypeExpressionNode.hpp"
 #include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/expression/SelectorLiteralExpressionNode.hpp"
 #include "ast/expression/SimpleLiteralExpressionNode.hpp"
@@ -31,7 +32,9 @@
 #include "ast/statement/SwitchStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "ast/statement/WhileStatementNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include "error/ModuleInterfaceReaderError.hpp"
 #include "error/PackageReaderError.hpp"
 #include "symbol/SymbolAccessModifier.hpp"
@@ -70,6 +73,28 @@
 
 namespace vnlc {
     SemanticAnalyzer::SemanticAnalyzer(const ModuleNode& module) : module(module) {}
+
+    const PrimitiveType* SemanticAnalyzer::getPrimitiveType(PrimitiveTypeReferenceKind kind) {
+        switch (kind) {
+            case PrimitiveTypeReferenceKind::BYTE:
+                return PrimitiveType::byteType();
+            case PrimitiveTypeReferenceKind::SHORT:
+                return PrimitiveType::shortType();
+            case PrimitiveTypeReferenceKind::INT:
+                return PrimitiveType::intType();
+            case PrimitiveTypeReferenceKind::LONG:
+                return PrimitiveType::longType();
+            case PrimitiveTypeReferenceKind::FLOAT:
+                return PrimitiveType::floatType();
+            case PrimitiveTypeReferenceKind::DOUBLE:
+                return PrimitiveType::doubleType();
+            case PrimitiveTypeReferenceKind::BOOLEAN:
+                return PrimitiveType::booleanType();
+            case PrimitiveTypeReferenceKind::STRING:
+                return PrimitiveType::stringType();
+        }
+        return nullptr;
+    }
 
     SymbolKind SemanticAnalyzer::getImportedSymbolKind(const ImportedItem& item) {
         if (dynamic_cast<const ImportedPackage*>(&item)) return SymbolKind::PACKAGE;
@@ -123,118 +148,120 @@ namespace vnlc {
         return SymbolAccessModifier::PUBLIC;
     }
 
-    std::string SemanticAnalyzer::getFullTypeNameByTypeNode(const TypeNode& typeNode) noexcept {
-        std::string result = getUnwrappedTypeNameByTypeNode(typeNode);
+    std::string SemanticAnalyzer::getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept {
+        std::string result = getUnwrappedTypeNameByTypeReferenceNode(typeNode);
         if (!result.empty() && typeNode.hasQuestionMarkSuffix()) {
             return fmt::format("vanillang.typesystem.Optional<{}>", result);
         }
         return result;
     }
 
-    std::string SemanticAnalyzer::getUnwrappedTypeNameByTypeNode(const TypeNode& typeNode) noexcept {
-        static const std::unordered_set<std::string_view> primitiveTypes = {
-            "byte", "short", "int", "long", "float", "double", "bool", "string",
-        };
+    std::string SemanticAnalyzer::getUnwrappedTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept {
+        if (const auto* primitiveTypeReferenceNode = dynamic_cast<const PrimitiveTypeReferenceNode*>(&typeNode)) {
+            return std::string(getPrimitiveType(primitiveTypeReferenceNode->getKind())->getFullTypeName());
+        }
 
-        if (typeNode.getNameParts().size() == 1 && primitiveTypes.contains(typeNode.getNameParts().back()->getIdentifierString())) {
-            return std::string(typeNode.getNameParts().back()->getIdentifierString());
-        } else {
-            std::stack<std::string> identifiers;
-            std::string result;
+        const auto* customizedTypeReferenceNode = dynamic_cast<const CustomizedTypeReferenceNode*>(&typeNode);
+        if (customizedTypeReferenceNode == nullptr) {
+            return "";
+        }
 
-            const Scope* currentScope = &context.currentScope();
-            while (currentScope && !currentScope->lookupLocal(typeNode.getNameParts().front()->getIdentifierString())) {
-                currentScope = currentScope->findParent();
+        const auto& nameParts = customizedTypeReferenceNode->getNameParts();
+        std::stack<std::string> identifiers;
+        std::string result;
+
+        const Scope* currentScope = &context.currentScope();
+        while (currentScope && !currentScope->lookupLocal(nameParts.front()->getIdentifierString())) {
+            currentScope = currentScope->findParent();
+        }
+
+        if (!currentScope) {
+            context.reportError(*nameParts.front(), fmt::format("Use of undeclared identifier {}", nameParts.front()->getIdentifierString()));
+            return "";
+        }
+
+        const Symbol& firstSymbol = *currentScope->lookupLocal(nameParts.front()->getIdentifierString());
+        if (firstSymbol.getKind() == SymbolKind::GENERIC_PARAMETER) {
+            result = std::string(firstSymbol.getName());
+        } else if (firstSymbol.getOrigin() == SymbolOrigin::LOCAL) {
+            const Scope* localScope = context.getScopeBySymbol(firstSymbol);
+            if (localScope != nullptr) {
+                while (localScope->findParent() && localScope->getKind() != ScopeKind::MODULE) {
+                    const TypeDeclarationNode* node = dynamic_cast<const TypeDeclarationNode*>(localScope->getLocalNode());
+                    if (const ClassDeclarationNode* classDecl = dynamic_cast<const ClassDeclarationNode*>(node)) {
+                        identifiers.push(std::string(classDecl->getName().getIdentifierString()));
+                    } else if (const InterfaceDeclarationNode* interfaceDecl = dynamic_cast<const InterfaceDeclarationNode*>(node)) {
+                        identifiers.push(std::string(interfaceDecl->getName().getIdentifierString()));
+                    } else if (const EnumDeclarationNode* enumDecl = dynamic_cast<const EnumDeclarationNode*>(node)) {
+                        identifiers.push(std::string(enumDecl->getName().getIdentifierString()));
+                    } else if (const EnumMemberDeclarationNode* enumMemberDecl = dynamic_cast<const EnumMemberDeclarationNode*>(node)) {
+                        identifiers.push(std::string(enumMemberDecl->getName().getIdentifierString()));
+                    } else if (const TypeAliasDeclarationNode* typeAliasDecl = dynamic_cast<const TypeAliasDeclarationNode*>(node)) {
+                        identifiers.push(std::string(typeAliasDecl->getAliasName().getIdentifierString()));
+                    }
+
+                    localScope = localScope->findParent();
+                }
             }
 
-            if (!currentScope) {
-                context.reportError(*typeNode.getNameParts().front(), fmt::format("Use of undeclared identifier {}", typeNode.getNameParts().front()->getIdentifierString()));
+            result = module.getFullName();
+            while (!identifiers.empty()) {
+                result.append(".");
+                result.append(identifiers.top());
+                identifiers.pop();
+            }
+            const std::size_t firstIndex = localScope == nullptr ? 0 : 1;
+            for (std::size_t index = firstIndex; index < nameParts.size(); ++index) {
+                result.append(".");
+                result.append(nameParts[index]->getIdentifierString());
+            }
+        } else if (firstSymbol.getOrigin() == SymbolOrigin::IMPORTED) {
+            const Scope* importedScope = context.getScopeBySymbol(firstSymbol);
+            if (importedScope == nullptr) {
+                context.reportError(*nameParts.front(), fmt::format("Identifier '{}' does not have a scope", nameParts.front()->getIdentifierString()));
                 return "";
             }
-
-            const Symbol& firstSymbol = *currentScope->lookupLocal(typeNode.getNameParts().front()->getIdentifierString());
-            if (firstSymbol.getKind() == SymbolKind::GENERIC_PARAMETER) {
-                result = std::string(firstSymbol.getName());
-            } else if (firstSymbol.getOrigin() == SymbolOrigin::LOCAL) {
-                const Scope* localScope = context.getScopeBySymbol(firstSymbol);
-                if (localScope != nullptr) {
-                    while (localScope->findParent() && localScope->getKind() != ScopeKind::MODULE) {
-                        const TypeDeclarationNode* node = dynamic_cast<const TypeDeclarationNode*>(localScope->getLocalNode());
-                        if (const ClassDeclarationNode* classDecl = dynamic_cast<const ClassDeclarationNode*>(node)) {
-                            identifiers.push(std::string(classDecl->getName().getIdentifierString()));
-                        } else if (const InterfaceDeclarationNode* interfaceDecl = dynamic_cast<const InterfaceDeclarationNode*>(node)) {
-                            identifiers.push(std::string(interfaceDecl->getName().getIdentifierString()));
-                        } else if (const EnumDeclarationNode* enumDecl = dynamic_cast<const EnumDeclarationNode*>(node)) {
-                            identifiers.push(std::string(enumDecl->getName().getIdentifierString()));
-                        } else if (const EnumMemberDeclarationNode* enumMemberDecl = dynamic_cast<const EnumMemberDeclarationNode*>(node)) {
-                            identifiers.push(std::string(enumMemberDecl->getName().getIdentifierString()));
-                        } else if (const TypeAliasDeclarationNode* typeAliasDecl = dynamic_cast<const TypeAliasDeclarationNode*>(node)) {
-                            identifiers.push(std::string(typeAliasDecl->getAliasName().getIdentifierString()));
-                        }
-
-                        localScope = localScope->findParent();
-                    }
+            while (importedScope != nullptr) {
+                if (const ImportedItem* importedNode = importedScope->getImportedNode()) {
+                    identifiers.push(std::string(importedNode->getName()));
                 }
-
-                result = module.getFullName();
-                while (!identifiers.empty()) {
-                    result.append(".");
-                    result.append(identifiers.top());
-                    identifiers.pop();
-                }
-                const std::size_t firstIndex = localScope == nullptr ? 0 : 1;
-                for (std::size_t index = firstIndex; index < typeNode.getNameParts().size(); ++index) {
-                    result.append(".");
-                    result.append(typeNode.getNameParts()[index]->getIdentifierString());
-                }
-            } else if (firstSymbol.getOrigin() == SymbolOrigin::IMPORTED) {
-                const Scope* importedScope = context.getScopeBySymbol(firstSymbol);
-                if (importedScope == nullptr) {
-                    context.reportError(*typeNode.getNameParts().front(), fmt::format("Identifier '{}' does not have a scope", typeNode.getNameParts().front()->getIdentifierString()));
-                    return "";
-                }
-                while (importedScope != nullptr) {
-                    if (const ImportedItem* importedNode = importedScope->getImportedNode()) {
-                        identifiers.push(std::string(importedNode->getName()));
-                    }
-                    importedScope = importedScope->findParent();
-                }
-                if (identifiers.empty()) {
-                    context.reportError(*typeNode.getNameParts().front(), fmt::format("Identifier '{}' does not have a scope", typeNode.getNameParts().front()->getIdentifierString()));
-                    return "";
-                }
-                result = std::move(identifiers.top());
+                importedScope = importedScope->findParent();
+            }
+            if (identifiers.empty()) {
+                context.reportError(*nameParts.front(), fmt::format("Identifier '{}' does not have a scope", nameParts.front()->getIdentifierString()));
+                return "";
+            }
+            result = std::move(identifiers.top());
+            identifiers.pop();
+            while (!identifiers.empty()) {
+                result.append(".");
+                result.append(identifiers.top());
                 identifiers.pop();
-                while (!identifiers.empty()) {
-                    result.append(".");
-                    result.append(identifiers.top());
-                    identifiers.pop();
-                }
-                for (std::size_t index = 1; index < typeNode.getNameParts().size(); ++index) {
-                    result.append(".");
-                    result.append(typeNode.getNameParts()[index]->getIdentifierString());
-                }
             }
-
-            std::vector<std::string> genericArgumentFullNames;
-            for (const auto& genericArgument : typeNode.getGenericArguments()) {
-                genericArgumentFullNames.emplace_back(getFullTypeNameByTypeNode(*genericArgument));
+            for (std::size_t index = 1; index < nameParts.size(); ++index) {
+                result.append(".");
+                result.append(nameParts[index]->getIdentifierString());
             }
-            if (!genericArgumentFullNames.empty()) {
-                std::string args = "<";
-                for (auto& arg : genericArgumentFullNames) {
-                    args.append(std::move(arg));
-                    args.append(", ");
-                }
-                if (args.ends_with(", ")) {
-                    args.pop_back();
-                    args.pop_back();
-                }
-                args.append(">");
-                result.append(args);
-            }
-            return result;
         }
+
+        std::vector<std::string> genericArgumentFullNames;
+        for (const auto& genericArgument : customizedTypeReferenceNode->getGenericArguments()) {
+            genericArgumentFullNames.emplace_back(getFullTypeNameByTypeReferenceNode(*genericArgument));
+        }
+        if (!genericArgumentFullNames.empty()) {
+            std::string args = "<";
+            for (auto& arg : genericArgumentFullNames) {
+                args.append(std::move(arg));
+                args.append(", ");
+            }
+            if (args.ends_with(", ")) {
+                args.pop_back();
+                args.pop_back();
+            }
+            args.append(">");
+            result.append(args);
+        }
+        return result;
     }
 
     void SemanticAnalyzer::collectTypeDependencies(std::string_view type, std::unordered_set<std::string>& dependencies) {
@@ -407,7 +434,7 @@ namespace vnlc {
                 return nullptr;
             }
 
-            const auto* baseType = context.getTypeByTypeNode(classDecl->getBaseClass().value().get());
+            const auto* baseType = context.getTypeByTypeReferenceNode(classDecl->getBaseClass().value().get());
             const auto* baseCustomizedType = dynamic_cast<const CustomizedType*>(baseType);
             if (baseCustomizedType == nullptr) {
                 return nullptr;
@@ -1141,6 +1168,7 @@ namespace vnlc {
             }
         } else if (auto* expr = dynamic_cast<const IdentifierExpressionNode*>(&expression)) {
             // TODO: Implement identifier expression checking
+        } else if (dynamic_cast<const PrimitiveTypeExpressionNode*>(&expression) != nullptr) {
         } else if (auto* expr = dynamic_cast<const ListLikeLiteralExpressionNode*>(&expression)) {
             // TODO: Implement list-like literal expression checking
             for (const auto& element : expr->getElements()) {
@@ -1190,7 +1218,7 @@ namespace vnlc {
         }
     }
 
-    const Type* SemanticAnalyzer::checkType(const TypeNode& type) {
+    const Type* SemanticAnalyzer::checkType(const TypeReferenceNode& type) {
         const Type* resolvedType = checkUnwrappedType(type);
         if (resolvedType == nullptr) {
             return nullptr;
@@ -1213,14 +1241,17 @@ namespace vnlc {
         return resolvedType;
     }
 
-    const Type* SemanticAnalyzer::checkUnwrappedType(const TypeNode& type) {
-        const auto& nameParts = type.getNameParts();
-        const auto isPrimitiveType = [](std::string_view name) {
-            static const std::unordered_set<std::string_view> primitiveTypes = {
-                "byte", "short", "int", "long", "float", "double", "bool", "string",
-            };
-            return primitiveTypes.contains(name);
-        };
+    const Type* SemanticAnalyzer::checkUnwrappedType(const TypeReferenceNode& type) {
+        if (const auto* primitiveTypeReferenceNode = dynamic_cast<const PrimitiveTypeReferenceNode*>(&type)) {
+            return getPrimitiveType(primitiveTypeReferenceNode->getKind());
+        }
+
+        const auto* customizedTypeReferenceNode = dynamic_cast<const CustomizedTypeReferenceNode*>(&type);
+        if (customizedTypeReferenceNode == nullptr) {
+            return nullptr;
+        }
+
+        const auto& nameParts = customizedTypeReferenceNode->getNameParts();
         const auto isTypeDefinition = [](SymbolKind kind) {
             switch (kind) {
                 case SymbolKind::CLASS:
@@ -1235,35 +1266,32 @@ namespace vnlc {
             }
         };
 
-        const bool isPrimitiveTypeReference = nameParts.size() == 1 && isPrimitiveType(nameParts.front()->getIdentifierString());
-        bool hasResolvedType = isPrimitiveTypeReference;
+        bool hasResolvedType = false;
         const Symbol* typeSymbol = nullptr;
 
-        if (!isPrimitiveTypeReference) {
-            const Scope* scope = &context.currentScope();
-            for (std::size_t index = 0; index < nameParts.size(); ++index) {
-                const auto& namePart = nameParts[index];
-                const Symbol* symbol = scope->lookup(namePart->getIdentifierString());
-                if (symbol == nullptr) {
-                    context.reportError(*namePart, fmt::format("Use of undeclared type '{}'", namePart->getIdentifierString()));
-                    break;
-                }
+        const Scope* scope = &context.currentScope();
+        for (std::size_t index = 0; index < nameParts.size(); ++index) {
+            const auto& namePart = nameParts[index];
+            const Symbol* symbol = scope->lookup(namePart->getIdentifierString());
+            if (symbol == nullptr) {
+                context.reportError(*namePart, fmt::format("Use of undeclared type '{}'", namePart->getIdentifierString()));
+                break;
+            }
 
-                if (index == nameParts.size() - 1) {
-                    if (!isTypeDefinition(symbol->getKind())) {
-                        context.reportError(*namePart, fmt::format("Identifier '{}' is not a type definition", namePart->getIdentifierString()));
-                    } else {
-                        typeSymbol = symbol;
-                        hasResolvedType = true;
-                    }
-                    break;
+            if (index == nameParts.size() - 1) {
+                if (!isTypeDefinition(symbol->getKind())) {
+                    context.reportError(*namePart, fmt::format("Identifier '{}' is not a type definition", namePart->getIdentifierString()));
+                } else {
+                    typeSymbol = symbol;
+                    hasResolvedType = true;
                 }
+                break;
+            }
 
-                scope = context.getScopeBySymbol(*symbol);
-                if (scope == nullptr) {
-                    context.reportError(*namePart, fmt::format("Identifier '{}' does not have a scope", namePart->getIdentifierString()));
-                    break;
-                }
+            scope = context.getScopeBySymbol(*symbol);
+            if (scope == nullptr) {
+                context.reportError(*namePart, fmt::format("Identifier '{}' does not have a scope", namePart->getIdentifierString()));
+                break;
             }
         }
 
@@ -1271,39 +1299,24 @@ namespace vnlc {
             return nullptr;
         }
 
-        const std::size_t genericArgumentCount = type.getGenericArguments().size();
+        const std::size_t genericArgumentCount = customizedTypeReferenceNode->getGenericArguments().size();
         const std::size_t genericParameterCount = typeSymbol == nullptr ? 0 : getGenericParameterCount(*typeSymbol);
         if (genericArgumentCount != genericParameterCount) {
             context.reportError(type, fmt::format("Generic argument count mismatch: expected {}, got {}", genericParameterCount, genericArgumentCount));
             return nullptr;
         }
 
-        std::vector<const Type*> genericArgumentTypeNodes;
+        std::vector<const Type*> genericArgumentTypes;
 
         std::size_t errors = context.getErrors().size();
-        for (const auto& genericArgument : type.getGenericArguments()) {
-            genericArgumentTypeNodes.emplace_back(checkType(*genericArgument));
+        for (const auto& genericArgument : customizedTypeReferenceNode->getGenericArguments()) {
+            genericArgumentTypes.emplace_back(checkType(*genericArgument));
         }
         if (context.getErrors().size() > errors) {
             return nullptr;
         }
 
-        const std::string fullName = getUnwrappedTypeNameByTypeNode(type);
-        if (isPrimitiveTypeReference) {
-            const auto getPrimitiveType = [](std::string_view name) -> const PrimitiveType* {
-                if (name == "byte") return PrimitiveType::byteType();
-                if (name == "short") return PrimitiveType::shortType();
-                if (name == "int") return PrimitiveType::intType();
-                if (name == "long") return PrimitiveType::longType();
-                if (name == "float") return PrimitiveType::floatType();
-                if (name == "double") return PrimitiveType::doubleType();
-                if (name == "bool") return PrimitiveType::booleanType();
-                if (name == "string") return PrimitiveType::stringType();
-                return nullptr;
-            };
-
-            return getPrimitiveType(fullName);
-        }
+        const std::string fullName = getUnwrappedTypeNameByTypeReferenceNode(type);
 
         const auto customizedKind = [&typeSymbol]() -> std::optional<CustomizedTypeKind> {
             switch (typeSymbol->getKind()) {
@@ -1334,9 +1347,9 @@ namespace vnlc {
 
         std::unique_ptr<CustomizedType> customizedType;
         if (const auto* localNode = dynamic_cast<const TypeDeclarationNode*>(typeSymbol->getLocalNode())) {
-            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), localNode);
+            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypes), localNode);
         } else if (const auto* importedNode = dynamic_cast<const ImportedIdentifier*>(typeSymbol->getImportedNode())) {
-            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypeNodes), importedNode);
+            customizedType = std::make_unique<CustomizedType>(customizedKind.value(), fullName, std::move(genericArgumentTypes), importedNode);
         } else {
             return nullptr;
         }

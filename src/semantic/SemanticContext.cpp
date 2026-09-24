@@ -45,7 +45,7 @@ namespace vnlc {
         customizedTypeRegistry.emplace(customizedType->getFullTypeName(), std::move(customizedType));
     }
 
-    void SemanticContext::mapType(const TypeNode* typeNode, const Type* type) {
+    void SemanticContext::mapType(const TypeReferenceNode* typeNode, const Type* type) {
         typeMap.emplace(typeNode, type);
     }
 
@@ -88,7 +88,7 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Type* SemanticContext::getTypeByTypeNode(const TypeNode* typeNode) const {
+    const Type* SemanticContext::getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const {
         auto it = typeMap.find(typeNode);
         if (it != typeMap.end()) {
             return it->second;
@@ -280,7 +280,7 @@ namespace vnlc {
         return std::move(customizedTypeRegistry);
     }
 
-    std::unordered_map<const TypeNode*, const Type*> SemanticContext::takeTypeMap() {
+    std::unordered_map<const TypeReferenceNode*, const Type*> SemanticContext::takeTypeMap() {
         return std::move(typeMap);
     }
 

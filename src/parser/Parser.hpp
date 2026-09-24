@@ -1,13 +1,17 @@
 #ifndef VNLC_PARSER_HPP
 #define VNLC_PARSER_HPP
 
+#include "ast/expression/PrimitiveTypeExpressionKind.hpp"
 #include "ast/module/ModuleNode.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/inherited/ParsingContexts.hpp"
 #include "parser/synthesized/ParsingResults.hpp"
 #include "token/Token.hpp"
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -39,7 +43,11 @@ namespace vnlc {
 
         [[nodiscard]] std::unique_ptr<IdentifierNode> constructCurrentIdentifierNode();
 
-        [[nodiscard]] std::string generateNamespaceIdFromTypeName(const TypeNode& typeNode);
+        [[nodiscard]] static std::optional<PrimitiveTypeReferenceKind> getPrimitiveTypeReferenceKind(TokenKind kind);
+        [[nodiscard]] static std::optional<PrimitiveTypeExpressionKind> getPrimitiveTypeExpressionKind(TokenKind kind);
+        [[nodiscard]] static std::string_view getPrimitiveTypeName(PrimitiveTypeReferenceKind kind);
+
+        [[nodiscard]] std::string generateNamespaceIdFromTypeName(const TypeReferenceNode& typeNode);
 
         [[nodiscard]] ModuleParsingResult parseModule(ModuleParsingContext context);
         [[nodiscard]] TopIdentifierDeclarationParsingResult parseTopIdentifierDeclaration();

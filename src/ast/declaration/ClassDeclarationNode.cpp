@@ -4,8 +4,8 @@ namespace vnlc {
     ClassDeclarationNode::ClassDeclarationNode(
         bool final,
         std::unique_ptr<IdentifierNode>&& name,
-        std::optional<std::unique_ptr<TypeNode>>&& baseClass,
-        std::vector<std::unique_ptr<TypeNode>>&& implementedInterfaces,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& baseClass,
+        std::vector<std::unique_ptr<TypeReferenceNode>>&& implementedInterfaces,
         std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
         std::vector<std::unique_ptr<DeclarationNode>>&& memberDeclarations,
         const Token& firstToken,
@@ -22,8 +22,8 @@ namespace vnlc {
     ClassDeclarationNode::ClassDeclarationNode(
         bool final,
         std::unique_ptr<IdentifierNode>&& name,
-        std::optional<std::unique_ptr<TypeNode>>&& baseClass,
-        std::vector<std::unique_ptr<TypeNode>>&& implementedInterfaces,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& baseClass,
+        std::vector<std::unique_ptr<TypeReferenceNode>>&& implementedInterfaces,
         std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
         std::vector<std::unique_ptr<DeclarationNode>>&& memberDeclarations,
         const Token& firstToken,
@@ -46,11 +46,11 @@ namespace vnlc {
         return *name;
     }
 
-    const std::optional<std::unique_ptr<TypeNode>>& ClassDeclarationNode::getBaseClass() const noexcept {
+    const std::optional<std::unique_ptr<TypeReferenceNode>>& ClassDeclarationNode::getBaseClass() const noexcept {
         return baseClass;
     }
 
-    const std::vector<std::unique_ptr<TypeNode>>& ClassDeclarationNode::getImplementedInterfaces() const noexcept {
+    const std::vector<std::unique_ptr<TypeReferenceNode>>& ClassDeclarationNode::getImplementedInterfaces() const noexcept {
         return implementedInterfaces;
     }
 

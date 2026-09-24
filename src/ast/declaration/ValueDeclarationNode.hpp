@@ -4,7 +4,7 @@
 #include "ast/declaration/DeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/expression/ExpressionNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include <memory>
 
 namespace vnlc {
@@ -16,7 +16,7 @@ namespace vnlc {
         ValueDeclarationKind::Context context;
         ValueDeclarationKind::AccessModifier accessModifier;
         std::unique_ptr<IdentifierNode> name;
-        std::optional<std::unique_ptr<TypeNode>> type;
+        std::optional<std::unique_ptr<TypeReferenceNode>> type;
         std::optional<std::unique_ptr<ExpressionNode>> initializer;
 
     public:
@@ -25,7 +25,7 @@ namespace vnlc {
             ValueDeclarationKind::Context context,
             ValueDeclarationKind::AccessModifier accessModifier,
             std::unique_ptr<IdentifierNode>&& name,
-            std::optional<std::unique_ptr<TypeNode>>&& type,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& type,
             std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
             const Token& firstToken,
             const Token& lastToken
@@ -36,7 +36,7 @@ namespace vnlc {
             ValueDeclarationKind::Context context,
             ValueDeclarationKind::AccessModifier accessModifier,
             std::unique_ptr<IdentifierNode>&& name,
-            std::optional<std::unique_ptr<TypeNode>>&& type,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& type,
             std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
             const Token& firstToken,
             const Token& lastToken,
@@ -47,7 +47,7 @@ namespace vnlc {
         [[nodiscard]] const ValueDeclarationKind::Context getContext() const noexcept;
         [[nodiscard]] const ValueDeclarationKind::AccessModifier getAccessModifier() const noexcept;
         [[nodiscard]] const IdentifierNode& getName() const noexcept;
-        [[nodiscard]] const std::optional<std::unique_ptr<TypeNode>>& getType() const noexcept;
+        [[nodiscard]] const std::optional<std::unique_ptr<TypeReferenceNode>>& getType() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<ExpressionNode>>& getInitializer() const noexcept;
     };
 } // namespace vnlc

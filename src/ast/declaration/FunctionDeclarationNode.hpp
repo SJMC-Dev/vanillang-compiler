@@ -5,7 +5,7 @@
 #include "ast/declaration/FunctionDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/statement/BlockStatementNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include <memory>
 #include <optional>
 
@@ -21,7 +21,7 @@ namespace vnlc {
 
         std::unique_ptr<IdentifierNode> name;
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
-        std::optional<std::unique_ptr<TypeNode>> returnType;
+        std::optional<std::unique_ptr<TypeReferenceNode>> returnType;
         std::optional<std::unique_ptr<BlockStatementNode>> body;
 
     public:
@@ -32,7 +32,7 @@ namespace vnlc {
             FunctionDeclarationKind::Binding binding,
             std::unique_ptr<IdentifierNode>&& name,
             std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
-            std::optional<std::unique_ptr<TypeNode>>&& returnType,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
             std::optional<std::unique_ptr<BlockStatementNode>>&& body,
             const Token& firstToken,
             const Token& lastToken
@@ -45,7 +45,7 @@ namespace vnlc {
             FunctionDeclarationKind::Binding binding,
             std::unique_ptr<IdentifierNode>&& name,
             std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
-            std::optional<std::unique_ptr<TypeNode>>&& returnType,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
             std::optional<std::unique_ptr<BlockStatementNode>>&& body,
             const Token& firstToken,
             const Token& lastToken,
@@ -58,7 +58,7 @@ namespace vnlc {
         [[nodiscard]] const FunctionDeclarationKind::Binding getBinding() const noexcept;
         [[nodiscard]] const IdentifierNode& getName() const noexcept;
         [[nodiscard]] const std::vector<std::unique_ptr<ValueDeclarationNode>>& getParameters() const noexcept;
-        [[nodiscard]] const std::optional<std::unique_ptr<TypeNode>>& getReturnType() const noexcept;
+        [[nodiscard]] const std::optional<std::unique_ptr<TypeReferenceNode>>& getReturnType() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<BlockStatementNode>>& getBody() const noexcept;
     };
 } // namespace vnlc

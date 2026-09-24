@@ -3,14 +3,14 @@
 
 #include "ast/expression/ExpressionNode.hpp"
 #include "ast/statement/SwitchStatementKind.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include <optional>
 
 namespace vnlc {
     struct SwitchCaseParsingResult {
         SwitchStatementKind kind;
         std::optional<std::unique_ptr<ExpressionNode>> literal;
-        std::optional<std::unique_ptr<TypeNode>> type;
+        std::optional<std::unique_ptr<TypeReferenceNode>> type;
         std::optional<std::unique_ptr<ExpressionNode>> guardExpression;
     };
 } // namespace vnlc

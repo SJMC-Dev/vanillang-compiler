@@ -4,7 +4,7 @@ namespace vnlc {
     TypeAliasDeclarationNode::TypeAliasDeclarationNode(
         std::unique_ptr<IdentifierNode>&& aliasName,
         std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
-        std::unique_ptr<TypeNode>&& originalType,
+        std::unique_ptr<TypeReferenceNode>&& originalType,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
@@ -16,7 +16,7 @@ namespace vnlc {
     TypeAliasDeclarationNode::TypeAliasDeclarationNode(
         std::unique_ptr<IdentifierNode>&& aliasName,
         std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
-        std::unique_ptr<TypeNode>&& originalType,
+        std::unique_ptr<TypeReferenceNode>&& originalType,
         const Token& firstToken,
         const Token& lastToken,
         std::vector<DeclarationItem::MetadataTerm>&& metadataTerms
@@ -34,7 +34,7 @@ namespace vnlc {
         return genericParameterNames;
     }
 
-    const TypeNode& TypeAliasDeclarationNode::getOriginalType() const noexcept {
+    const TypeReferenceNode& TypeAliasDeclarationNode::getOriginalType() const noexcept {
         return *originalType;
     }
 } // namespace vnlc

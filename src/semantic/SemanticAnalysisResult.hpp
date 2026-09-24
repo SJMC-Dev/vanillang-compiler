@@ -5,7 +5,7 @@
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include "diagnostic/Diagnostic.hpp"
 #include "scope/Scope.hpp"
 #include "type/CustomizedType.hpp"
@@ -25,7 +25,7 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<CustomizedType>> customizedTypes;
         std::unordered_map<const AstNode*, std::unique_ptr<Scope>> localScopeMap;
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> importedScopeMap;
-        std::unordered_map<const TypeNode*, const Type*> typeMap;
+        std::unordered_map<const TypeReferenceNode*, const Type*> typeMap;
         std::unordered_map<const ValueDeclarationNode*, const Type*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
@@ -40,7 +40,7 @@ namespace vnlc {
             std::unordered_map<std::string, std::unique_ptr<CustomizedType>>&& customizedTypes,
             std::unordered_map<const AstNode*, std::unique_ptr<Scope>>&& localScopeMap,
             std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>>&& importedScopeMap,
-            std::unordered_map<const TypeNode*, const Type*>&& typeMap,
+            std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
             std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
             std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
             std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap,
@@ -61,7 +61,7 @@ namespace vnlc {
         [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode& node) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem& node) const;
-        [[nodiscard]] const Type* getTypeByTypeNode(const TypeNode* typeNode) const;
+        [[nodiscard]] const Type* getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const;
         [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view packageName) const;
         [[nodiscard]] const Type* getInferredValueType(const ValueDeclarationNode* valueDeclaration) const;
         [[nodiscard]] const Type* getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const;

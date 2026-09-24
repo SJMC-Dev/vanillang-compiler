@@ -8,7 +8,7 @@ namespace vnlc {
         FunctionDeclarationKind::Binding binding,
         std::unique_ptr<IdentifierNode>&& name,
         std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
-        std::optional<std::unique_ptr<TypeNode>>&& returnType,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
         std::optional<std::unique_ptr<BlockStatementNode>>&& body,
         const Token& firstToken,
         const Token& lastToken
@@ -30,7 +30,7 @@ namespace vnlc {
         FunctionDeclarationKind::Binding binding,
         std::unique_ptr<IdentifierNode>&& name,
         std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
-        std::optional<std::unique_ptr<TypeNode>>&& returnType,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
         std::optional<std::unique_ptr<BlockStatementNode>>&& body,
         const Token& firstToken,
         const Token& lastToken,
@@ -70,7 +70,7 @@ namespace vnlc {
         return parameters;
     }
 
-    const std::optional<std::unique_ptr<TypeNode>>& FunctionDeclarationNode::getReturnType() const noexcept {
+    const std::optional<std::unique_ptr<TypeReferenceNode>>& FunctionDeclarationNode::getReturnType() const noexcept {
         return returnType;
     }
 

@@ -7,7 +7,7 @@ namespace vnlc {
         ValueDeclarationKind::Context context,
         ValueDeclarationKind::AccessModifier accessModifier,
         std::unique_ptr<IdentifierNode>&& name,
-        std::optional<std::unique_ptr<TypeNode>>&& type,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& type,
         std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
         const Token& firstToken,
         const Token& lastToken
@@ -25,7 +25,7 @@ namespace vnlc {
         ValueDeclarationKind::Context context,
         ValueDeclarationKind::AccessModifier accessModifier,
         std::unique_ptr<IdentifierNode>&& name,
-        std::optional<std::unique_ptr<TypeNode>>&& type,
+        std::optional<std::unique_ptr<TypeReferenceNode>>&& type,
         std::optional<std::unique_ptr<ExpressionNode>>&& initializer,
         const Token& firstToken,
         const Token& lastToken,
@@ -55,7 +55,7 @@ namespace vnlc {
         return *name;
     }
 
-    const std::optional<std::unique_ptr<TypeNode>>& ValueDeclarationNode::getType() const noexcept {
+    const std::optional<std::unique_ptr<TypeReferenceNode>>& ValueDeclarationNode::getType() const noexcept {
         return type;
     }
 

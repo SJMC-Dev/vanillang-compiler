@@ -5,7 +5,7 @@
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
-#include "ast/type/TypeNode.hpp"
+#include "ast/typeref/TypeReferenceNode.hpp"
 #include "diagnostic/Diagnostic.hpp"
 #include "scope/Scope.hpp"
 #include "type/CustomizedType.hpp"
@@ -30,7 +30,7 @@ namespace vnlc {
         std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> importedScopeMap;
 
         std::unordered_map<std::string, std::unique_ptr<CustomizedType>> customizedTypeRegistry;
-        std::unordered_map<const TypeNode*, const Type*> typeMap;
+        std::unordered_map<const TypeReferenceNode*, const Type*> typeMap;
         std::unordered_map<const ValueDeclarationNode*, const Type*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
@@ -56,7 +56,7 @@ namespace vnlc {
         Scope& getOrCreateImportedScope(ScopeKind kind, const Scope* parent, const ImportedItem& importedNode);
 
         void registerCustomizedType(std::unique_ptr<CustomizedType>&& customizedType);
-        void mapType(const TypeNode* typeNode, const Type* type);
+        void mapType(const TypeReferenceNode* typeNode, const Type* type);
         void mapInferredValueType(const ValueDeclarationNode* valueDeclaration, const Type* type);
         void mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const Type* type);
         void mapInferredExpressionType(const ExpressionNode* expressionNode, const Type* type);
@@ -65,7 +65,7 @@ namespace vnlc {
 
         [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
         [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
-        [[nodiscard]] const Type* getTypeByTypeNode(const TypeNode* typeNode) const;
+        [[nodiscard]] const Type* getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const;
         [[nodiscard]] const Type* getInferredExpressionType(const ExpressionNode* expressionNode) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode* astNode) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem* importedNode) const;
@@ -94,7 +94,7 @@ namespace vnlc {
         [[nodiscard]] std::unordered_map<const ImportedItem*, std::unique_ptr<Scope>> takeImportedScopeMap();
         [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> takeImportedPackages();
         [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<CustomizedType>> takeCustomizedTypeRegistry();
-        [[nodiscard]] std::unordered_map<const TypeNode*, const Type*> takeTypeMap();
+        [[nodiscard]] std::unordered_map<const TypeReferenceNode*, const Type*> takeTypeMap();
         [[nodiscard]] std::unordered_map<const ValueDeclarationNode*, const Type*> takeInferredValueTypeMap();
         [[nodiscard]] std::unordered_map<const FunctionDeclarationNode*, const Type*> takeInferredFunctionReturnTypeMap();
         [[nodiscard]] std::unordered_map<const ExpressionNode*, const Type*> takeInferredExpressionTypeMap();

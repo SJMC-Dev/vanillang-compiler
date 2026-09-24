@@ -14,6 +14,7 @@
 #include "ast/expression/MemberAccessExpressionKind.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/expression/NoneExpressionNode.hpp"
+#include "ast/expression/PrimitiveTypeExpressionNode.hpp"
 #include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/expression/SelectorLiteralExpressionKind.hpp"
 #include "ast/expression/SelectorLiteralExpressionNode.hpp"
@@ -29,6 +30,8 @@
 #include "ast/statement/SwitchStatementItem.hpp"
 #include "ast/statement/SwitchStatementKind.hpp"
 #include "ast/statement/SwitchStatementNode.hpp"
+#include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "ast/typeref/PrimitiveTypeReferenceNode.hpp"
 #include "error/IllegalModuleOrPackageNameError.hpp"
 #include "error/OutOfRangeError.hpp"
 #include "error/SyntaxError.hpp"
@@ -38,6 +41,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -165,10 +169,87 @@ namespace vnlc {
         return std::make_unique<IdentifierNode>(std::move(nameValue), firstToken, lastToken);
     }
 
-    std::string Parser::generateNamespaceIdFromTypeName(const TypeNode& typeNode) {
+    std::optional<PrimitiveTypeReferenceKind> Parser::getPrimitiveTypeReferenceKind(TokenKind kind) {
+        switch (kind) {
+            case TokenKind::BYTE_TYPE:
+                return PrimitiveTypeReferenceKind::BYTE;
+            case TokenKind::SHORT_TYPE:
+                return PrimitiveTypeReferenceKind::SHORT;
+            case TokenKind::INT_TYPE:
+                return PrimitiveTypeReferenceKind::INT;
+            case TokenKind::LONG_TYPE:
+                return PrimitiveTypeReferenceKind::LONG;
+            case TokenKind::FLOAT_TYPE:
+                return PrimitiveTypeReferenceKind::FLOAT;
+            case TokenKind::DOUBLE_TYPE:
+                return PrimitiveTypeReferenceKind::DOUBLE;
+            case TokenKind::BOOL_TYPE:
+                return PrimitiveTypeReferenceKind::BOOLEAN;
+            case TokenKind::STRING_TYPE:
+                return PrimitiveTypeReferenceKind::STRING;
+            default:
+                return std::nullopt;
+        }
+    }
+
+    std::optional<PrimitiveTypeExpressionKind> Parser::getPrimitiveTypeExpressionKind(TokenKind kind) {
+        switch (kind) {
+            case TokenKind::BYTE_TYPE:
+                return PrimitiveTypeExpressionKind::BYTE;
+            case TokenKind::SHORT_TYPE:
+                return PrimitiveTypeExpressionKind::SHORT;
+            case TokenKind::INT_TYPE:
+                return PrimitiveTypeExpressionKind::INT;
+            case TokenKind::LONG_TYPE:
+                return PrimitiveTypeExpressionKind::LONG;
+            case TokenKind::FLOAT_TYPE:
+                return PrimitiveTypeExpressionKind::FLOAT;
+            case TokenKind::DOUBLE_TYPE:
+                return PrimitiveTypeExpressionKind::DOUBLE;
+            case TokenKind::BOOL_TYPE:
+                return PrimitiveTypeExpressionKind::BOOLEAN;
+            case TokenKind::STRING_TYPE:
+                return PrimitiveTypeExpressionKind::STRING;
+            default:
+                return std::nullopt;
+        }
+    }
+
+    std::string_view Parser::getPrimitiveTypeName(PrimitiveTypeReferenceKind kind) {
+        switch (kind) {
+            case PrimitiveTypeReferenceKind::BYTE:
+                return "byte";
+            case PrimitiveTypeReferenceKind::SHORT:
+                return "short";
+            case PrimitiveTypeReferenceKind::INT:
+                return "int";
+            case PrimitiveTypeReferenceKind::LONG:
+                return "long";
+            case PrimitiveTypeReferenceKind::FLOAT:
+                return "float";
+            case PrimitiveTypeReferenceKind::DOUBLE:
+                return "double";
+            case PrimitiveTypeReferenceKind::BOOLEAN:
+                return "bool";
+            case PrimitiveTypeReferenceKind::STRING:
+                return "string";
+        }
+        return {};
+    }
+
+    std::string Parser::generateNamespaceIdFromTypeName(const TypeReferenceNode& typeReferenceNode) {
         std::string name;
 
-        for (auto& part : typeNode.getNameParts()) {
+        if (const auto* primitiveTypeReferenceNode = dynamic_cast<const PrimitiveTypeReferenceNode*>(&typeReferenceNode)) {
+            return std::string(getPrimitiveTypeName(primitiveTypeReferenceNode->getKind()));
+        }
+
+        const auto* customizedTypeReferenceNode = dynamic_cast<const CustomizedTypeReferenceNode*>(&typeReferenceNode);
+        if (customizedTypeReferenceNode == nullptr) {
+            return name;
+        }
+
+        for (auto& part : customizedTypeReferenceNode->getNameParts()) {
             std::string partName = std::string(part->getIdentifierString());
             name += partName + ".";
         }
@@ -177,10 +258,10 @@ namespace vnlc {
             name.pop_back();
         }
 
-        if (!typeNode.getGenericArguments().empty()) {
+        if (!customizedTypeReferenceNode->getGenericArguments().empty()) {
             name += ".-";
 
-            for (auto& generic : typeNode.getGenericArguments()) {
+            for (auto& generic : customizedTypeReferenceNode->getGenericArguments()) {
                 name += generateNamespaceIdFromTypeName(*generic);
                 name += "-";
             }
@@ -560,7 +641,7 @@ namespace vnlc {
                     ValueDeclarationKind::Context::CLASS,
                     context.accessModifier,
                     std::move(name),
-                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
+                    std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type)),
                     std::make_optional<std::unique_ptr<ExpressionNode>>(std::move(initializerResult.expression)),
                     firstToken,
                     lastToken,
@@ -572,7 +653,7 @@ namespace vnlc {
                     ValueDeclarationKind::Context::CLASS,
                     context.accessModifier,
                     std::move(name),
-                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
+                    std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type)),
                     std::make_optional<std::unique_ptr<ExpressionNode>>(std::move(initializerResult.expression)),
                     firstToken,
                     lastToken
@@ -593,7 +674,7 @@ namespace vnlc {
                     ValueDeclarationKind::Context::CLASS,
                     context.accessModifier,
                     std::move(name),
-                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
+                    std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type)),
                     std::nullopt,
                     firstToken,
                     lastToken,
@@ -605,7 +686,7 @@ namespace vnlc {
                     ValueDeclarationKind::Context::CLASS,
                     context.accessModifier,
                     std::move(name),
-                    std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type)),
+                    std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type)),
                     std::nullopt,
                     firstToken,
                     lastToken
@@ -700,7 +781,7 @@ namespace vnlc {
 
     VariableDeclarationPrimaryParsingResult Parser::parseVariableDeclarationPrimary(VariableDeclarationPrimaryParsingContext context) {
         std::unique_ptr<IdentifierNode> name;
-        std::optional<std::unique_ptr<TypeNode>> type = std::nullopt;
+        std::optional<std::unique_ptr<TypeReferenceNode>> type = std::nullopt;
 
         if (!match(TokenKind::LET)) {
             throw SyntaxError("Expected 'var', 'let' or 'const' keyword", peek().getLine(), peek().getColumn());
@@ -714,7 +795,7 @@ namespace vnlc {
 
         if (match(TokenKind::COLON)) {
             auto typeResult = parseType();
-            type = std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type));
+            type = std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type));
         }
 
         return VariableDeclarationPrimaryParsingResult{
@@ -827,8 +908,8 @@ namespace vnlc {
     ClassDeclarationParsingResult Parser::parseClassDeclaration(ClassDeclarationParsingContext context) {
         bool final = false;
         std::unique_ptr<IdentifierNode> name;
-        std::optional<std::unique_ptr<TypeNode>> baseClass = std::nullopt;
-        std::vector<std::unique_ptr<TypeNode>> implementedInterfaces;
+        std::optional<std::unique_ptr<TypeReferenceNode>> baseClass = std::nullopt;
+        std::vector<std::unique_ptr<TypeReferenceNode>> implementedInterfaces;
         std::vector<std::unique_ptr<IdentifierNode>> genericParameterNames;
         std::vector<std::unique_ptr<DeclarationNode>> memberDeclarations;
 
@@ -861,7 +942,7 @@ namespace vnlc {
         if (match(TokenKind::EXTENDS)) {
 
             auto typeResult = parseType();
-            baseClass = std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type));
+            baseClass = std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type));
         }
 
         if (match(TokenKind::IMPLEMENTS)) {
@@ -992,7 +1073,7 @@ namespace vnlc {
     TypeAliasDeclarationParsingResult Parser::parseTypeAliasDeclaration(TypeAliasDeclarationParsingContext context) {
         std::unique_ptr<IdentifierNode> aliasName;
         std::vector<std::unique_ptr<IdentifierNode>> genericParameterNames;
-        std::unique_ptr<TypeNode> originalType;
+        std::unique_ptr<TypeReferenceNode> originalType;
 
         Token firstToken = peek();
 
@@ -1089,7 +1170,7 @@ namespace vnlc {
     FunctionSignatureParsingResult Parser::parseFunctionSignature() {
         std::unique_ptr<IdentifierNode> name;
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
-        std::optional<std::unique_ptr<TypeNode>> returnType;
+        std::optional<std::unique_ptr<TypeReferenceNode>> returnType;
 
         if (!match(TokenKind::FUNC)) {
             throw SyntaxError("Expected 'func' keyword", peek().getLine(), peek().getColumn());
@@ -1120,7 +1201,7 @@ namespace vnlc {
         if (match(TokenKind::ARROW)) {
             if (!match(TokenKind::VOID)) {
                 auto typeResult = parseType();
-                returnType = std::make_optional<std::unique_ptr<TypeNode>>(std::move(typeResult.type));
+                returnType = std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type));
             }
         }
 
@@ -1219,15 +1300,12 @@ namespace vnlc {
         Token firstToken = peek();
 
         bool questionMarkSuffix = false;
+        const auto primitiveKind = getPrimitiveTypeReferenceKind(peek().getKind());
         std::vector<std::unique_ptr<IdentifierNode>> nameParts;
-        std::vector<std::unique_ptr<TypeNode>> genericArguments;
+        std::vector<std::unique_ptr<TypeReferenceNode>> genericArguments;
 
-        std::unordered_set<TokenKind> primitiveTypes = {
-            TokenKind::BYTE_TYPE, TokenKind::SHORT_TYPE, TokenKind::INT_TYPE, TokenKind::LONG_TYPE, TokenKind::FLOAT_TYPE, TokenKind::DOUBLE_TYPE, TokenKind::BOOL_TYPE, TokenKind::STRING_TYPE,
-        };
-
-        if (std::find(primitiveTypes.begin(), primitiveTypes.end(), peek().getKind()) != primitiveTypes.end()) {
-            nameParts.emplace_back(constructCurrentIdentifierNode());
+        if (primitiveKind.has_value()) {
+            advance();
         } else {
             do {
                 if (!check(TokenKind::IDENTIFIER)) {
@@ -1253,14 +1331,21 @@ namespace vnlc {
 
         Token lastToken = peek();
 
+        std::unique_ptr<TypeReferenceNode> type;
+        if (primitiveKind.has_value()) {
+            type = std::make_unique<PrimitiveTypeReferenceNode>(primitiveKind.value(), questionMarkSuffix, firstToken, lastToken);
+        } else {
+            type = std::make_unique<CustomizedTypeReferenceNode>(questionMarkSuffix, std::move(nameParts), std::move(genericArguments), firstToken, lastToken);
+        }
+
         return TypeParsingResult{
-            .type = std::make_unique<TypeNode>(questionMarkSuffix, std::move(nameParts), std::move(genericArguments), firstToken, lastToken),
+            .type = std::move(type),
         };
     }
 
     ParameterParsingResult Parser::parseParameter() {
         std::unique_ptr<IdentifierNode> name;
-        std::unique_ptr<TypeNode> type;
+        std::unique_ptr<TypeReferenceNode> type;
 
         Token firstToken = peek();
 
@@ -1310,7 +1395,7 @@ namespace vnlc {
     }
 
     GenericArgumentListParsingResult Parser::parseGenericArgumentList() {
-        std::vector<std::unique_ptr<TypeNode>> arguments;
+        std::vector<std::unique_ptr<TypeReferenceNode>> arguments;
 
         do {
             auto typeResult = parseType();
@@ -1709,7 +1794,7 @@ namespace vnlc {
 
     EnumAssociatedValueParsingResult Parser::parseEnumAssociatedValue() {
         std::unique_ptr<IdentifierNode> name;
-        std::unique_ptr<TypeNode> type;
+        std::unique_ptr<TypeReferenceNode> type;
 
         Token firstToken = peek();
 
@@ -2307,10 +2392,6 @@ namespace vnlc {
         static const std::unordered_set<TokenKind> literalStarters = {
             TokenKind::NUMBER, TokenKind::STRING, TokenKind::CHAR, TokenKind::TRUE, TokenKind::FALSE, TokenKind::LEFT_BRACKET, TokenKind::LEFT_BRACE, TokenKind::SELECTOR_PREFIX,
         };
-        static const std::unordered_set<TokenKind> primitiveTypes = {
-            TokenKind::BYTE_TYPE, TokenKind::SHORT_TYPE, TokenKind::INT_TYPE, TokenKind::LONG_TYPE, TokenKind::FLOAT_TYPE, TokenKind::DOUBLE_TYPE, TokenKind::BOOL_TYPE, TokenKind::STRING_TYPE,
-        };
-
         Token firstToken = peek();
 
         if (match(TokenKind::LEFT_PARENTHESIS)) {
@@ -2344,7 +2425,15 @@ namespace vnlc {
             return PrimaryExpressionParsingResult{
                 .expression = std::make_unique<NoneExpressionNode>(firstToken, lastToken),
             };
-        } else if (check(TokenKind::IDENTIFIER) || checkAny(primitiveTypes)) {
+        } else if (const auto primitiveKind = getPrimitiveTypeExpressionKind(peek().getKind())) {
+            advance();
+
+            Token lastToken = peek();
+
+            return PrimaryExpressionParsingResult{
+                .expression = std::make_unique<PrimitiveTypeExpressionNode>(primitiveKind.value(), firstToken, lastToken),
+            };
+        } else if (check(TokenKind::IDENTIFIER)) {
             auto name = constructCurrentIdentifierNode();
 
             Token lastToken = peek();
