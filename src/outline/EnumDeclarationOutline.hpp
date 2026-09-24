@@ -1,8 +1,8 @@
 #ifndef VNLC_ENUM_DECLARATION_OUTLINE_HPP
 #define VNLC_ENUM_DECLARATION_OUTLINE_HPP
 
-#include "localdecl/EnumMemberDeclarationOutline.hpp"
-#include "localdecl/TypeDeclarationOutline.hpp"
+#include "outline/EnumMemberDeclarationOutline.hpp"
+#include "outline/TypeDeclarationOutline.hpp"
 #include <memory>
 #include <string>
 #include <string_view>

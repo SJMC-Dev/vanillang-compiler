@@ -1,8 +1,8 @@
 #ifndef VNLC_MODULE_OUTLINE_HPP
 #define VNLC_MODULE_OUTLINE_HPP
 
-#include "localdecl/DeclarationOutline.hpp"
-#include "localdecl/TypeDeclarationOutline.hpp"
+#include "outline/DeclarationOutline.hpp"
+#include "outline/TypeDeclarationOutline.hpp"
 #include <memory>
 #include <string>
 #include <string_view>

@@ -1,7 +1,7 @@
 #ifndef VNLC_TYPE_DECLARATION_OUTLINE_HPP
 #define VNLC_TYPE_DECLARATION_OUTLINE_HPP
 
-#include "localdecl/DeclarationOutline.hpp"
+#include "outline/DeclarationOutline.hpp"
 
 namespace vnlc {
     class TypeDeclarationOutline : public DeclarationOutline {

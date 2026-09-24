@@ -1,7 +1,7 @@
 #ifndef VNLC_INTERFACE_DECLARATION_OUTLINE_HPP
 #define VNLC_INTERFACE_DECLARATION_OUTLINE_HPP
 
-#include "localdecl/TypeDeclarationOutline.hpp"
+#include "outline/TypeDeclarationOutline.hpp"
 #include <string>
 #include <string_view>
 #include <vector>
