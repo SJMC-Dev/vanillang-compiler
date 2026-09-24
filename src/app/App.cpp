@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace vnlc {
-    App::App(int argc, char** argv) : argc{ argc }, argv{ argv }, app{ "Vanillang Compiler" } {}
+    App::App(int argc, char** argv) : app{ "Vanillang Compiler" }, argc{ argc }, argv{ argv } {}
 
     void App::run() {
         std::string_view mode;
