@@ -1,5 +1,7 @@
 #include "parser/Parser.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/expression/NoneExpressionNode.hpp"
+#include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/statement/ForStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "config/Config.hpp"
@@ -106,6 +108,47 @@ namespace vnlc {
         EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationType::AccessModifier::PUBLIC);
         EXPECT_TRUE(staticProperty->getType().has_value());
         EXPECT_TRUE(staticProperty->getInitializer().has_value());
+    }
+
+    TEST(ParserTest, ParsesNoneAsPrimaryExpression) {
+        std::stringstream input("func test() {\n    let value = none\n    let range = 1..none\n}\n");
+        Lexer lexer(input);
+        Parser parser(std::move(lexer));
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto module = parser.parse(config);
+        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 1);
+
+        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        ASSERT_NE(function, nullptr);
+        ASSERT_TRUE(function->getBody().has_value());
+
+        const auto& statements = function->getBody().value()->getStatements();
+        ASSERT_EQ(statements.size(), 2);
+
+        const auto* valueStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[0].get());
+        ASSERT_NE(valueStatement, nullptr);
+        ASSERT_TRUE(valueStatement->getVariableDeclaration().getInitializer().has_value());
+        EXPECT_NE(dynamic_cast<const NoneExpressionNode*>(valueStatement->getVariableDeclaration().getInitializer().value().get()), nullptr);
+
+        const auto* rangeStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[1].get());
+        ASSERT_NE(rangeStatement, nullptr);
+        ASSERT_TRUE(rangeStatement->getVariableDeclaration().getInitializer().has_value());
+
+        const auto* rangeExpression = dynamic_cast<const RangeExpressionNode*>(rangeStatement->getVariableDeclaration().getInitializer().value().get());
+        ASSERT_NE(rangeExpression, nullptr);
+        ASSERT_TRUE(rangeExpression->getEnd().has_value());
+        EXPECT_NE(dynamic_cast<const NoneExpressionNode*>(rangeExpression->getEnd().value().get()), nullptr);
     }
 
 } // namespace vnlc

@@ -76,6 +76,8 @@ func onLoad() {
         }
     }
 
+    let noneVariable: int? = none
+
     for (let player in @a) {
         world.print(f"Welcome $(player.getName()) to this world!", @a)
     }

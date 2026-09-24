@@ -12,6 +12,7 @@
 #include "ast/expression/IdentifierExpressionNode.hpp"
 #include "ast/expression/ListLikeLiteralExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
+#include "ast/expression/NoneExpressionNode.hpp"
 #include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/expression/SelectorLiteralExpressionNode.hpp"
 #include "ast/expression/SimpleLiteralExpressionNode.hpp"
@@ -1177,6 +1178,8 @@ namespace vnlc {
             checkExpression(expr->getIndex());
         } else if (auto* expr = dynamic_cast<const SuperExpressionNode*>(&expression)) {
             // TODO: Implement super expression checking
+        } else if (auto* expr = dynamic_cast<const NoneExpressionNode*>(&expression)) {
+            // TODO: Implement none expression checking
         } else if (auto* expr = dynamic_cast<const ThisExpressionNode*>(&expression)) {
             // TODO: Implement this expression checking
         } else if (auto* expr = dynamic_cast<const UnaryExpressionNode*>(&expression)) {

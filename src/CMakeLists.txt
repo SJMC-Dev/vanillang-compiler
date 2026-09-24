@@ -17,6 +17,7 @@ add_executable(
     ast/expression/IdentifierExpressionNode.cpp
     ast/expression/LiteralExpressionNode.cpp
     ast/expression/MemberAccessExpressionNode.cpp
+    ast/expression/NoneExpressionNode.cpp
     ast/expression/PrimaryExpressionNode.cpp
     ast/expression/RangeExpressionNode.cpp
     ast/expression/SubscriptExpressionNode.cpp

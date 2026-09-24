@@ -13,6 +13,7 @@
 #include "ast/expression/ListLikeLiteralExpressionType.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionType.hpp"
+#include "ast/expression/NoneExpressionNode.hpp"
 #include "ast/expression/RangeExpressionNode.hpp"
 #include "ast/expression/SelectorLiteralExpressionNode.hpp"
 #include "ast/expression/SelectorLiteralExpressionType.hpp"
@@ -1972,9 +1973,9 @@ namespace vnlc {
 
             if (match(TokenType::DOUBLE_DOT)) {
                 static const std::unordered_set<TokenType> rangeEndExpressionStarters = {
-                    TokenType::IDENTIFIER,  TokenType::NUMBER,           TokenType::STRING,       TokenType::CHAR,       TokenType::TRUE, TokenType::FALSE, TokenType::THIS,
-                    TokenType::SUPER,       TokenType::LEFT_PARENTHESIS, TokenType::LEFT_BRACKET, TokenType::LEFT_BRACE, TokenType::PLUS, TokenType::MINUS, TokenType::TILDE,
-                    TokenType::EXCLAMATION, TokenType::SELECTOR_PREFIX,
+                    TokenType::IDENTIFIER, TokenType::NUMBER,      TokenType::STRING,           TokenType::CHAR,         TokenType::TRUE,       TokenType::FALSE, TokenType::THIS,
+                    TokenType::SUPER,      TokenType::NONE,        TokenType::LEFT_PARENTHESIS, TokenType::LEFT_BRACKET, TokenType::LEFT_BRACE, TokenType::PLUS,  TokenType::MINUS,
+                    TokenType::TILDE,      TokenType::EXCLAMATION, TokenType::SELECTOR_PREFIX,
                 };
 
                 if (checkAny(rangeEndExpressionStarters)) {
@@ -2336,6 +2337,12 @@ namespace vnlc {
 
             return PrimaryExpressionParsingResult{
                 .expression = std::make_unique<SuperExpressionNode>(firstToken, lastToken),
+            };
+        } else if (match(TokenType::NONE)) {
+            Token lastToken = peek();
+
+            return PrimaryExpressionParsingResult{
+                .expression = std::make_unique<NoneExpressionNode>(firstToken, lastToken),
             };
         } else if (check(TokenType::IDENTIFIER) || checkAny(primitiveTypes)) {
             auto name = constructCurrentIdentifierNode();
@@ -2747,9 +2754,10 @@ namespace vnlc {
 
     StatementParsingResult Parser::parseStatement() {
         static const std::unordered_set<TokenType> expressionStarters = {
-            TokenType::IDENTIFIER, TokenType::NUMBER,      TokenType::STRING,           TokenType::CHAR,         TokenType::TRUE, TokenType::FALSE,
-            TokenType::THIS,       TokenType::SUPER,       TokenType::LEFT_PARENTHESIS, TokenType::LEFT_BRACKET, TokenType::PLUS, TokenType::MINUS,
-            TokenType::TILDE,      TokenType::EXCLAMATION, TokenType::SELECTOR_PREFIX,
+            TokenType::IDENTIFIER,      TokenType::NUMBER, TokenType::STRING, TokenType::CHAR,  TokenType::TRUE,
+            TokenType::FALSE,           TokenType::THIS,   TokenType::SUPER,  TokenType::NONE,  TokenType::LEFT_PARENTHESIS,
+            TokenType::LEFT_BRACKET,    TokenType::PLUS,   TokenType::MINUS,  TokenType::TILDE, TokenType::EXCLAMATION,
+            TokenType::SELECTOR_PREFIX,
         };
 
         static const std::unordered_set<TokenType> variableDeclarationStarters = {
