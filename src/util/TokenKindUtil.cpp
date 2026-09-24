@@ -17,7 +17,7 @@ namespace vnlc {
                 return "VnlcTokenKind::VAR";
             case TokenKind::LET:
                 return "VnlcTokenKind::LET";
-            case TokenKind::CONST:
+            case TokenKind::CONST_KEYWORD:
                 return "VnlcTokenKind::CONST";
             case TokenKind::BYTE_TYPE:
                 return "VnlcTokenKind::BYTE_TYPE";
@@ -65,13 +65,13 @@ namespace vnlc {
                 return "VnlcTokenKind::WHEN";
             case TokenKind::CONTEXT:
                 return "VnlcTokenKind::CONTEXT";
-            case TokenKind::VOID:
+            case TokenKind::VOID_KEYWORD:
                 return "VnlcTokenKind::VOID";
             case TokenKind::NATIVE:
                 return "VnlcTokenKind::NATIVE";
             case TokenKind::CALLEE:
                 return "VnlcTokenKind::CALLEE";
-            case TokenKind::IN:
+            case TokenKind::IN_KEYWORD:
                 return "VnlcTokenKind::IN";
             case TokenKind::RELOAD:
                 return "VnlcTokenKind::RELOAD";
@@ -113,9 +113,9 @@ namespace vnlc {
                 return "VnlcTokenKind::OVERRIDE";
             case TokenKind::NONE:
                 return "VnlcTokenKind::NONE";
-            case TokenKind::TRUE:
+            case TokenKind::TRUE_LITERAL:
                 return "VnlcTokenKind::TRUE";
-            case TokenKind::FALSE:
+            case TokenKind::FALSE_LITERAL:
                 return "VnlcTokenKind::FALSE";
             case TokenKind::IMPORT:
                 return "VnlcTokenKind::IMPORT";

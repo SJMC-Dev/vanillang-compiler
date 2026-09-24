@@ -11,7 +11,7 @@ namespace vnlc {
 
         VAR,
         LET,
-        CONST,
+        CONST_KEYWORD,
 
         BYTE_TYPE,
         SHORT_TYPE,
@@ -37,10 +37,10 @@ namespace vnlc {
         DEFAULT,
         WHEN,
         CONTEXT,
-        VOID,
+        VOID_KEYWORD,
         NATIVE,
         CALLEE,
-        IN,
+        IN_KEYWORD,
         RELOAD,
 
         CLASS,
@@ -63,8 +63,8 @@ namespace vnlc {
         OVERRIDE,
         NONE,
 
-        TRUE,
-        FALSE,
+        TRUE_LITERAL,
+        FALSE_LITERAL,
 
         IMPORT,
         EXPORT,

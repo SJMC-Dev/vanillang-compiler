@@ -371,7 +371,7 @@ namespace vnlc {
             metadataTerms = std::move(result.metadata);
         }
 
-        if (check(TokenKind::VAR) || check(TokenKind::LET) || check(TokenKind::CONST)) {
+        if (check(TokenKind::VAR) || check(TokenKind::LET) || check(TokenKind::CONST_KEYWORD)) {
             VariableDeclarationParsingContext context{
                 .position = VariableDeclarationParsingContext::Position::TOP_LEVEL,
                 .hasMetadata = hasMetadata,
@@ -1199,7 +1199,7 @@ namespace vnlc {
         }
 
         if (match(TokenKind::ARROW)) {
-            if (!match(TokenKind::VOID)) {
+            if (!match(TokenKind::VOID_KEYWORD)) {
                 auto typeResult = parseType();
                 returnType = std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type));
             }
@@ -2058,8 +2058,8 @@ namespace vnlc {
 
             if (match(TokenKind::DOUBLE_DOT)) {
                 static const std::unordered_set<TokenKind> rangeEndExpressionStarters = {
-                    TokenKind::IDENTIFIER, TokenKind::NUMBER,      TokenKind::STRING,           TokenKind::CHAR,         TokenKind::TRUE,       TokenKind::FALSE, TokenKind::THIS,
-                    TokenKind::SUPER,      TokenKind::NONE,        TokenKind::LEFT_PARENTHESIS, TokenKind::LEFT_BRACKET, TokenKind::LEFT_BRACE, TokenKind::PLUS,  TokenKind::MINUS,
+                    TokenKind::IDENTIFIER, TokenKind::NUMBER,      TokenKind::STRING,           TokenKind::CHAR,         TokenKind::TRUE_LITERAL, TokenKind::FALSE_LITERAL, TokenKind::THIS,
+                    TokenKind::SUPER,      TokenKind::NONE,        TokenKind::LEFT_PARENTHESIS, TokenKind::LEFT_BRACKET, TokenKind::LEFT_BRACE,   TokenKind::PLUS,          TokenKind::MINUS,
                     TokenKind::TILDE,      TokenKind::EXCLAMATION, TokenKind::SELECTOR_PREFIX,
                 };
 
@@ -2390,7 +2390,8 @@ namespace vnlc {
 
     PrimaryExpressionParsingResult Parser::parsePrimaryExpression() {
         static const std::unordered_set<TokenKind> literalStarters = {
-            TokenKind::NUMBER, TokenKind::STRING, TokenKind::CHAR, TokenKind::TRUE, TokenKind::FALSE, TokenKind::LEFT_BRACKET, TokenKind::LEFT_BRACE, TokenKind::SELECTOR_PREFIX,
+            TokenKind::NUMBER,        TokenKind::STRING,       TokenKind::CHAR,       TokenKind::TRUE_LITERAL,
+            TokenKind::FALSE_LITERAL, TokenKind::LEFT_BRACKET, TokenKind::LEFT_BRACE, TokenKind::SELECTOR_PREFIX,
         };
         Token firstToken = peek();
 
@@ -2500,7 +2501,7 @@ namespace vnlc {
             return LiteralParsingResult{
                 .expression = std::move(result.expression),
             };
-        } else if (check(TokenKind::TRUE) || check(TokenKind::FALSE)) {
+        } else if (check(TokenKind::TRUE_LITERAL) || check(TokenKind::FALSE_LITERAL)) {
             auto result = parseBoolean();
 
             return LiteralParsingResult{
@@ -2595,8 +2596,8 @@ namespace vnlc {
     BooleanParsingResult Parser::parseBoolean() {
         Token firstToken = peek();
 
-        if (match(TokenKind::TRUE) || match(TokenKind::FALSE)) {
-            bool value = firstToken.getKind() == TokenKind::TRUE;
+        if (match(TokenKind::TRUE_LITERAL) || match(TokenKind::FALSE_LITERAL)) {
+            bool value = firstToken.getKind() == TokenKind::TRUE_LITERAL;
 
             Token lastToken = peek();
 
@@ -2843,8 +2844,8 @@ namespace vnlc {
 
     StatementParsingResult Parser::parseStatement() {
         static const std::unordered_set<TokenKind> expressionStarters = {
-            TokenKind::IDENTIFIER,      TokenKind::NUMBER, TokenKind::STRING, TokenKind::CHAR,  TokenKind::TRUE,
-            TokenKind::FALSE,           TokenKind::THIS,   TokenKind::SUPER,  TokenKind::NONE,  TokenKind::LEFT_PARENTHESIS,
+            TokenKind::IDENTIFIER,      TokenKind::NUMBER, TokenKind::STRING, TokenKind::CHAR,  TokenKind::TRUE_LITERAL,
+            TokenKind::FALSE_LITERAL,   TokenKind::THIS,   TokenKind::SUPER,  TokenKind::NONE,  TokenKind::LEFT_PARENTHESIS,
             TokenKind::LEFT_BRACKET,    TokenKind::PLUS,   TokenKind::MINUS,  TokenKind::TILDE, TokenKind::EXCLAMATION,
             TokenKind::SELECTOR_PREFIX,
         };
@@ -2852,7 +2853,7 @@ namespace vnlc {
         static const std::unordered_set<TokenKind> variableDeclarationStarters = {
             TokenKind::VAR,
             TokenKind::LET,
-            TokenKind::CONST,
+            TokenKind::CONST_KEYWORD,
         };
 
         static const std::unordered_set<TokenKind> controlFlowStarters = {
@@ -3210,7 +3211,7 @@ namespace vnlc {
             variableLastToken
         );
 
-        if (!match(TokenKind::IN)) {
+        if (!match(TokenKind::IN_KEYWORD)) {
             throw SyntaxError("Expected 'in' after loop variable declaration", peek().getLine(), peek().getColumn());
         }
 
@@ -3345,7 +3346,8 @@ namespace vnlc {
         }
 
         static const std::unordered_set<TokenKind> literalStarters = {
-            TokenKind::PLUS, TokenKind::MINUS, TokenKind::TILDE, TokenKind::EXCLAMATION, TokenKind::NUMBER, TokenKind::STRING, TokenKind::CHAR, TokenKind::TRUE, TokenKind::FALSE,
+            TokenKind::PLUS,   TokenKind::MINUS, TokenKind::TILDE,        TokenKind::EXCLAMATION,   TokenKind::NUMBER,
+            TokenKind::STRING, TokenKind::CHAR,  TokenKind::TRUE_LITERAL, TokenKind::FALSE_LITERAL,
         };
 
         if (checkAny(literalStarters)) {
