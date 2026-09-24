@@ -45,11 +45,11 @@ namespace vnlc {
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
         ASSERT_TRUE(lexer.hasNext());
-        ASSERT_EQ(lexer.next().getKind(), TokenKind::TRUE);
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::TRUE_LITERAL);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
         ASSERT_TRUE(lexer.hasNext());
-        ASSERT_EQ(lexer.next().getKind(), TokenKind::FALSE);
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::FALSE_LITERAL);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
         ASSERT_TRUE(lexer.hasNext());
