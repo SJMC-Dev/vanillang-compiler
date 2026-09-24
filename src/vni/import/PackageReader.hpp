@@ -20,7 +20,7 @@ namespace vnlc {
             std::filesystem::path currentPath,
             ImportedPackage* currentPackage
         );
-        void readFromAlias(std::string_view aliasPath, const std::unordered_map<std::string, std::filesystem::path>& rootPaths);
+        void readFromPath(std::string_view aliasPath, const std::unordered_map<std::string, std::filesystem::path>& rootPaths);
 
         void readPackageContents(const std::filesystem::path& packagePath, ImportedPackage& package, std::unordered_set<std::filesystem::path>& activePackagePaths);
 
@@ -28,7 +28,7 @@ namespace vnlc {
         PackageReader(std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& packages);
 
         void readPackageFromSource(const ImportDeclarationItem& importItem, const Config& config);
-        void readPackageFromAlias(std::string_view aliasPath, const Config& config);
+        void readPackageFromPath(std::string_view path, const Config& config);
     };
 } // namespace vnlc
 

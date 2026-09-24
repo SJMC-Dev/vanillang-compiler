@@ -11,17 +11,17 @@ namespace vnlc {
         readRecursivelyFromSource(importItem, config.dependencyPackageRootPaths, {}, nullptr);
     }
 
-    void PackageReader::readPackageFromAlias(std::string_view aliasPath, const Config& config) {
-        readFromAlias(aliasPath, config.dependencyPackageRootPaths);
+    void PackageReader::readPackageFromPath(std::string_view path, const Config& config) {
+        readFromPath(path, config.dependencyPackageRootPaths);
     }
 
-    void PackageReader::readFromAlias(std::string_view aliasPath, const std::unordered_map<std::string, std::filesystem::path>& rootPaths) {
+    void PackageReader::readFromPath(std::string_view path, const std::unordered_map<std::string, std::filesystem::path>& rootPaths) {
         std::vector<std::string> names;
         for (std::size_t start = 0;;) {
-            std::size_t end = aliasPath.find('.', start);
-            std::string_view name = aliasPath.substr(start, end == std::string_view::npos ? end : end - start);
+            std::size_t end = path.find('.', start);
+            std::string_view name = path.substr(start, end == std::string_view::npos ? end : end - start);
             if (name.empty() || name.find_first_of("/\\:") != std::string_view::npos || name.find('\0') != std::string_view::npos) {
-                throw PackageReaderError(fmt::format("Invalid imported alias path: {}", aliasPath));
+                throw PackageReaderError(fmt::format("Invalid imported path: {}", path));
             }
             names.emplace_back(name);
             if (end == std::string_view::npos) break;

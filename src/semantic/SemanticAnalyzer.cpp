@@ -679,7 +679,7 @@ namespace vnlc {
                 }
                 for (const auto& dependency : dependencies) {
                     if (loadedPaths.insert(dependency).second) {
-                        reader.readPackageFromAlias(dependency, config);
+                        reader.readPackageFromPath(dependency, config);
                     }
                 }
             }
