@@ -2,12 +2,12 @@
 #include "ast/declaration/DeclarationItem.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/EnumMemberDeclarationNode.hpp"
+#include "ast/declaration/FunctionDeclarationKind.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
-#include "ast/declaration/FunctionDeclarationType.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
+#include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
-#include "ast/declaration/ValueDeclarationType.hpp"
 #include "ast/identifier/IdentifierNode.hpp"
 #include "ast/type/TypeNode.hpp"
 #include "config/Config.hpp"
@@ -51,7 +51,7 @@ namespace vnlc {
 
     namespace {
 
-        const Token testToken(TokenType::IDENTIFIER, "test", 1, 1, 0);
+        const Token testToken(TokenKind::IDENTIFIER, "test", 1, 1, 0);
         const VoidType testVoidType;
 
         using TypeMap = std::unordered_map<const TypeNode*, const Type*>;
@@ -76,9 +76,9 @@ namespace vnlc {
         }
 
         std::unique_ptr<ValueDeclarationNode> makeValue(
-            ValueDeclarationType::Kind kind,
-            ValueDeclarationType::Context context,
-            ValueDeclarationType::AccessModifier accessModifier,
+            ValueDeclarationKind::Kind kind,
+            ValueDeclarationKind::Context context,
+            ValueDeclarationKind::AccessModifier accessModifier,
             std::string_view name,
             std::optional<std::unique_ptr<TypeNode>>&& type = std::nullopt
         ) {
@@ -86,9 +86,9 @@ namespace vnlc {
         }
 
         std::unique_ptr<ValueDeclarationNode> makeValueWithMetadata(
-            ValueDeclarationType::Kind kind,
-            ValueDeclarationType::Context context,
-            ValueDeclarationType::AccessModifier accessModifier,
+            ValueDeclarationKind::Kind kind,
+            ValueDeclarationKind::Context context,
+            ValueDeclarationKind::AccessModifier accessModifier,
             std::string_view name,
             std::optional<std::unique_ptr<TypeNode>>&& type,
             std::vector<DeclarationItem::MetadataTerm>&& metadata
@@ -97,10 +97,10 @@ namespace vnlc {
         }
 
         std::unique_ptr<FunctionDeclarationNode> makeFunction(
-            FunctionDeclarationType::Kind kind,
-            FunctionDeclarationType::Context context,
-            FunctionDeclarationType::AccessModifier accessModifier,
-            FunctionDeclarationType::Binding binding,
+            FunctionDeclarationKind::Kind kind,
+            FunctionDeclarationKind::Context context,
+            FunctionDeclarationKind::AccessModifier accessModifier,
+            FunctionDeclarationKind::Binding binding,
             std::string_view name,
             std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
             std::optional<std::unique_ptr<TypeNode>>&& returnType,
@@ -734,9 +734,9 @@ namespace vnlc {
         auto type = makeType("int");
         const auto* typeNode = type.get();
         auto declaration = makeValueWithMetadata(
-            ValueDeclarationType::Kind::LET,
-            ValueDeclarationType::Context::TOP_LEVEL,
-            ValueDeclarationType::AccessModifier::PUBLIC,
+            ValueDeclarationKind::Kind::LET,
+            ValueDeclarationKind::Context::TOP_LEVEL,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
             "count",
             std::make_optional(std::move(type)),
             makeMetadata()
@@ -763,17 +763,17 @@ namespace vnlc {
 
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
         parameters.push_back(makeValue(
-            ValueDeclarationType::Kind::PARAMETER,
-            ValueDeclarationType::Context::FUNCTION,
-            ValueDeclarationType::AccessModifier::PUBLIC,
+            ValueDeclarationKind::Kind::PARAMETER,
+            ValueDeclarationKind::Context::FUNCTION,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
             "amount",
             std::make_optional(std::move(parameterType))
         ));
         auto declaration = makeFunction(
-            FunctionDeclarationType::Kind::NATIVE,
-            FunctionDeclarationType::Context::TOP_LEVEL,
-            FunctionDeclarationType::AccessModifier::PUBLIC,
-            FunctionDeclarationType::Binding::INSTANCE,
+            FunctionDeclarationKind::Kind::NATIVE,
+            FunctionDeclarationKind::Context::TOP_LEVEL,
+            FunctionDeclarationKind::AccessModifier::PUBLIC,
+            FunctionDeclarationKind::Binding::INSTANCE,
             "add",
             std::move(parameters),
             std::make_optional(std::move(returnType))
@@ -818,26 +818,26 @@ namespace vnlc {
 
         std::vector<std::unique_ptr<DeclarationNode>> members;
         members.push_back(makeValue(
-            ValueDeclarationType::Kind::STATIC_PROPERTY,
-            ValueDeclarationType::Context::CLASS,
-            ValueDeclarationType::AccessModifier::PROTECTED,
+            ValueDeclarationKind::Kind::STATIC_PROPERTY,
+            ValueDeclarationKind::Context::CLASS,
+            ValueDeclarationKind::AccessModifier::PROTECTED,
             "count",
             std::make_optional(std::move(propertyType))
         ));
         members.push_back(makeFunction(
-            FunctionDeclarationType::Kind::NATIVE,
-            FunctionDeclarationType::Context::CLASS,
-            FunctionDeclarationType::AccessModifier::PUBLIC,
-            FunctionDeclarationType::Binding::STATIC,
+            FunctionDeclarationKind::Kind::NATIVE,
+            FunctionDeclarationKind::Context::CLASS,
+            FunctionDeclarationKind::AccessModifier::PUBLIC,
+            FunctionDeclarationKind::Binding::STATIC,
             "reset",
             {},
             std::nullopt
         ));
         members.push_back(makeFunction(
-            FunctionDeclarationType::Kind::REGULAR,
-            FunctionDeclarationType::Context::CLASS,
-            FunctionDeclarationType::AccessModifier::PRIVATE,
-            FunctionDeclarationType::Binding::INSTANCE,
+            FunctionDeclarationKind::Kind::REGULAR,
+            FunctionDeclarationKind::Context::CLASS,
+            FunctionDeclarationKind::AccessModifier::PRIVATE,
+            FunctionDeclarationKind::Binding::INSTANCE,
             "label",
             {},
             std::make_optional(std::move(methodReturnType))
@@ -887,10 +887,10 @@ namespace vnlc {
 
         std::vector<std::unique_ptr<FunctionDeclarationNode>> methods;
         methods.push_back(makeFunction(
-            FunctionDeclarationType::Kind::REGULAR,
-            FunctionDeclarationType::Context::INTERFACE,
-            FunctionDeclarationType::AccessModifier::PUBLIC,
-            FunctionDeclarationType::Binding::INSTANCE,
+            FunctionDeclarationKind::Kind::REGULAR,
+            FunctionDeclarationKind::Context::INTERFACE,
+            FunctionDeclarationKind::AccessModifier::PUBLIC,
+            FunctionDeclarationKind::Binding::INSTANCE,
             "run",
             {},
             std::make_optional(std::move(returnType))
@@ -922,9 +922,9 @@ namespace vnlc {
 
         std::vector<std::unique_ptr<ValueDeclarationNode>> associatedValues;
         associatedValues.push_back(makeValue(
-            ValueDeclarationType::Kind::ENUM_ASSOCIATED_VALUE,
-            ValueDeclarationType::Context::ENUM_MEMBER,
-            ValueDeclarationType::AccessModifier::PUBLIC,
+            ValueDeclarationKind::Kind::ENUM_ASSOCIATED_VALUE,
+            ValueDeclarationKind::Context::ENUM_MEMBER,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
             "code",
             std::make_optional(std::move(valueType))
         ));
@@ -995,7 +995,7 @@ namespace vnlc {
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorUsesInferredTypes) {
         const auto config = makeGeneratorConfig(testDirectory);
-        auto declaration = makeValue(ValueDeclarationType::Kind::LET, ValueDeclarationType::Context::TOP_LEVEL, ValueDeclarationType::AccessModifier::PUBLIC, "count", std::nullopt);
+        auto declaration = makeValue(ValueDeclarationKind::Kind::LET, ValueDeclarationKind::Context::TOP_LEVEL, ValueDeclarationKind::AccessModifier::PUBLIC, "count", std::nullopt);
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {},

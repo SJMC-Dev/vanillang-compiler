@@ -80,13 +80,13 @@ class GenericPrivateShadow<privateMember> extends Base {}
 )",
                 config
             );
-            const Token token(TokenType::IDENTIFIER, "Base", 1, 1, 0);
+            const Token token(TokenKind::IDENTIFIER, "Base", 1, 1, 0);
             std::vector<std::unique_ptr<DeclarationNode>> members;
-            const auto addProperty = [&](std::string_view name, ValueDeclarationType::AccessModifier accessModifier) {
+            const auto addProperty = [&](std::string_view name, ValueDeclarationKind::AccessModifier accessModifier) {
                 members.push_back(
                     std::make_unique<ValueDeclarationNode>(
-                        ValueDeclarationType::Kind::INSTANCE_PROPERTY,
-                        ValueDeclarationType::Context::CLASS,
+                        ValueDeclarationKind::Kind::INSTANCE_PROPERTY,
+                        ValueDeclarationKind::Context::CLASS,
                         accessModifier,
                         std::make_unique<IdentifierNode>(name, token, token),
                         std::nullopt,
@@ -96,15 +96,15 @@ class GenericPrivateShadow<privateMember> extends Base {}
                     )
                 );
             };
-            addProperty("protectedMember", ValueDeclarationType::AccessModifier::PROTECTED);
-            addProperty("privateMember", ValueDeclarationType::AccessModifier::PRIVATE);
-            addProperty("publicMember", ValueDeclarationType::AccessModifier::PUBLIC);
+            addProperty("protectedMember", ValueDeclarationKind::AccessModifier::PROTECTED);
+            addProperty("privateMember", ValueDeclarationKind::AccessModifier::PRIVATE);
+            addProperty("publicMember", ValueDeclarationKind::AccessModifier::PUBLIC);
             members.push_back(
                 std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationType::Kind::NATIVE,
-                    FunctionDeclarationType::Context::CLASS,
-                    FunctionDeclarationType::AccessModifier::PROTECTED,
-                    FunctionDeclarationType::Binding::STATIC,
+                    FunctionDeclarationKind::Kind::NATIVE,
+                    FunctionDeclarationKind::Context::CLASS,
+                    FunctionDeclarationKind::AccessModifier::PROTECTED,
+                    FunctionDeclarationKind::Binding::STATIC,
                     std::make_unique<IdentifierNode>("protectedMethod", token, token),
                     std::vector<std::unique_ptr<ValueDeclarationNode>>{},
                     std::nullopt,
@@ -115,10 +115,10 @@ class GenericPrivateShadow<privateMember> extends Base {}
             );
             members.push_back(
                 std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationType::Kind::NATIVE,
-                    FunctionDeclarationType::Context::CLASS,
-                    FunctionDeclarationType::AccessModifier::PROTECTED,
-                    FunctionDeclarationType::Binding::INSTANCE,
+                    FunctionDeclarationKind::Kind::NATIVE,
+                    FunctionDeclarationKind::Context::CLASS,
+                    FunctionDeclarationKind::AccessModifier::PROTECTED,
+                    FunctionDeclarationKind::Binding::INSTANCE,
                     std::make_unique<IdentifierNode>("protectedInstanceMethod", token, token),
                     std::vector<std::unique_ptr<ValueDeclarationNode>>{},
                     std::nullopt,
@@ -138,7 +138,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
                 token
             );
             members.clear();
-            addProperty("protectedMember", ValueDeclarationType::AccessModifier::PRIVATE);
+            addProperty("protectedMember", ValueDeclarationKind::AccessModifier::PRIVATE);
             std::vector<std::unique_ptr<IdentifierNode>> baseName;
             baseName.push_back(std::make_unique<IdentifierNode>("Base", token, token));
             privateShadow = std::make_unique<ClassDeclarationNode>(

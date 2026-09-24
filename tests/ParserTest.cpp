@@ -61,12 +61,12 @@ namespace vnlc {
 
         const auto* variableStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[0].get());
         ASSERT_NE(variableStatement, nullptr);
-        EXPECT_EQ(variableStatement->getVariableDeclaration().getKind(), ValueDeclarationType::Kind::LET);
+        EXPECT_EQ(variableStatement->getVariableDeclaration().getKind(), ValueDeclarationKind::Kind::LET);
         EXPECT_TRUE(variableStatement->getVariableDeclaration().getInitializer().has_value());
 
         const auto* forStatement = dynamic_cast<const ForStatementNode*>(statements[1].get());
         ASSERT_NE(forStatement, nullptr);
-        EXPECT_EQ(forStatement->getLoopVariable().getKind(), ValueDeclarationType::Kind::LOOP_VARIABLE);
+        EXPECT_EQ(forStatement->getLoopVariable().getKind(), ValueDeclarationKind::Kind::LOOP_VARIABLE);
         EXPECT_FALSE(forStatement->getLoopVariable().getInitializer().has_value());
     }
 
@@ -95,17 +95,17 @@ namespace vnlc {
 
         const auto* instanceProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get());
         ASSERT_NE(instanceProperty, nullptr);
-        EXPECT_EQ(instanceProperty->getKind(), ValueDeclarationType::Kind::INSTANCE_PROPERTY);
-        EXPECT_EQ(instanceProperty->getContext(), ValueDeclarationType::Context::CLASS);
-        EXPECT_EQ(instanceProperty->getAccessModifier(), ValueDeclarationType::AccessModifier::PRIVATE);
+        EXPECT_EQ(instanceProperty->getKind(), ValueDeclarationKind::Kind::INSTANCE_PROPERTY);
+        EXPECT_EQ(instanceProperty->getContext(), ValueDeclarationKind::Context::CLASS);
+        EXPECT_EQ(instanceProperty->getAccessModifier(), ValueDeclarationKind::AccessModifier::PRIVATE);
         EXPECT_TRUE(instanceProperty->getType().has_value());
         EXPECT_FALSE(instanceProperty->getInitializer().has_value());
 
         const auto* staticProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get());
         ASSERT_NE(staticProperty, nullptr);
-        EXPECT_EQ(staticProperty->getKind(), ValueDeclarationType::Kind::STATIC_PROPERTY);
-        EXPECT_EQ(staticProperty->getContext(), ValueDeclarationType::Context::CLASS);
-        EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationType::AccessModifier::PUBLIC);
+        EXPECT_EQ(staticProperty->getKind(), ValueDeclarationKind::Kind::STATIC_PROPERTY);
+        EXPECT_EQ(staticProperty->getContext(), ValueDeclarationKind::Context::CLASS);
+        EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationKind::AccessModifier::PUBLIC);
         EXPECT_TRUE(staticProperty->getType().has_value());
         EXPECT_TRUE(staticProperty->getInitializer().has_value());
     }

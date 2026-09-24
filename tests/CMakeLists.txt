@@ -52,7 +52,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
-    ${PROJECT_SOURCE_DIR}/src/util/TokenTypeUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
     ${AST_FILES}
     ParserTest.cpp
 )
@@ -63,7 +63,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
-    ${PROJECT_SOURCE_DIR}/src/util/TokenTypeUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
     ${AST_FILES}
     ${SEMANTIC_FILES}
     ${SCOPE_FILES}
