@@ -11,7 +11,11 @@ import vanillang.std.{
     Random
 }
 
-import module.parent.moduleinterface.demo
+class Vec3<T> {
+    x: int
+    y: int
+    z: int
+}
 
 interface Movable<T> {
     func move(targetPos: Vec3<T>) -> void
@@ -55,6 +59,8 @@ let text: Dict = {
 native func setWeatherToClear() -> void
 
 func onLoad() {
+    let vec = Vec3<int>(0, 0, 0)
+
     let entity: Entity = @n[tag="candidate"]
     switch (entity) {
         case VnlPlayer when entity.getHealth() >= 10 -> world.print("1", entity)
