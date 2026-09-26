@@ -32,10 +32,6 @@ namespace vnlc {
         [[nodiscard]] const ModuleOutline& getModuleOutline() const noexcept;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& getImports() const noexcept;
         [[nodiscard]] const std::vector<Diagnostic>& getErrors() const noexcept;
-
-        [[nodiscard]] std::unique_ptr<ModuleOutline> takeModuleOutline() noexcept;
-        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> takeImports() noexcept;
-        [[nodiscard]] std::vector<Diagnostic> takeErrors() noexcept;
     };
 } // namespace vnlc
 

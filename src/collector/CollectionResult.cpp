@@ -25,16 +25,4 @@ namespace vnlc {
     const std::vector<Diagnostic>& CollectionResult::getErrors() const noexcept {
         return errors;
     }
-
-    std::unique_ptr<ModuleOutline> CollectionResult::takeModuleOutline() noexcept {
-        return std::move(moduleOutline);
-    }
-
-    std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> CollectionResult::takeImports() noexcept {
-        return std::move(imports);
-    }
-
-    std::vector<Diagnostic> CollectionResult::takeErrors() noexcept {
-        return std::move(errors);
-    }
 } // namespace vnlc
