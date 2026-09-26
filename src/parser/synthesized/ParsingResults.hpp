@@ -36,6 +36,7 @@
 #include "parser/synthesized/FunctionSignatureParsingResult.hpp"            // IWYU pragma: export
 #include "parser/synthesized/GenericArgumentListParsingResult.hpp"          // IWYU pragma: export
 #include "parser/synthesized/GenericParameterListParsingResult.hpp"         // IWYU pragma: export
+#include "parser/synthesized/IdentifierLikeParsingResult.hpp"               // IWYU pragma: export
 #include "parser/synthesized/IfStatementParsingResult.hpp"                  // IWYU pragma: export
 #include "parser/synthesized/ImportDeclarationParsingResult.hpp"            // IWYU pragma: export
 #include "parser/synthesized/ImportPathItemParsingResult.hpp"               // IWYU pragma: export

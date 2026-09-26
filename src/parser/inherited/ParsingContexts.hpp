@@ -6,6 +6,7 @@
 #include "parser/inherited/EnumDeclarationParsingContext.hpp"            // IWYU pragma: export
 #include "parser/inherited/ForStatementParsingContext.hpp"               // IWYU pragma: export
 #include "parser/inherited/FunctionDeclarationParsingContext.hpp"        // IWYU pragma: export
+#include "parser/inherited/IdentifierLikeParsingContext.hpp"             // IWYU pragma: export
 #include "parser/inherited/InterfaceDeclarationParsingContext.hpp"       // IWYU pragma: export
 #include "parser/inherited/ModuleParsingContext.hpp"                     // IWYU pragma: export
 #include "parser/inherited/NativeFunctionDeclarationParsingContext.hpp"  // IWYU pragma: export

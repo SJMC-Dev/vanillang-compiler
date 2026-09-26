@@ -35,10 +35,19 @@
 #include "error/IllegalModuleOrPackageNameError.hpp"
 #include "error/OutOfRangeError.hpp"
 #include "error/SyntaxError.hpp"
+#include "outline/ClassDeclarationOutline.hpp"
+#include "outline/EnumDeclarationOutline.hpp"
+#include "outline/InterfaceDeclarationOutline.hpp"
+#include "outline/TypeAliasDeclarationOutline.hpp"
 #include "parser/ParseResult.hpp"
 #include "token/Token.hpp"
 #include "token/TokenKind.hpp"
 #include "util/TokenKindUtil.hpp"
+#include "vni/import/ImportedAlias.hpp"
+#include "vni/import/ImportedClass.hpp"
+#include "vni/import/ImportedEnum.hpp"
+#include "vni/import/ImportedInterface.hpp"
+#include "vni/import/ImportedTypeAlias.hpp"
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -50,6 +59,7 @@ namespace vnlc {
     Parser::Parser(Lexer&& lexer, const CollectionResult& collectionResult, std::size_t maxBufferSize)
         : lexer(std::move(lexer)),
           collectionResult(collectionResult),
+          importBindings(),
           tokenBuffer(),
           currentTokenIndex(0),
           bufferSize(maxBufferSize) {
@@ -339,6 +349,103 @@ namespace vnlc {
         while (check(TokenKind::IMPORT)) {
             auto result = parseImportDeclaration();
             importDeclarations.push_back(std::move(result.declaration));
+        }
+
+        importBindings.clear();
+        const auto findImportedChild = [](const ImportedItem* parent, std::string_view name) -> const ImportedItem* {
+            if (const auto* package = dynamic_cast<const ImportedPackage*>(parent)) {
+                if (const auto* subPackage = package->getSubPackageByName(name)) {
+                    return subPackage;
+                }
+                return package->getModuleByName(name);
+            }
+            if (const auto* module = dynamic_cast<const ImportedModule*>(parent)) {
+                return module->getIdentifierByName(name);
+            }
+            return nullptr;
+        };
+        const auto bindImport = [&](const ImportedItem* target, std::vector<std::string> path, const IdentifierNode* alias) {
+            const std::string name(alias == nullptr ? target->getName() : alias->getIdentifierString());
+
+            std::unordered_set<const ImportedAlias*> visitedAliases;
+            while (const auto* importedAlias = dynamic_cast<const ImportedAlias*>(target)) {
+                if (!visitedAliases.insert(importedAlias).second) {
+                    return;
+                }
+
+                path.assign(1, std::string());
+                for (const char ch : importedAlias->getSource()) {
+                    if (ch == '.') {
+                        path.emplace_back();
+                    } else {
+                        path.back().push_back(ch);
+                    }
+                }
+
+                const auto rootPackage = collectionResult.getImports().find(path.front());
+                if (rootPackage == collectionResult.getImports().end()) {
+                    return;
+                }
+
+                target = rootPackage->second.get();
+                for (std::size_t index = 1; target != nullptr && index < path.size(); ++index) {
+                    target = findImportedChild(target, path[index]);
+                }
+                if (target == nullptr) {
+                    return;
+                }
+            }
+
+            importBindings.emplace(name, std::move(path));
+        };
+        const auto collectImportBinding = [&](const auto& self, const ImportDeclarationItem& item, const ImportedItem* parent, std::vector<std::string> path) {
+            const ImportedItem* target = parent;
+            if (!item.self) {
+                for (const auto& part : item.namePrefix) {
+                    std::string_view name = part->getIdentifierString();
+                    if (item.wildcard && name == "*") {
+                        continue;
+                    }
+
+                    if (target == nullptr) {
+                        const auto package = collectionResult.getImports().find(std::string(name));
+                        if (package == collectionResult.getImports().end()) {
+                            return;
+                        }
+                        target = package->second.get();
+                    } else {
+                        target = findImportedChild(target, name);
+                    }
+
+                    if (target == nullptr) {
+                        return;
+                    }
+                    path.emplace_back(name);
+                }
+            }
+
+            if (item.wildcard) {
+                if (const auto* module = dynamic_cast<const ImportedModule*>(target)) {
+                    for (const auto& [name, identifier] : module->getIdentifiers()) {
+                        auto identifierPath = path;
+                        identifierPath.emplace_back(name);
+                        bindImport(identifier.get(), std::move(identifierPath), nullptr);
+                    }
+                }
+                return;
+            }
+
+            if (!item.nameSuffixes.empty()) {
+                for (const auto& suffix : item.nameSuffixes) {
+                    self(self, *suffix, target, path);
+                }
+                return;
+            }
+
+            bindImport(target, std::move(path), item.alias.has_value() ? item.alias.value().get() : nullptr);
+        };
+        for (const auto& importDeclaration : importDeclarations) {
+            collectImportBinding(collectImportBinding, importDeclaration->getNamePartsListWithAliases(), nullptr, {});
         }
 
         while (!check(TokenKind::EXPORT) && !check(TokenKind::END_OF_FILE)) {
@@ -2315,6 +2422,11 @@ namespace vnlc {
 
         auto primaryResult = parsePrimaryExpression();
         std::unique_ptr<ExpressionNode> currentNode = std::move(primaryResult.expression);
+        std::optional<std::vector<std::string>> identifierPrefix;
+        if (const auto* identifierLike = dynamic_cast<const IdentifierLikeExpressionNode*>(currentNode.get())) {
+            identifierPrefix.emplace();
+            identifierPrefix->emplace_back(identifierLike->getName().getIdentifierString());
+        }
 
         static const std::unordered_set<TokenKind> postfixOperators = {
             TokenKind::DOT,
@@ -2327,16 +2439,22 @@ namespace vnlc {
             if (match(TokenKind::DOT)) {
                 Token identifierFirstToken = peek();
 
-                std::unique_ptr<IdentifierNode> name;
+                std::unique_ptr<IdentifierLikeExpressionNode> nameNode;
                 if (!checkGeneralizedIdentifier()) {
                     throw SyntaxError("Expected generalized identifier after '.'", peek().getLine(), peek().getColumn());
+                } else if (identifierPrefix.has_value() && check(TokenKind::IDENTIFIER)) {
+                    IdentifierLikeParsingContext context{
+                        .prefix = *identifierPrefix,
+                    };
+                    auto identifierLikeResult = parseIdentifierLike(std::move(context));
+                    nameNode = std::move(identifierLikeResult.expression);
+                    identifierPrefix->emplace_back(nameNode->getName().getIdentifierString());
                 } else {
-                    name = constructCurrentIdentifierNode();
+                    nameNode = std::make_unique<IdentifierLikeExpressionNode>(constructCurrentIdentifierNode(), identifierFirstToken, peek());
+                    identifierPrefix.reset();
                 }
 
                 Token lastToken = peek();
-
-                std::unique_ptr<IdentifierLikeExpressionNode> nameNode = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), identifierFirstToken, lastToken);
 
                 currentNode = std::make_unique<MemberAccessExpressionNode>(MemberAccessExpressionKind::DOT, std::move(currentNode), std::move(nameNode), firstToken, lastToken);
             } else if (match(TokenKind::QUESTION_DOT)) {
@@ -2352,6 +2470,7 @@ namespace vnlc {
                 Token lastToken = peek();
 
                 std::unique_ptr<IdentifierLikeExpressionNode> nameNode = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), identifierFirstToken, lastToken);
+                identifierPrefix.reset();
 
                 currentNode = std::make_unique<MemberAccessExpressionNode>(MemberAccessExpressionKind::OPTIONAL_CHAINING, std::move(currentNode), std::move(nameNode), firstToken, lastToken);
             } else if (endsWithNewlineOrEOF) {
@@ -2377,6 +2496,7 @@ namespace vnlc {
                 } else {
                     currentNode = std::make_unique<FunctionCallExpressionNode>(std::move(currentNode), std::move(arguments), firstToken, lastToken);
                 }
+                identifierPrefix.reset();
             } else if (match(TokenKind::LEFT_BRACKET)) {
                 auto indexResult = parseExpression();
 
@@ -2387,11 +2507,122 @@ namespace vnlc {
                 Token lastToken = peek();
 
                 currentNode = std::make_unique<SubscriptExpressionNode>(std::move(currentNode), std::move(indexResult.expression), firstToken, lastToken);
+                identifierPrefix.reset();
             }
         }
 
         return PostfixExpressionParsingResult{
             .expression = std::move(currentNode),
+        };
+    }
+
+    IdentifierLikeParsingResult Parser::parseIdentifierLike(IdentifierLikeParsingContext context) {
+        Token firstToken = peek();
+
+        std::unique_ptr<IdentifierNode> name;
+        if (!check(TokenKind::IDENTIFIER)) {
+            throw SyntaxError("Expected identifier", peek().getLine(), peek().getColumn());
+        } else {
+            name = constructCurrentIdentifierNode();
+        }
+
+        context.prefix.emplace_back(name->getIdentifierString());
+
+        std::vector<std::unique_ptr<ExpressionNode>> genericArguments;
+        if (check(TokenKind::LEFT_ANGLE)) {
+            std::string_view identifierName = name->getIdentifierString();
+
+            bool isTypeDeclaration = false;
+            if (context.prefix.size() == 1) {
+                for (const auto& declaration : collectionResult.getModuleOutline().getTypeDeclarations()) {
+                    if (const auto* classDeclaration = dynamic_cast<const ClassDeclarationOutline*>(declaration.get())) {
+                        isTypeDeclaration = classDeclaration->getName() == identifierName;
+                    } else if (const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationOutline*>(declaration.get())) {
+                        isTypeDeclaration = interfaceDeclaration->getName() == identifierName;
+                    } else if (const auto* enumDeclaration = dynamic_cast<const EnumDeclarationOutline*>(declaration.get())) {
+                        isTypeDeclaration = enumDeclaration->getName() == identifierName;
+                    } else if (const auto* typeAliasDeclaration = dynamic_cast<const TypeAliasDeclarationOutline*>(declaration.get())) {
+                        isTypeDeclaration = typeAliasDeclaration->getAliasName() == identifierName;
+                    }
+
+                    if (isTypeDeclaration) {
+                        break;
+                    }
+                }
+            }
+
+            if (!isTypeDeclaration) {
+                const auto findImportedChild = [](const ImportedItem* parent, std::string_view childName) -> const ImportedItem* {
+                    if (const auto* package = dynamic_cast<const ImportedPackage*>(parent)) {
+                        if (const auto* subPackage = package->getSubPackageByName(childName)) {
+                            return subPackage;
+                        }
+                        return package->getModuleByName(childName);
+                    }
+                    if (const auto* module = dynamic_cast<const ImportedModule*>(parent)) {
+                        return module->getIdentifierByName(childName);
+                    }
+                    return nullptr;
+                };
+                const auto resolveImportedPath = [&](const std::vector<std::string>& path) -> const ImportedItem* {
+                    if (path.empty()) {
+                        return nullptr;
+                    }
+
+                    const auto rootPackage = collectionResult.getImports().find(path.front());
+                    if (rootPackage == collectionResult.getImports().end()) {
+                        return nullptr;
+                    }
+
+                    const ImportedItem* item = rootPackage->second.get();
+                    for (std::size_t index = 1; index < path.size(); ++index) {
+                        item = findImportedChild(item, path[index]);
+                        if (item == nullptr) {
+                            return nullptr;
+                        }
+                    }
+
+                    return item;
+                };
+
+                const ImportedItem* importedItem = nullptr;
+                const auto binding = importBindings.find(context.prefix.front());
+                if (binding != importBindings.end()) {
+                    std::vector<std::string> importedPath = context.prefix;
+                    importedPath.erase(importedPath.begin());
+                    importedPath.insert(importedPath.begin(), binding->second.begin(), binding->second.end());
+                    importedItem = resolveImportedPath(importedPath);
+                }
+
+                isTypeDeclaration =
+                    importedItem != nullptr && (dynamic_cast<const ImportedClass*>(importedItem) != nullptr || dynamic_cast<const ImportedInterface*>(importedItem) != nullptr ||
+                                                dynamic_cast<const ImportedEnum*>(importedItem) != nullptr || dynamic_cast<const ImportedTypeAlias*>(importedItem) != nullptr);
+            }
+
+            if (isTypeDeclaration) {
+                advance();
+                do {
+                    auto argumentResult = parsePostfixExpression();
+                    genericArguments.push_back(std::move(argumentResult.expression));
+                } while (match(TokenKind::COMMA));
+
+                if (!consumeRightAngleInType()) {
+                    throw SyntaxError("Expected '>' after generic argument list in identifier-like expression", peek().getLine(), peek().getColumn());
+                }
+            }
+        }
+
+        Token lastToken = peek();
+
+        std::unique_ptr<IdentifierLikeExpressionNode> node;
+        if (genericArguments.empty()) {
+            node = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), firstToken, lastToken);
+        } else {
+            node = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), std::move(genericArguments), firstToken, lastToken);
+        }
+
+        return IdentifierLikeParsingResult{
+            .expression = std::move(node),
         };
     }
 
@@ -2442,12 +2673,10 @@ namespace vnlc {
                 .expression = std::make_unique<PrimitiveTypeExpressionNode>(primitiveKind.value(), firstToken, lastToken),
             };
         } else if (check(TokenKind::IDENTIFIER)) {
-            auto name = constructCurrentIdentifierNode();
-
-            Token lastToken = peek();
+            auto identifierLikeResult = parseIdentifierLike(IdentifierLikeParsingContext{});
 
             return PrimaryExpressionParsingResult{
-                .expression = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), firstToken, lastToken),
+                .expression = std::move(identifierLikeResult.expression),
             };
         } else if (checkAny(literalStarters)) {
             auto literalResult = parseLiteral();

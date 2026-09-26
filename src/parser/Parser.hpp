@@ -12,7 +12,9 @@
 #include "token/Token.hpp"
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -21,6 +23,7 @@ namespace vnlc {
     private:
         Lexer lexer;
         const CollectionResult& collectionResult;
+        std::unordered_map<std::string, std::vector<std::string>> importBindings;
 
         std::vector<Token> tokenBuffer;
         std::size_t currentTokenIndex;
@@ -106,6 +109,7 @@ namespace vnlc {
         [[nodiscard]] UnaryExpressionParsingResult parseUnaryExpression();
         [[nodiscard]] ExponentialExpressionParsingResult parseExponentialExpression();
         [[nodiscard]] PostfixExpressionParsingResult parsePostfixExpression();
+        [[nodiscard]] IdentifierLikeParsingResult parseIdentifierLike(IdentifierLikeParsingContext context);
         [[nodiscard]] PrimaryExpressionParsingResult parsePrimaryExpression();
         [[nodiscard]] LiteralParsingResult parseLiteral();
         [[nodiscard]] StringParsingResult parseString();
