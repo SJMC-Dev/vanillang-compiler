@@ -14,7 +14,7 @@ add_executable(
     ast/expression/ConditionalExpressionNode.cpp
     ast/expression/ExpressionNode.cpp
     ast/expression/FunctionCallExpressionNode.cpp
-    ast/expression/IdentifierExpressionNode.cpp
+    ast/expression/IdentifierLikeExpressionNode.cpp
     ast/expression/LiteralExpressionNode.cpp
     ast/expression/MemberAccessExpressionNode.cpp
     ast/expression/NoneExpressionNode.cpp

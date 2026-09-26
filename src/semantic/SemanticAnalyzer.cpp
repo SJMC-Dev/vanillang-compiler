@@ -9,7 +9,7 @@
 #include "ast/expression/ConditionalExpressionNode.hpp"
 #include "ast/expression/DictLiteralExpressionNode.hpp"
 #include "ast/expression/FunctionCallExpressionNode.hpp"
-#include "ast/expression/IdentifierExpressionNode.hpp"
+#include "ast/expression/IdentifierLikeExpressionNode.hpp"
 #include "ast/expression/ListLikeLiteralExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/expression/NoneExpressionNode.hpp"
@@ -310,7 +310,7 @@ namespace vnlc {
         }
     }
 
-    void SemanticAnalyzer::checkIdentifierExpressionUse(const IdentifierExpressionNode& exprNode, MetadataInfo metadataInfo) {
+    void SemanticAnalyzer::checkIdentifierExpressionUse(const IdentifierLikeExpressionNode& exprNode, MetadataInfo metadataInfo) {
         const Symbol* symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
         if (symbol == nullptr) {
             context.reportError(exprNode, fmt::format("Use of undeclared identifier '{}'", exprNode.getName().getIdentifierString()));
@@ -340,7 +340,7 @@ namespace vnlc {
         return checkMemberAccessModifier(customizedType->getLocalNode(), member.getName().getIdentifierString(), dynamic_cast<const SuperExpressionNode*>(&prefix) != nullptr);
     }
 
-    bool SemanticAnalyzer::checkAccessModifier(const IdentifierExpressionNode& identifierNode) {
+    bool SemanticAnalyzer::checkAccessModifier(const IdentifierLikeExpressionNode& identifierNode) {
         const auto* currentClass = context.currentClass();
         if (currentClass == nullptr) {
             return true;
@@ -1067,7 +1067,7 @@ namespace vnlc {
             if (expr->getContext().has_value()) {
                 checkExpression(*expr->getContext().value());
             }
-        } else if (auto* expr = dynamic_cast<const IdentifierExpressionNode*>(&expression)) {
+        } else if (auto* expr = dynamic_cast<const IdentifierLikeExpressionNode*>(&expression)) {
             // TODO: Implement identifier expression checking
         } else if (dynamic_cast<const PrimitiveTypeExpressionNode*>(&expression) != nullptr) {
         } else if (auto* expr = dynamic_cast<const ListLikeLiteralExpressionNode*>(&expression)) {

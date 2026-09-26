@@ -4,7 +4,7 @@ namespace vnlc {
     MemberAccessExpressionNode::MemberAccessExpressionNode(
         MemberAccessExpressionKind kind,
         std::unique_ptr<ExpressionNode>&& object,
-        std::unique_ptr<IdentifierExpressionNode>&& member,
+        std::unique_ptr<IdentifierLikeExpressionNode>&& member,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
@@ -21,7 +21,7 @@ namespace vnlc {
         return *object;
     }
 
-    const IdentifierExpressionNode& MemberAccessExpressionNode::getMember() const noexcept {
+    const IdentifierLikeExpressionNode& MemberAccessExpressionNode::getMember() const noexcept {
         return *member;
     }
 } // namespace vnlc

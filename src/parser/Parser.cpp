@@ -2336,7 +2336,7 @@ namespace vnlc {
 
                 Token lastToken = peek();
 
-                std::unique_ptr<IdentifierExpressionNode> nameNode = std::make_unique<IdentifierExpressionNode>(std::move(name), identifierFirstToken, lastToken);
+                std::unique_ptr<IdentifierLikeExpressionNode> nameNode = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), identifierFirstToken, lastToken);
 
                 currentNode = std::make_unique<MemberAccessExpressionNode>(MemberAccessExpressionKind::DOT, std::move(currentNode), std::move(nameNode), firstToken, lastToken);
             } else if (match(TokenKind::QUESTION_DOT)) {
@@ -2351,7 +2351,7 @@ namespace vnlc {
 
                 Token lastToken = peek();
 
-                std::unique_ptr<IdentifierExpressionNode> nameNode = std::make_unique<IdentifierExpressionNode>(std::move(name), identifierFirstToken, lastToken);
+                std::unique_ptr<IdentifierLikeExpressionNode> nameNode = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), identifierFirstToken, lastToken);
 
                 currentNode = std::make_unique<MemberAccessExpressionNode>(MemberAccessExpressionKind::OPTIONAL_CHAINING, std::move(currentNode), std::move(nameNode), firstToken, lastToken);
             } else if (endsWithNewlineOrEOF) {
@@ -2447,7 +2447,7 @@ namespace vnlc {
             Token lastToken = peek();
 
             return PrimaryExpressionParsingResult{
-                .expression = std::make_unique<IdentifierExpressionNode>(std::move(name), firstToken, lastToken),
+                .expression = std::make_unique<IdentifierLikeExpressionNode>(std::move(name), firstToken, lastToken),
             };
         } else if (checkAny(literalStarters)) {
             auto literalResult = parseLiteral();
@@ -2633,7 +2633,7 @@ namespace vnlc {
 
             if ((name->getIdentifierString() == "B" || name->getIdentifierString() == "I" || name->getIdentifierString() == "L")) {
                 if (!match(TokenKind::SEMICOLON)) {
-                    elements.push_back(std::make_unique<IdentifierExpressionNode>(std::move(name), firstToken, peek()));
+                    elements.push_back(std::make_unique<IdentifierLikeExpressionNode>(std::move(name), firstToken, peek()));
                     comma = match(TokenKind::COMMA);
                 } else {
                     if (name->getIdentifierString() == "B") {
@@ -2645,7 +2645,7 @@ namespace vnlc {
                     }
                 }
             } else {
-                elements.push_back(std::make_unique<IdentifierExpressionNode>(std::move(name), firstToken, peek()));
+                elements.push_back(std::make_unique<IdentifierLikeExpressionNode>(std::move(name), firstToken, peek()));
                 comma = match(TokenKind::COMMA);
             }
         }

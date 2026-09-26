@@ -10,7 +10,7 @@
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
-#include "ast/expression/IdentifierExpressionNode.hpp"
+#include "ast/expression/IdentifierLikeExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/module/ModuleNode.hpp"
 #include "ast/statement/StatementNode.hpp"
@@ -28,7 +28,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-
 
 namespace vnlc {
     class PrimitiveType;
@@ -50,9 +49,9 @@ namespace vnlc {
         [[nodiscard]] std::string getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
         [[nodiscard]] std::string getUnwrappedTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
         void registerImportedScopes(const ImportedItem& item, const Scope* parent);
-        void checkIdentifierExpressionUse(const IdentifierExpressionNode& exprNode, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
+        void checkIdentifierExpressionUse(const IdentifierLikeExpressionNode& exprNode, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         [[nodiscard]] bool checkAccessModifier(const MemberAccessExpressionNode& memberAccessNode);
-        [[nodiscard]] bool checkAccessModifier(const IdentifierExpressionNode& identifierNode);
+        [[nodiscard]] bool checkAccessModifier(const IdentifierLikeExpressionNode& identifierNode);
         [[nodiscard]] bool checkMemberAccessModifier(const TypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
         [[nodiscard]] MetadataInfo checkMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms, const DeclarationNode& declNode);
         [[nodiscard]] std::size_t getGenericParameterCount(const Symbol& symbol) const;
