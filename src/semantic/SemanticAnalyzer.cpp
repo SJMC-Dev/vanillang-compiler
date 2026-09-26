@@ -613,19 +613,6 @@ namespace vnlc {
         std::unordered_set<std::string> names;
         const auto errorCount = context.getErrors().size();
 
-        const auto findChild = [](const ImportedItem* parent, std::string_view name) -> const ImportedItem* {
-            if (const auto* package = dynamic_cast<const ImportedPackage*>(parent)) {
-                if (auto subPackage = package->getSubPackageByName(name)) {
-                    return subPackage;
-                }
-                return package->getModuleByName(name);
-            }
-            if (const auto* module = dynamic_cast<const ImportedModule*>(parent)) {
-                return module->getIdentifierByName(name);
-            }
-            return nullptr;
-        };
-
         const auto bind = [&](const ImportedItem* target, std::vector<std::string> path, const IdentifierNode* alias, const AstNode& location) {
             const std::string name(alias ? alias->getIdentifierString() : target->getName());
             if (context.currentScope().lookupLocal(name) != nullptr || !names.insert(name).second) {
@@ -649,10 +636,7 @@ namespace vnlc {
                     }
                 }
 
-                target = getImportedPackageByName(path.front());
-                for (std::size_t index = 1; target != nullptr && index < path.size(); ++index) {
-                    target = findChild(target, path[index]);
-                }
+                target = ImportedItem::getImportedItemByFullPath(imports, path);
                 if (target == nullptr) {
                     context.reportError(location, fmt::format("Could not find imported alias target '{}'", importedAlias->getSource()));
                     return;
@@ -675,7 +659,7 @@ namespace vnlc {
                     if (target == nullptr) {
                         target = getImportedPackageByName(name);
                     } else {
-                        target = findChild(target, name);
+                        target = target->getChildByName(name);
                     }
                     if (target == nullptr) {
                         context.reportError(*part, fmt::format("Could not find imported package, module or identifier '{}'", name));
@@ -732,10 +716,7 @@ namespace vnlc {
 
         for (const auto& binding : bindings) {
             const auto* package = getImportedPackageByName(binding.path.front());
-            const ImportedItem* target = package;
-            for (std::size_t index = 1; target != nullptr && index < binding.path.size(); ++index) {
-                target = findChild(target, binding.path[index]);
-            }
+            const ImportedItem* target = ImportedItem::getImportedItemByFullPath(imports, binding.path);
             if (target == nullptr) {
                 continue;
             }

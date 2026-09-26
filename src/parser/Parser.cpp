@@ -352,18 +352,6 @@ namespace vnlc {
         }
 
         importBindings.clear();
-        const auto findImportedChild = [](const ImportedItem* parent, std::string_view name) -> const ImportedItem* {
-            if (const auto* package = dynamic_cast<const ImportedPackage*>(parent)) {
-                if (const auto* subPackage = package->getSubPackageByName(name)) {
-                    return subPackage;
-                }
-                return package->getModuleByName(name);
-            }
-            if (const auto* module = dynamic_cast<const ImportedModule*>(parent)) {
-                return module->getIdentifierByName(name);
-            }
-            return nullptr;
-        };
         const auto bindImport = [&](const ImportedItem* target, std::vector<std::string> path, const IdentifierNode* alias) {
             const std::string name(alias == nullptr ? target->getName() : alias->getIdentifierString());
 
@@ -382,15 +370,7 @@ namespace vnlc {
                     }
                 }
 
-                const auto rootPackage = collectionResult.getImports().find(path.front());
-                if (rootPackage == collectionResult.getImports().end()) {
-                    return;
-                }
-
-                target = rootPackage->second.get();
-                for (std::size_t index = 1; target != nullptr && index < path.size(); ++index) {
-                    target = findImportedChild(target, path[index]);
-                }
+                target = ImportedItem::getImportedItemByFullPath(collectionResult.getImports(), path);
                 if (target == nullptr) {
                     return;
                 }
@@ -414,7 +394,7 @@ namespace vnlc {
                         }
                         target = package->second.get();
                     } else {
-                        target = findImportedChild(target, name);
+                        target = target->getChildByName(name);
                     }
 
                     if (target == nullptr) {
@@ -2552,46 +2532,13 @@ namespace vnlc {
             }
 
             if (!isTypeDeclaration) {
-                const auto findImportedChild = [](const ImportedItem* parent, std::string_view childName) -> const ImportedItem* {
-                    if (const auto* package = dynamic_cast<const ImportedPackage*>(parent)) {
-                        if (const auto* subPackage = package->getSubPackageByName(childName)) {
-                            return subPackage;
-                        }
-                        return package->getModuleByName(childName);
-                    }
-                    if (const auto* module = dynamic_cast<const ImportedModule*>(parent)) {
-                        return module->getIdentifierByName(childName);
-                    }
-                    return nullptr;
-                };
-                const auto resolveImportedPath = [&](const std::vector<std::string>& path) -> const ImportedItem* {
-                    if (path.empty()) {
-                        return nullptr;
-                    }
-
-                    const auto rootPackage = collectionResult.getImports().find(path.front());
-                    if (rootPackage == collectionResult.getImports().end()) {
-                        return nullptr;
-                    }
-
-                    const ImportedItem* item = rootPackage->second.get();
-                    for (std::size_t index = 1; index < path.size(); ++index) {
-                        item = findImportedChild(item, path[index]);
-                        if (item == nullptr) {
-                            return nullptr;
-                        }
-                    }
-
-                    return item;
-                };
-
                 const ImportedItem* importedItem = nullptr;
                 const auto binding = importBindings.find(context.prefix.front());
                 if (binding != importBindings.end()) {
                     std::vector<std::string> importedPath = context.prefix;
                     importedPath.erase(importedPath.begin());
                     importedPath.insert(importedPath.begin(), binding->second.begin(), binding->second.end());
-                    importedItem = resolveImportedPath(importedPath);
+                    importedItem = ImportedItem::getImportedItemByFullPath(collectionResult.getImports(), importedPath);
                 }
 
                 isTypeDeclaration =
