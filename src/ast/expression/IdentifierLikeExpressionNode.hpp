@@ -16,6 +16,12 @@ namespace vnlc {
 
     public:
         IdentifierLikeExpressionNode(std::unique_ptr<IdentifierNode>&& name, const Token& firstToken, const Token& lastToken) noexcept;
+        IdentifierLikeExpressionNode(
+            std::unique_ptr<IdentifierNode>&& name,
+            std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>&& genericArguments,
+            const Token& firstToken,
+            const Token& lastToken
+        ) noexcept;
 
         [[nodiscard]] const IdentifierNode& getName() const noexcept;
         [[nodiscard]] const std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>& getGenericArguments() const noexcept;
