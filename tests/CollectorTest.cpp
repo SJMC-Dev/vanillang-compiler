@@ -799,37 +799,4 @@ type Alias<T> = Box<T>
         ASSERT_NE(declaration, nullptr);
         EXPECT_EQ(declaration->getName(), "Kept");
     }
-
-    TEST_F(CollectorTest, TransfersOutlinesImportsAndDiagnosticsWithTheirOwnership) {
-        std::unique_ptr<ModuleOutline> outline;
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
-        std::vector<Diagnostic> errors;
-        const EnumDeclarationOutline* enumDeclaration = nullptr;
-        const ImportedPackage* package = nullptr;
-        {
-            auto result = collect("import absent.api\nimport pkg.api.value\nenum State { Ready }\n");
-            ASSERT_EQ(result.getModuleOutline().getTypeDeclarations().size(), 1);
-            enumDeclaration = dynamic_cast<const EnumDeclarationOutline*>(result.getModuleOutline().getTypeDeclarations()[0].get());
-            ASSERT_NE(enumDeclaration, nullptr);
-            package = importedPackage(result, "pkg");
-            ASSERT_NE(package, nullptr);
-            outline = result.takeModuleOutline();
-            imports = result.takeImports();
-            errors = result.takeErrors();
-        }
-
-        ASSERT_NE(outline, nullptr);
-        EXPECT_EQ(outline->getTypeDeclarations()[0].get(), enumDeclaration);
-        ASSERT_EQ(enumDeclaration->getMemberDeclarations().size(), 1);
-        EXPECT_EQ(enumDeclaration->getMemberDeclarations()[0]->getName(), "Ready");
-        EXPECT_EQ(enumDeclaration->getMemberDeclarations()[0]->getEnumDeclaration(), enumDeclaration);
-        ASSERT_TRUE(imports.contains("pkg"));
-        EXPECT_EQ(imports.at("pkg").get(), package);
-        const auto* importedModule = package->getModuleByName("api");
-        ASSERT_NE(importedModule, nullptr);
-        EXPECT_NE(importedModule->getIdentifierByName("value"), nullptr);
-        ASSERT_EQ(errors.size(), 1);
-        EXPECT_EQ(errors[0].getPhase(), DiagnosticPhase::COLLECTOR);
-    }
-
 } // namespace vnlc

@@ -3,12 +3,13 @@
 #include "ast/statement/ExpressionStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
+#include "collector/CollectionResult.hpp"
 #include "collector/Collector.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
-#include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticContext.hpp"
+#include "semantic/SemanticResult.hpp"
 #include "type/CustomizedTypeKind.hpp"
 #include "type/PrimitiveType.hpp"
 #include "type/TypeExpressionType.hpp"
@@ -588,7 +589,7 @@ func test() {
         std::filesystem::path testDirectory;
         Config config = makeConfig("imports.vnl");
         std::unique_ptr<ModuleNode> module;
-        std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        std::optional<CollectionResult> collectionResult;
 
         void SetUp() override {
             const auto* testInfo = testing::UnitTest::GetInstance()->current_test_info();
@@ -641,18 +642,19 @@ func test() {
         }
 
         void prepareImports(std::string_view source) {
-            auto collection = collectModule(source, config);
-            EXPECT_TRUE(collection.getErrors().empty());
-            imports = collection.takeImports();
+            collectionResult = collectModule(source, config);
+            EXPECT_TRUE(collectionResult->getErrors().empty());
         }
 
         const ImportedPackage* getImportedPackageByName(std::string_view name) const {
+            const auto& imports = collectionResult->getImports();
             const auto it = imports.find(std::string(name));
             return it == imports.end() ? nullptr : it->second.get();
         }
 
-        SemanticAnalysisResult analyze(std::string_view source, std::optional<std::string_view> importSource = std::nullopt) {
+        SemanticResult analyze(std::string_view source, std::optional<std::string_view> importSource = std::nullopt) {
             prepareImports(importSource.value_or(source));
+            const auto& imports = collectionResult->getImports();
             module = parseModule(source, config);
             SemanticAnalyzer analyzer(*module, imports);
             return analyzer.analyze(config);
@@ -661,6 +663,7 @@ func test() {
         template <typename Callback> void withAliasType(std::string_view source, Callback&& callback) {
             prepareImports(source);
             module = parseModule(source, config);
+            const auto& imports = collectionResult->getImports();
             SemanticAnalyzer analyzer(*module, imports);
             auto& context = analyzer.context;
             context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
@@ -724,7 +727,7 @@ func test() {
             return analyzer.checkType(type);
         }
 
-        const ImportedItem* findImportedNode(const SemanticAnalysisResult& result, std::string_view name) const {
+        const ImportedItem* findImportedNode(const SemanticResult& result, std::string_view name) const {
             const auto* scope = result.getScopeByAstNode(*module);
             EXPECT_NE(scope, nullptr);
             if (scope == nullptr) return nullptr;
@@ -1679,7 +1682,7 @@ func test() {
             writeFile("dependency_source/broken.vni", contents);
             for (const auto importSource : { "import pkg.broken.broken\n", "import pkg.broken.{valid, broken}\n", "import pkg.broken.*\n" }) {
                 SCOPED_TRACE(importSource);
-                std::optional<SemanticAnalysisResult> result;
+                std::optional<SemanticResult> result;
                 ASSERT_NO_THROW(result.emplace(analyze(std::string("import pkg.api.value as kept\n") + importSource + "let valid = 0\nlet broken = 0\nexport kept\n")));
 
                 ASSERT_TRUE(result->hasErrors());
@@ -1711,7 +1714,7 @@ func test() {
                  "import pkg.api.{value, absent}\n",
              }) {
             SCOPED_TRACE(source);
-            std::optional<SemanticAnalysisResult> result;
+            std::optional<SemanticResult> result;
             ASSERT_NO_THROW(result.emplace(analyze(source, "import pkg\n")));
 
             ASSERT_TRUE(result->hasErrors());

@@ -98,7 +98,7 @@ add_executable(
 add_executable(
     vnlctest_vni
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
-    ${PROJECT_SOURCE_DIR}/src/semantic/SemanticAnalysisResult.cpp
+    ${PROJECT_SOURCE_DIR}/src/semantic/SemanticResult.cpp
     ${AST_FILES}
     ${TYPE_FILES}
     ${VNI_FILES}

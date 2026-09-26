@@ -163,9 +163,8 @@ namespace vnlc {
             return std::make_unique<TypeAliasDeclarationNode>(makeIdentifier(name), std::move(genericParameters), std::move(originalType), testToken, testToken);
         }
 
-        SemanticAnalysisResult
-        makeSemanticResult(TypeMap&& typeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
-            return SemanticAnalysisResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {});
+        SemanticResult makeSemanticResult(TypeMap&& typeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
+            return SemanticResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {});
         }
 
         Config makeGeneratorConfig(const std::filesystem::path& testDirectory) {
