@@ -10,10 +10,6 @@ namespace vnlc {
           imports(std::move(imports)),
           errors(std::move(errors)) {}
 
-    ModuleOutline& CollectionResult::getModuleOutline() noexcept {
-        return *moduleOutline;
-    }
-
     const ModuleOutline& CollectionResult::getModuleOutline() const noexcept {
         return *moduleOutline;
     }

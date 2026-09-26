@@ -28,7 +28,6 @@ namespace vnlc {
         CollectionResult(CollectionResult&&) noexcept = default;
         CollectionResult& operator=(CollectionResult&&) noexcept = default;
 
-        [[nodiscard]] ModuleOutline& getModuleOutline() noexcept;
         [[nodiscard]] const ModuleOutline& getModuleOutline() const noexcept;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& getImports() const noexcept;
         [[nodiscard]] const std::vector<Diagnostic>& getErrors() const noexcept;
