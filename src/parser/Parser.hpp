@@ -4,6 +4,7 @@
 #include "ast/expression/PrimitiveTypeExpressionKind.hpp"
 #include "ast/module/ModuleNode.hpp"
 #include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
+#include "collector/CollectionResult.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/inherited/ParsingContexts.hpp"
@@ -19,6 +20,7 @@ namespace vnlc {
     class Parser {
     private:
         Lexer lexer;
+        const CollectionResult& collectionResult;
 
         std::vector<Token> tokenBuffer;
         std::size_t currentTokenIndex;
@@ -132,7 +134,7 @@ namespace vnlc {
         [[nodiscard]] SwitchCaseParsingResult parseSwitchCase();
 
     public:
-        explicit Parser(Lexer&& lexer, std::size_t maxBufferSize = 3);
+        explicit Parser(Lexer&& lexer, const CollectionResult& collectionResult, std::size_t maxBufferSize = 3);
 
         [[nodiscard]] std::unique_ptr<ModuleNode> parse(const Config& config);
     };

@@ -46,7 +46,12 @@
 #include <unordered_set>
 
 namespace vnlc {
-    Parser::Parser(Lexer&& lexer, std::size_t maxBufferSize) : lexer(std::move(lexer)), tokenBuffer(), currentTokenIndex(0), bufferSize(maxBufferSize) {
+    Parser::Parser(Lexer&& lexer, const CollectionResult& collectionResult, std::size_t maxBufferSize)
+        : lexer(std::move(lexer)),
+          collectionResult(collectionResult),
+          tokenBuffer(),
+          currentTokenIndex(0),
+          bufferSize(maxBufferSize) {
         fillBuffer();
     }
 
