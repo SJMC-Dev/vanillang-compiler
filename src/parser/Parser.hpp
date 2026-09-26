@@ -2,11 +2,11 @@
 #define VNLC_PARSER_HPP
 
 #include "ast/expression/PrimitiveTypeExpressionKind.hpp"
-#include "ast/module/ModuleNode.hpp"
 #include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
 #include "collector/CollectionResult.hpp"
 #include "config/Config.hpp"
 #include "lexer/Lexer.hpp"
+#include "parser/ParseResult.hpp"
 #include "parser/inherited/ParsingContexts.hpp"
 #include "parser/synthesized/ParsingResults.hpp"
 #include "token/Token.hpp"
@@ -136,7 +136,7 @@ namespace vnlc {
     public:
         explicit Parser(Lexer&& lexer, const CollectionResult& collectionResult, std::size_t maxBufferSize = 3);
 
-        [[nodiscard]] std::unique_ptr<ModuleNode> parse(const Config& config);
+        [[nodiscard]] ParseResult parse(const Config& config);
     };
 } // namespace vnlc
 

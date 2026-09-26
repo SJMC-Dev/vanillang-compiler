@@ -1,13 +1,10 @@
 #ifndef VNLC_SESSION_HPP
 #define VNLC_SESSION_HPP
 
-#include "ast/module/ModuleNode.hpp"
 #include "collector/CollectionResult.hpp"
 #include "config/Config.hpp"
-#include "diagnostic/Diagnostic.hpp"
+#include "parser/ParseResult.hpp"
 #include "semantic/SemanticResult.hpp"
-#include <memory>
-#include <vector>
 
 namespace vnlc {
     class Session {
@@ -15,7 +12,7 @@ namespace vnlc {
         const Config config;
 
         std::optional<CollectionResult> collectionResult;
-        std::unique_ptr<ModuleNode> ast;
+        std::optional<ParseResult> parseResult;
         std::optional<SemanticResult> semanticAnalysisResult;
 
     public:

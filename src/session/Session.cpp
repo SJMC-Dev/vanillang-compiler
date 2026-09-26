@@ -24,10 +24,10 @@ namespace vnlc {
         input.seekg(0);
 
         Lexer lexer(input);
-        Parser parser(std::move(lexer));
-        ast = parser.parse(config);
+        Parser parser(std::move(lexer), collectionResult.value());
+        parseResult = parser.parse(config);
 
-        SemanticAnalyzer semanticAnalyzer(*ast, collectionResult->getImports());
+        SemanticAnalyzer semanticAnalyzer(parseResult->getModuleNode(), collectionResult->getImports());
         SemanticResult semantic = semanticAnalyzer.analyze(config);
     }
 } // namespace vnlc

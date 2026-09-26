@@ -35,6 +35,7 @@
 #include "error/IllegalModuleOrPackageNameError.hpp"
 #include "error/OutOfRangeError.hpp"
 #include "error/SyntaxError.hpp"
+#include "parser/ParseResult.hpp"
 #include "token/Token.hpp"
 #include "token/TokenKind.hpp"
 #include "util/TokenKindUtil.hpp"
@@ -281,11 +282,12 @@ namespace vnlc {
         return name;
     }
 
-    std::unique_ptr<ModuleNode> Parser::parse(const Config& config) {
+    ParseResult Parser::parse(const Config& config) {
         ModuleParsingContext context(config);
         auto result = parseModule(context);
 
-        return std::move(result.moduleNode);
+        // TODO: implement collecting errors
+        return ParseResult{ std::move(result.moduleNode), {} };
     }
 
     ModuleParsingResult Parser::parseModule(ModuleParsingContext context) {
