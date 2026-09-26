@@ -69,6 +69,7 @@ add_executable(
     outline/TypeAliasDeclarationOutline.cpp
     collector/CollectionResult.cpp
     collector/Collector.cpp
+    parser/ParseResult.cpp
     parser/Parser.cpp
     diagnostic/Diagnostic.cpp
     symbol/Symbol.cpp
