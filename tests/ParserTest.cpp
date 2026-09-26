@@ -1,6 +1,6 @@
 #include "parser/Parser.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
-#include "ast/expression/IdentifierExpressionNode.hpp"
+#include "ast/expression/IdentifierLikeExpressionNode.hpp"
 #include "ast/expression/NoneExpressionNode.hpp"
 #include "ast/expression/PrimitiveTypeExpressionKind.hpp"
 #include "ast/expression/PrimitiveTypeExpressionNode.hpp"
@@ -10,6 +10,7 @@
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
 #include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
 #include "ast/typeref/PrimitiveTypeReferenceNode.hpp"
+#include "collector/Collector.hpp"
 #include "config/Config.hpp"
 #include <filesystem>
 #include <fstream>
@@ -18,12 +19,31 @@
 
 namespace vnlc {
 
+    namespace {
+
+        CollectionResult collectModule(std::istream& input, const Config& config) {
+            Lexer lexer(input);
+            Collector collector(std::move(lexer));
+            return collector.collect(config);
+        }
+
+        ParseResult parseModule(std::istream& input, const Config& config) {
+            auto collectionResult = collectModule(input, config);
+
+            input.clear();
+            input.seekg(0);
+
+            Lexer lexer(input);
+            Parser parser(std::move(lexer), collectionResult);
+            return parser.parse(config);
+        }
+
+    } // namespace
+
     TEST(ParserTest, SimpleModule) {
         const auto inputDir = std::filesystem::path(VNLC_TEST_SOURCE_DIR) / "inputs";
 
         std::ifstream input(inputDir / "main.vnl");
-        Lexer lexer(input);
-        Parser parser(std::move(lexer));
 
         Config config{
             .mode = RunningMode::COMPILE,
@@ -36,13 +56,11 @@ namespace vnlc {
             .optimizationLevel = std::nullopt,
         };
 
-        auto result = parser.parse(std::move(config));
+        auto result = parseModule(input, config);
     }
 
     TEST(ParserTest, DistinguishesLoopVariablesFromOrdinaryVariables) {
         std::stringstream input("func test() {\n    let value = 1\n    for (let item in 1..3) {}\n}\n");
-        Lexer lexer(input);
-        Parser parser(std::move(lexer));
 
         Config config{
             .mode = RunningMode::COMPILE,
@@ -55,10 +73,11 @@ namespace vnlc {
             .optimizationLevel = std::nullopt,
         };
 
-        auto module = parser.parse(config);
-        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 1);
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 1);
 
-        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
         ASSERT_NE(function, nullptr);
         ASSERT_TRUE(function->getBody().has_value());
 
@@ -78,8 +97,6 @@ namespace vnlc {
 
     TEST(ParserTest, PropertyDeclarationsUseValueDeclarationNode) {
         std::stringstream input("class Example {\n    private value: string\n    static count: int = 0\n}\n");
-        Lexer lexer(input);
-        Parser parser(std::move(lexer));
 
         Config config{
             .mode = RunningMode::COMPILE,
@@ -92,10 +109,11 @@ namespace vnlc {
             .optimizationLevel = std::nullopt,
         };
 
-        auto module = parser.parse(config);
-        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 1);
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 1);
 
-        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
         ASSERT_NE(classDeclaration, nullptr);
         ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 2);
 
@@ -118,8 +136,6 @@ namespace vnlc {
 
     TEST(ParserTest, ParsesNoneAsPrimaryExpression) {
         std::stringstream input("func test() {\n    let value = none\n    let range = 1..none\n}\n");
-        Lexer lexer(input);
-        Parser parser(std::move(lexer));
 
         Config config{
             .mode = RunningMode::COMPILE,
@@ -132,10 +148,11 @@ namespace vnlc {
             .optimizationLevel = std::nullopt,
         };
 
-        auto module = parser.parse(config);
-        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 1);
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 1);
 
-        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
         ASSERT_NE(function, nullptr);
         ASSERT_TRUE(function->getBody().has_value());
 
@@ -167,8 +184,6 @@ namespace vnlc {
             "    let customizedValue: Example = none\n"
             "}\n"
         );
-        Lexer lexer(input);
-        Parser parser(std::move(lexer));
 
         Config config{
             .mode = RunningMode::COMPILE,
@@ -181,10 +196,11 @@ namespace vnlc {
             .optimizationLevel = std::nullopt,
         };
 
-        auto module = parser.parse(config);
-        ASSERT_EQ(module->getTopIdentifierDeclarations().size(), 2);
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 2);
 
-        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
+        const auto* function = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[1].get());
         ASSERT_NE(function, nullptr);
         ASSERT_TRUE(function->getBody().has_value());
 
@@ -201,7 +217,7 @@ namespace vnlc {
         const auto* identifierStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[1].get());
         ASSERT_NE(identifierStatement, nullptr);
         ASSERT_TRUE(identifierStatement->getVariableDeclaration().getInitializer().has_value());
-        EXPECT_NE(dynamic_cast<const IdentifierExpressionNode*>(identifierStatement->getVariableDeclaration().getInitializer().value().get()), nullptr);
+        EXPECT_NE(dynamic_cast<const IdentifierLikeExpressionNode*>(identifierStatement->getVariableDeclaration().getInitializer().value().get()), nullptr);
 
         const auto* primitiveValueStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[2].get());
         ASSERT_NE(primitiveValueStatement, nullptr);

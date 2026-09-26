@@ -1,5 +1,6 @@
 #include "semantic/SemanticAnalyzer.hpp"
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/module/ModuleNode.hpp"
 #include "ast/statement/ExpressionStatementNode.hpp"
 #include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
@@ -45,11 +46,19 @@ namespace vnlc {
             };
         }
 
-        std::unique_ptr<ModuleNode> parseModule(std::string_view source, const Config& config) {
+        std::shared_ptr<const ModuleNode> parseModule(std::string_view source, const Config& config) {
             std::stringstream input{ std::string(source) };
+            Lexer collectorLexer(input);
+            Collector collector(std::move(collectorLexer));
+            auto collectionResult = collector.collect(config);
+
+            input.clear();
+            input.seekg(0);
+
             Lexer lexer(input);
-            Parser parser(std::move(lexer));
-            return parser.parse(config);
+            Parser parser(std::move(lexer), collectionResult);
+            auto parseResult = std::make_shared<ParseResult>(parser.parse(config));
+            return std::shared_ptr<const ModuleNode>(parseResult, &parseResult->getModuleNode());
         }
 
         CollectionResult collectModule(std::string_view source, const Config& config) {
@@ -65,10 +74,10 @@ namespace vnlc {
     protected:
         const Config config = makeConfig("access.vnl");
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
-        std::unique_ptr<ModuleNode> module;
+        std::shared_ptr<const ModuleNode> module;
         std::unique_ptr<ClassDeclarationNode> baseClass;
         std::unique_ptr<ClassDeclarationNode> privateShadow;
-        std::vector<std::unique_ptr<ModuleNode>> accessModules;
+        std::vector<std::shared_ptr<const ModuleNode>> accessModules;
         std::vector<std::unique_ptr<TypeExpressionType>> typeExpressions;
         std::unique_ptr<SemanticAnalyzer> analyzer;
 
@@ -262,7 +271,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
             const auto& bodyBlock = *function.getBody().value();
             const auto& block = nestedBlock ? dynamic_cast<const BlockStatementNode&>(*bodyBlock.getStatements().front()) : bodyBlock;
             const auto& statement = dynamic_cast<const ExpressionStatementNode&>(*block.getStatements().back());
-            const auto& expression = dynamic_cast<const IdentifierExpressionNode&>(statement.getExpression());
+            const auto& expression = dynamic_cast<const IdentifierLikeExpressionNode&>(statement.getExpression());
             auto& context = analyzer->context;
             const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const AstNode*>(module.get()) : findClass(accessor));
             context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, parent, &function));
@@ -588,7 +597,7 @@ func test() {
     protected:
         std::filesystem::path testDirectory;
         Config config = makeConfig("imports.vnl");
-        std::unique_ptr<ModuleNode> module;
+        std::shared_ptr<const ModuleNode> module;
         std::optional<CollectionResult> collectionResult;
 
         void SetUp() override {

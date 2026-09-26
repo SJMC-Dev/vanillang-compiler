@@ -57,11 +57,16 @@ file(GLOB_RECURSE COLLECTOR_FILES CONFIGURE_DEPENDS
 
 add_executable(
     vnlctest_parser
+    ${PROJECT_SOURCE_DIR}/src/diagnostic/Diagnostic.cpp
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${PROJECT_SOURCE_DIR}/src/parser/ParseResult.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
     ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
     ${AST_FILES}
+    ${VNI_IMPORT_FILES}
+    ${OUTLINE_FILES}
+    ${COLLECTOR_FILES}
     ParserTest.cpp
 )
 
@@ -81,6 +86,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/diagnostic/Diagnostic.cpp
     ${PROJECT_SOURCE_DIR}/src/lexer/Lexer.cpp
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
+    ${PROJECT_SOURCE_DIR}/src/parser/ParseResult.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
     ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
     ${AST_FILES}
