@@ -1272,7 +1272,7 @@ namespace vnlc {
         return TypeInferenceResult::failed();
     }
 
-    SemanticAnalysisResult SemanticAnalyzer::analyze(const Config& config) {
+    SemanticResult SemanticAnalyzer::analyze(const Config& config) {
         checkModule(module, config);
 
         auto diagnostics = context.takeDiagnostics();
@@ -1283,7 +1283,7 @@ namespace vnlc {
         auto inferredValueTypes = context.takeInferredValueTypeMap();
         auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
         auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
-        return SemanticAnalysisResult(
+        return SemanticResult(
             std::move(std::get<0>(diagnostics)),
             std::move(std::get<1>(diagnostics)),
             std::move(std::get<2>(diagnostics)),

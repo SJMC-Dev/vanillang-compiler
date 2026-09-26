@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace vnlc {
-    class SemanticAnalysisResult {
+    class SemanticResult {
     private:
         std::vector<Diagnostic> errors;
         std::vector<Diagnostic> warnings;
@@ -30,7 +30,7 @@ namespace vnlc {
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
 
     public:
-        SemanticAnalysisResult(
+        SemanticResult(
             std::vector<Diagnostic>&& errors,
             std::vector<Diagnostic>&& warnings,
             std::vector<Diagnostic>&& notes,
@@ -42,10 +42,10 @@ namespace vnlc {
             std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
             std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
         );
-        SemanticAnalysisResult(const SemanticAnalysisResult&) = default;
-        SemanticAnalysisResult& operator=(const SemanticAnalysisResult&) = default;
-        SemanticAnalysisResult(SemanticAnalysisResult&&) noexcept = default;
-        SemanticAnalysisResult& operator=(SemanticAnalysisResult&&) noexcept = default;
+        SemanticResult(const SemanticResult&) = default;
+        SemanticResult& operator=(const SemanticResult&) = default;
+        SemanticResult(SemanticResult&&) noexcept = default;
+        SemanticResult& operator=(SemanticResult&&) noexcept = default;
 
         [[nodiscard]] bool hasErrors() const;
         [[nodiscard]] bool hasWarnings() const;

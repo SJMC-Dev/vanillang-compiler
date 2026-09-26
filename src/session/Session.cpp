@@ -4,12 +4,12 @@
 #include "lexer/Lexer.hpp"
 #include "log/Logger.hpp"
 #include "parser/Parser.hpp"
-#include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticAnalyzer.hpp"
+#include "semantic/SemanticResult.hpp"
 #include <fstream>
 
 namespace vnlc {
-    Session::Session(Config&& config) : config(config), imports(), collectionErrors(), ast(nullptr) {}
+    Session::Session(Config&& config) : config(config) {}
 
     void Session::run() {
         VNLC_LOG_INFO("Session started.");
@@ -18,9 +18,7 @@ namespace vnlc {
 
         Lexer collectorLexer(input);
         Collector collector(std::move(collectorLexer));
-        auto collection = collector.collect(config);
-        imports = collection.takeImports();
-        collectionErrors = collection.takeErrors();
+        collectionResult = collector.collect(config);
 
         input.clear();
         input.seekg(0);
@@ -29,7 +27,7 @@ namespace vnlc {
         Parser parser(std::move(lexer));
         ast = parser.parse(config);
 
-        SemanticAnalyzer semanticAnalyzer(*ast, imports);
-        SemanticAnalysisResult semantic = semanticAnalyzer.analyze(config);
+        SemanticAnalyzer semanticAnalyzer(*ast, collectionResult->getImports());
+        SemanticResult semantic = semanticAnalyzer.analyze(config);
     }
 } // namespace vnlc

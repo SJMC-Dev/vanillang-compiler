@@ -9,7 +9,7 @@
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "config/Config.hpp"
-#include "semantic/SemanticAnalysisResult.hpp"
+#include "semantic/SemanticResult.hpp"
 #include <nlohmann/json.hpp>
 #include <vector>
 
@@ -19,7 +19,7 @@ namespace vnlc {
         std::vector<const DeclarationNode*> declarationNodes;
         std::vector<std::string> importedAliases;
         const Config& config;
-        const SemanticAnalysisResult& semantic;
+        const SemanticResult& semantic;
 
         [[nodiscard]] nlohmann::json stringifyMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms);
         [[nodiscard]] nlohmann::json stringifyGenericParameters(const std::vector<std::unique_ptr<IdentifierNode>>& genericParameterNames);
@@ -41,7 +41,7 @@ namespace vnlc {
             std::vector<const DeclarationNode*>&& declarationNodes,
             std::vector<std::string>&& importedAliases,
             const Config& config,
-            const SemanticAnalysisResult& semantic
+            const SemanticResult& semantic
         ) noexcept;
 
         void generate();

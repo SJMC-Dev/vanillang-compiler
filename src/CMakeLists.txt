@@ -73,7 +73,7 @@ add_executable(
     diagnostic/Diagnostic.cpp
     symbol/Symbol.cpp
     semantic/SemanticContext.cpp
-    semantic/SemanticAnalysisResult.cpp
+    semantic/SemanticResult.cpp
     semantic/SemanticAnalyzer.cpp
     scope/Scope.cpp
     type/PrimitiveType.cpp

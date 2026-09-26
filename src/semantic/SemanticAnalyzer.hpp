@@ -18,8 +18,8 @@
 #include "ast/typeref/TypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include "metadata/MetadataInfo.hpp"
-#include "semantic/SemanticAnalysisResult.hpp"
 #include "semantic/SemanticContext.hpp"
+#include "semantic/SemanticResult.hpp"
 #include "type/Type.hpp"
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include "vni/import/ImportedItem.hpp"
@@ -28,6 +28,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+
 
 namespace vnlc {
     class PrimitiveType;
@@ -82,7 +83,7 @@ namespace vnlc {
         SemanticAnalyzer(SemanticAnalyzer&&) noexcept = default;
         SemanticAnalyzer& operator=(SemanticAnalyzer&&) noexcept = delete;
 
-        [[nodiscard]] SemanticAnalysisResult analyze(const Config& config);
+        [[nodiscard]] SemanticResult analyze(const Config& config);
     };
 } // namespace vnlc
 

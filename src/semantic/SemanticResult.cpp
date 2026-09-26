@@ -1,9 +1,9 @@
-#include "SemanticAnalysisResult.hpp"
+#include "SemanticResult.hpp"
 #include "scope/Scope.hpp"
 #include "type/Type.hpp"
 
 namespace vnlc {
-    SemanticAnalysisResult::SemanticAnalysisResult(
+    SemanticResult::SemanticResult(
         std::vector<Diagnostic>&& errors,
         std::vector<Diagnostic>&& warnings,
         std::vector<Diagnostic>&& notes,
@@ -26,31 +26,31 @@ namespace vnlc {
           inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
           inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)) {}
 
-    bool SemanticAnalysisResult::hasErrors() const {
+    bool SemanticResult::hasErrors() const {
         return !errors.empty();
     }
 
-    bool SemanticAnalysisResult::hasWarnings() const {
+    bool SemanticResult::hasWarnings() const {
         return !warnings.empty();
     }
 
-    bool SemanticAnalysisResult::hasNotes() const {
+    bool SemanticResult::hasNotes() const {
         return !notes.empty();
     }
 
-    const std::vector<Diagnostic>& SemanticAnalysisResult::getErrors() const {
+    const std::vector<Diagnostic>& SemanticResult::getErrors() const {
         return errors;
     }
 
-    const std::vector<Diagnostic>& SemanticAnalysisResult::getWarnings() const {
+    const std::vector<Diagnostic>& SemanticResult::getWarnings() const {
         return warnings;
     }
 
-    const std::vector<Diagnostic>& SemanticAnalysisResult::getNotes() const {
+    const std::vector<Diagnostic>& SemanticResult::getNotes() const {
         return notes;
     }
 
-    const CustomizedType* SemanticAnalysisResult::getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const {
+    const CustomizedType* SemanticResult::getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const {
         auto it = customizedTypes.find(fullTypeName);
         if (it != customizedTypes.end()) {
             return it->second.get();
@@ -59,7 +59,7 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Scope* SemanticAnalysisResult::getScopeByAstNode(const AstNode& node) const {
+    const Scope* SemanticResult::getScopeByAstNode(const AstNode& node) const {
         auto it = localScopeMap.find(&node);
         if (it != localScopeMap.end()) {
             return it->second.get();
@@ -67,12 +67,12 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Scope* SemanticAnalysisResult::getScopeByImportedNode(const ImportedItem& node) const {
+    const Scope* SemanticResult::getScopeByImportedNode(const ImportedItem& node) const {
         auto it = importedScopeMap.find(&node);
         return it == importedScopeMap.end() ? nullptr : it->second.get();
     }
 
-    const Type* SemanticAnalysisResult::getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const {
+    const Type* SemanticResult::getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const {
         auto it = typeMap.find(typeNode);
         if (it != typeMap.end()) {
             return it->second;
@@ -80,7 +80,7 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Type* SemanticAnalysisResult::getInferredValueType(const ValueDeclarationNode* valueDeclaration) const {
+    const Type* SemanticResult::getInferredValueType(const ValueDeclarationNode* valueDeclaration) const {
         auto it = inferredValueTypeMap.find(valueDeclaration);
         if (it != inferredValueTypeMap.end()) {
             return it->second;
@@ -88,7 +88,7 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Type* SemanticAnalysisResult::getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const {
+    const Type* SemanticResult::getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const {
         auto it = inferredFunctionReturnTypeMap.find(functionDeclaration);
         if (it != inferredFunctionReturnTypeMap.end()) {
             return it->second;
@@ -96,7 +96,7 @@ namespace vnlc {
         return nullptr;
     }
 
-    const Type* SemanticAnalysisResult::getInferredExpressionType(const ExpressionNode* expressionNode) const {
+    const Type* SemanticResult::getInferredExpressionType(const ExpressionNode* expressionNode) const {
         auto it = inferredExpressionTypeMap.find(expressionNode);
         if (it != inferredExpressionTypeMap.end()) {
             return it->second;

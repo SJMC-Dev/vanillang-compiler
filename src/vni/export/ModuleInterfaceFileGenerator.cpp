@@ -12,7 +12,7 @@ namespace vnlc {
         std::vector<const DeclarationNode*>&& declarationNodes,
         std::vector<std::string>&& importedAliases,
         const Config& config,
-        const SemanticAnalysisResult& semantic
+        const SemanticResult& semantic
     ) noexcept
         : declarationNodes(std::move(declarationNodes)),
           importedAliases(std::move(importedAliases)),
