@@ -12,19 +12,19 @@ namespace vnlc {
         IdentifierLikeExpressionNode() = delete;
 
         std::unique_ptr<IdentifierNode> name;
-        std::vector<std::unique_ptr<IdentifierLikeExpressionNode>> genericArguments;
+        std::vector<std::unique_ptr<ExpressionNode>> genericArguments;
 
     public:
         IdentifierLikeExpressionNode(std::unique_ptr<IdentifierNode>&& name, const Token& firstToken, const Token& lastToken) noexcept;
         IdentifierLikeExpressionNode(
             std::unique_ptr<IdentifierNode>&& name,
-            std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>&& genericArguments,
+            std::vector<std::unique_ptr<ExpressionNode>>&& genericArguments,
             const Token& firstToken,
             const Token& lastToken
         ) noexcept;
 
         [[nodiscard]] const IdentifierNode& getName() const noexcept;
-        [[nodiscard]] const std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>& getGenericArguments() const noexcept;
+        [[nodiscard]] const std::vector<std::unique_ptr<ExpressionNode>>& getGenericArguments() const noexcept;
     };
 } // namespace vnlc
 

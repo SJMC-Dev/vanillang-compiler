@@ -1,4 +1,5 @@
 #include "IdentifierLikeExpressionNode.hpp"
+#include "ast/expression/ExpressionNode.hpp"
 
 namespace vnlc {
     IdentifierLikeExpressionNode::IdentifierLikeExpressionNode(std::unique_ptr<IdentifierNode>&& name, const Token& firstToken, const Token& lastToken) noexcept
@@ -7,7 +8,7 @@ namespace vnlc {
 
     IdentifierLikeExpressionNode::IdentifierLikeExpressionNode(
         std::unique_ptr<IdentifierNode>&& name,
-        std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>&& genericArguments,
+        std::vector<std::unique_ptr<ExpressionNode>>&& genericArguments,
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
@@ -19,7 +20,7 @@ namespace vnlc {
         return *name;
     }
 
-    const std::vector<std::unique_ptr<IdentifierLikeExpressionNode>>& IdentifierLikeExpressionNode::getGenericArguments() const noexcept {
+    const std::vector<std::unique_ptr<ExpressionNode>>& IdentifierLikeExpressionNode::getGenericArguments() const noexcept {
         return genericArguments;
     }
 } // namespace vnlc
