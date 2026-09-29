@@ -24,6 +24,7 @@ namespace vnlc {
 
         FUNC,
         INIT,
+        OP,
         RETURN,
         IF,
         ELSE,
@@ -110,12 +111,14 @@ namespace vnlc {
         EQUAL,                 // =
         DOUBLE_QUESTION_EQUAL, // ??=
 
-        DOUBLE_EQUAL,      // ==
-        EXCLAMATION_EQUAL, // !=
-        RIGHT_ANGLE,       // >
-        RIGHT_ANGLE_EQUAL, // >=
-        LEFT_ANGLE,        // <
-        LEFT_ANGLE_EQUAL,  // <=
+        DOUBLE_EQUAL,             // ==
+        TRIPLE_EQUAL,             // ===
+        EXCLAMATION_EQUAL,        // !=
+        EXCLAMATION_DOUBLE_EQUAL, // !==
+        RIGHT_ANGLE,              // >
+        RIGHT_ANGLE_EQUAL,        // >=
+        LEFT_ANGLE,               // <
+        LEFT_ANGLE_EQUAL,         // <=
 
         DOUBLE_AMPERSAND, // &&
         DOUBLE_PIPE,      // ||

@@ -18,6 +18,7 @@ namespace vnlc {
         { "string", TokenKind::STRING_TYPE },
         { "func", TokenKind::FUNC },
         { "init", TokenKind::INIT },
+        { "op", TokenKind::OP },
         { "return", TokenKind::RETURN },
         { "if", TokenKind::IF },
         { "else", TokenKind::ELSE },
@@ -481,7 +482,13 @@ namespace vnlc {
 
             if (peek() == '=') {
                 collect(tokenValue);
-                return Token(TokenKind::DOUBLE_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+
+                if (peek() == '=') {
+                    collect(tokenValue);
+                    return Token(TokenKind::TRIPLE_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+                } else {
+                    return Token(TokenKind::DOUBLE_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+                }
             } else {
                 return Token(TokenKind::EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
             }
@@ -508,7 +515,13 @@ namespace vnlc {
 
             if (peek() == '=') {
                 collect(tokenValue);
-                return Token(TokenKind::EXCLAMATION_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+
+                if (peek() == '=') {
+                    collect(tokenValue);
+                    return Token(TokenKind::EXCLAMATION_DOUBLE_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+                } else {
+                    return Token(TokenKind::EXCLAMATION_EQUAL, std::move(tokenValue), currentLine, currentColumn, currentOffset);
+                }
             } else if (peek() == '.') {
                 collect(tokenValue);
                 return Token(TokenKind::EXCLAMATION_DOT, std::move(tokenValue), currentLine, currentColumn, currentOffset);

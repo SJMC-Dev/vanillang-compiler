@@ -39,6 +39,8 @@ namespace vnlc {
                 return "VnlcTokenKind::FUNC";
             case TokenKind::INIT:
                 return "VnlcTokenKind::INIT";
+            case TokenKind::OP:
+                return "VnlcTokenKind::OP";
             case TokenKind::RETURN:
                 return "VnlcTokenKind::RETURN";
             case TokenKind::IF:
@@ -193,8 +195,12 @@ namespace vnlc {
                 return "VnlcTokenKind::DOUBLE_QUESTION_EQUAL";
             case TokenKind::DOUBLE_EQUAL:
                 return "VnlcTokenKind::DOUBLE_EQUAL";
+            case TokenKind::TRIPLE_EQUAL:
+                return "VnlcTokenKind::TRIPLE_EQUAL";
             case TokenKind::EXCLAMATION_EQUAL:
                 return "VnlcTokenKind::EXCLAMATION_EQUAL";
+            case TokenKind::EXCLAMATION_DOUBLE_EQUAL:
+                return "VnlcTokenKind::EXCLAMATION_DOUBLE_EQUAL";
             case TokenKind::RIGHT_ANGLE:
                 return "VnlcTokenKind::RIGHT_ANGLE";
             case TokenKind::RIGHT_ANGLE_EQUAL:
