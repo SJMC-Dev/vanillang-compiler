@@ -22,6 +22,7 @@
                 }
             }
         },
-        "constructors": {}
+        "constructors": {},
+        "operators": {}
     }
 }

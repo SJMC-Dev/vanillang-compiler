@@ -63,6 +63,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/parser/ParseResult.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
     ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TypeReferenceNodeUtil.cpp
     ${AST_FILES}
     ${VNI_IMPORT_FILES}
     ${OUTLINE_FILES}
@@ -89,6 +90,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/src/parser/ParseResult.cpp
     ${PROJECT_SOURCE_DIR}/src/parser/Parser.cpp
     ${PROJECT_SOURCE_DIR}/src/util/TokenKindUtil.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TypeReferenceNodeUtil.cpp
     ${AST_FILES}
     ${SEMANTIC_FILES}
     ${SCOPE_FILES}
@@ -105,6 +107,7 @@ add_executable(
     vnlctest_vni
     ${PROJECT_SOURCE_DIR}/src/token/Token.cpp
     ${PROJECT_SOURCE_DIR}/src/semantic/SemanticResult.cpp
+    ${PROJECT_SOURCE_DIR}/src/util/TypeReferenceNodeUtil.cpp
     ${AST_FILES}
     ${TYPE_FILES}
     ${VNI_FILES}

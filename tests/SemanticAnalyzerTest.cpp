@@ -520,6 +520,89 @@ func test() {
         ASSERT_FALSE(result.hasErrors());
     }
 
+    TEST(SemanticAnalyzerTest, ChecksOperatorDeclarationScopesParametersAndTypes) {
+        constexpr std::string_view source = R"(
+class Vec3 {
+    op +(other: Vec3) -> Vec3 {
+        return this
+    }
+    op +(other: int) -> Vec3 {
+        return this
+    }
+    op [](index: int) -> int {
+        return index
+    }
+}
+interface Addable {
+    op +(other: Addable) -> Addable
+}
+)";
+        const auto config = makeConfig("operators.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[0].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        const auto* classScope = result.getScopeByAstNode(*classDeclaration);
+        ASSERT_NE(classScope, nullptr);
+        EXPECT_EQ(classScope->lookupLocal("__vnl_operator_addition--Vec3__"), nullptr);
+        EXPECT_EQ(classScope->lookupLocal("__vnl_operator_addition--int__"), nullptr);
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        const auto* interfaceScope = result.getScopeByAstNode(*interfaceDeclaration);
+        ASSERT_NE(interfaceScope, nullptr);
+        EXPECT_EQ(interfaceScope->lookupLocal("__vnl_operator_addition--Addable__"), nullptr);
+    }
+
+    TEST(SemanticAnalyzerTest, RejectsDuplicateOperatorParameterDeclarations) {
+        constexpr std::string_view source = R"(
+class Vec3 {
+    op +(value: int, value: int) -> Vec3 {
+        return this
+    }
+}
+)";
+        const auto config = makeConfig("operator_errors.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 1);
+        EXPECT_EQ(result.getErrors()[0].getMessage(), "Redeclaration of parameter 'value'");
+    }
+
+    TEST(SemanticAnalyzerTest, RejectsDuplicateOperatorDeclarationsWithTheSameSignature) {
+        constexpr std::string_view source = R"(
+class Vec3 {
+    op +(other: int) -> Vec3 {
+        return this
+    }
+    op +(other: int) -> Vec3 {
+        return this
+    }
+}
+)";
+        const auto config = makeConfig("duplicate_operators.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 1);
+        EXPECT_EQ(result.getErrors()[0].getMessage(), "Redeclaration of class member '__vnl_operator_addition--int__'");
+    }
+
     TEST(SemanticContextTest, RetainsPoppedScopesAndTheirParents) {
         const auto config = makeConfig("scopes.vnl");
         const auto module = parseModule("class Sample {}", config);
@@ -635,10 +718,10 @@ func test() {
             "secret": {"category": "property", "type": "int", "static": true, "accessModifier": "private"}},
         "methods": {"apply": {"category": "method", "returnType": "T", "native": false, "static": false, "accessModifier": "protected",
             "parameters": {"input": {"category": "parameter", "type": "T"}}}},
-        "constructors": {}},
+        "constructors": {}, "operators": {}},
     "Readable": {"category": "interface", "genericParameters": ["R"],
         "methods": {"read": {"category": "method", "returnType": "R", "native": false, "static": false, "accessModifier": "public",
-            "parameters": {"input": {"category": "parameter", "type": "R"}}}}},
+            "parameters": {"input": {"category": "parameter", "type": "R"}}}}, "operators": {}},
     "State": {"category": "enum", "genericParameters": ["E"],
         "members": {"Ready": {"category": "enummember", "associatedValues": {"payload": {"category": "enumvalue", "type": "E"}}}}},
     "Alias": {"category": "typealias", "genericParameters": ["A"], "originalType": "A"},
@@ -1327,8 +1410,8 @@ func test() {
             R"({
     "value": {"category": "let", "type": "int"},
     "run": {"category": "func", "returnType": "void", "parameters": {}, "native": false},
-    "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "constructors": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
-    "Readable": {"category": "interface", "genericParameters": [], "methods": {}},
+    "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "constructors": {}, "operators": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
+    "Readable": {"category": "interface", "genericParameters": [], "methods": {}, "operators": {}},
     "State": {"category": "enum", "genericParameters": [], "members": {}},
     "Alias": {"category": "typealias", "genericParameters": [], "originalType": "int"},
     "External": {"category": "imported", "source": "extra.tools.enabled"},
@@ -1458,7 +1541,7 @@ func test() {
     TEST_F(SemanticAnalyzerImportTest, RegistersReexportedTypeScopesUnderTheirOriginalPackageAndModule) {
         writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"extra.types.Box"},"Alias":{"category":"imported","source":"extra.types.Alias"}})");
         writeFile("another_source/types.vni", R"({
-    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"baseClass":null,"implementedInterfaces":[],"final":false},
+    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"operators":{},"baseClass":null,"implementedInterfaces":[],"final":false},
     "Alias":{"category":"typealias","genericParameters":["T"],"originalType":"T"}
 })");
 

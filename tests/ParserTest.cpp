@@ -1,6 +1,7 @@
 #include "parser/Parser.hpp"
 #include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/expression/BinaryExpressionNode.hpp"
 #include "ast/expression/IdentifierLikeExpressionNode.hpp"
 #include "ast/expression/MemberAccessExpressionNode.hpp"
@@ -166,6 +167,84 @@ namespace vnlc {
         ASSERT_EQ(constructor->getParameters().size(), 1);
         EXPECT_EQ(constructor->getParameters().front()->getName().getIdentifierString(), "value");
         EXPECT_EQ(constructor->getBody().getStatements().size(), 1);
+    }
+
+    TEST(ParserTest, OperatorDeclarationsUseOperatorDeclarationNode) {
+        std::stringstream input(
+            "class Vec3 {\n"
+            "    protected op +(other: Vec3) -> Vec3 {\n"
+            "        return this\n"
+            "    }\n"
+            "    op [](index: int) -> int {\n"
+            "        return 0\n"
+            "    }\n"
+            "    override op ==(other: Vec3) -> bool {\n"
+            "        return true\n"
+            "    }\n"
+            "}\n"
+            "interface Addable {\n"
+            "    metadata(deprecated) op +(other: Addable) -> Addable\n"
+            "    op ()(value: int) -> int\n"
+            "}\n"
+        );
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 2);
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations()[0].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 3);
+
+        const auto* addition = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get());
+        ASSERT_NE(addition, nullptr);
+        EXPECT_EQ(addition->getKind(), OperatorDeclarationKind::Kind::ADDITION);
+        EXPECT_EQ(addition->getContext(), OperatorDeclarationKind::Context::CLASS);
+        EXPECT_EQ(addition->getAccessModifier(), OperatorDeclarationKind::AccessModifier::PROTECTED);
+        EXPECT_EQ(addition->getOperatorName(), "addition");
+        EXPECT_EQ(addition->getInternalName(), "__vnl_operator_addition--Vec3__");
+        ASSERT_EQ(addition->getParameters().size(), 1);
+        EXPECT_EQ(addition->getParameters().front()->getName().getIdentifierString(), "other");
+        EXPECT_TRUE(addition->getReturnType().has_value());
+        EXPECT_TRUE(addition->getBody().has_value());
+
+        const auto* subscript = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get());
+        ASSERT_NE(subscript, nullptr);
+        EXPECT_EQ(subscript->getKind(), OperatorDeclarationKind::Kind::SUBSCRIPT);
+        EXPECT_EQ(subscript->getOperatorName(), "subscript");
+        EXPECT_EQ(subscript->getInternalName(), "__vnl_operator_subscript--int__");
+
+        const auto* equality = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[2].get());
+        ASSERT_NE(equality, nullptr);
+        EXPECT_EQ(equality->getKind(), OperatorDeclarationKind::Kind::EQUAL);
+        EXPECT_EQ(equality->getOperatorName(), "equality");
+        EXPECT_EQ(equality->getInternalName(), "__vnl_operator_equality--Vec3__");
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module.getTopIdentifierDeclarations()[1].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        ASSERT_EQ(interfaceDeclaration->getOperatorDeclarations().size(), 2);
+
+        const auto& interfaceAddition = interfaceDeclaration->getOperatorDeclarations()[0];
+        EXPECT_EQ(interfaceAddition->getKind(), OperatorDeclarationKind::Kind::ADDITION);
+        EXPECT_EQ(interfaceAddition->getContext(), OperatorDeclarationKind::Context::INTERFACE);
+        EXPECT_TRUE(interfaceAddition->doesIncludeMetadata());
+        EXPECT_FALSE(interfaceAddition->getBody().has_value());
+
+        const auto& call = interfaceDeclaration->getOperatorDeclarations()[1];
+        EXPECT_EQ(call->getKind(), OperatorDeclarationKind::Kind::CALL);
+        EXPECT_EQ(call->getOperatorName(), "call");
+        EXPECT_EQ(call->getInternalName(), "__vnl_operator_call--int__");
     }
 
     TEST(ParserTest, ParsesNoneAsPrimaryExpression) {
@@ -353,11 +432,11 @@ namespace vnlc {
 
         std::ofstream firstModuleInterface(testDirectory / "first_source" / "models.vni");
         firstModuleInterface
-            << R"({"Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"baseClass":null,"implementedInterfaces":[],"final":false}})";
+            << R"({"Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"operators":{},"baseClass":null,"implementedInterfaces":[],"final":false}})";
         firstModuleInterface.close();
 
         std::ofstream secondModuleInterface(testDirectory / "second_source" / "models.vni");
-        secondModuleInterface << R"({"Box":{"category":"interface","genericParameters":["T"],"methods":{}}})";
+        secondModuleInterface << R"({"Box":{"category":"interface","genericParameters":["T"],"methods":{},"operators":{}}})";
         secondModuleInterface.close();
 
         std::stringstream input(

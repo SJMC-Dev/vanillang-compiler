@@ -6,6 +6,7 @@
 #include "ast/declaration/FunctionDeclarationKind.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
@@ -34,6 +35,7 @@
 #include "vni/import/ImportedLet.hpp"
 #include "vni/import/ImportedMethod.hpp"
 #include "vni/import/ImportedModule.hpp"
+#include "vni/import/ImportedOperator.hpp"
 #include "vni/import/ImportedPackage.hpp"
 #include "vni/import/ImportedParameter.hpp"
 #include "vni/import/ImportedProperty.hpp"
@@ -138,6 +140,23 @@ namespace vnlc {
                 testToken,
                 std::move(metadata)
             );
+        }
+
+        std::unique_ptr<OperatorDeclarationNode> makeOperator(
+            OperatorDeclarationKind::Kind kind,
+            OperatorDeclarationKind::Context context,
+            OperatorDeclarationKind::AccessModifier accessModifier,
+            std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
+            std::optional<std::unique_ptr<TypeReferenceNode>>&& returnType,
+            std::vector<DeclarationItem::MetadataTerm>&& metadata = {}
+        ) {
+            std::optional<std::unique_ptr<BlockStatementNode>> body = std::nullopt;
+            if (context == OperatorDeclarationKind::Context::CLASS) {
+                body = std::make_unique<BlockStatementNode>(std::vector<std::unique_ptr<StatementNode>>{}, testToken, testToken);
+            }
+
+            return std::make_unique<
+                OperatorDeclarationNode>(kind, context, accessModifier, std::move(parameters), std::move(returnType), std::move(body), testToken, testToken, std::move(metadata));
         }
 
         std::unique_ptr<ClassDeclarationNode> makeClass(
@@ -361,6 +380,22 @@ namespace vnlc {
         EXPECT_EQ(constructor.getParameterByName("missing"), nullptr);
     }
 
+    TEST_F(VniTest, ImportedOperatorStoresReturnTypeParametersAndAccessModifier) {
+        std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
+        parameters.emplace("other", std::make_unique<ImportedParameter>("other", "Vec3"));
+
+        const ImportedOperator operatorNode("__vnl_operator_addition--Vec3__", "Vec3", std::move(parameters), "protected");
+
+        EXPECT_EQ(operatorNode.getName(), "__vnl_operator_addition--Vec3__");
+        EXPECT_EQ(operatorNode.getReturnType(), "Vec3");
+        EXPECT_EQ(operatorNode.getAccessModifier(), "protected");
+        ASSERT_EQ(operatorNode.getParameters().size(), 1);
+        const auto* parameter = operatorNode.getParameterByName("other");
+        ASSERT_NE(parameter, nullptr);
+        EXPECT_EQ(parameter->getType(), "Vec3");
+        EXPECT_EQ(operatorNode.getParameterByName("missing"), nullptr);
+    }
+
     TEST_F(VniTest, ImportedClassStoresBaseClassInterfacesAndMembers) {
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>> properties;
         properties.emplace("count", std::make_unique<ImportedProperty>("count", "int", true, "protected"));
@@ -372,7 +407,14 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
         constructors.emplace("init", std::make_unique<ImportedConstructor>("init", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, "public"));
 
-        const ImportedClass importedClass("Box", std::optional<std::string>("Base"), { "Readable" }, true, { "T" }, std::move(properties), std::move(methods), std::move(constructors));
+        std::unordered_map<std::string, std::unique_ptr<ImportedOperator>> operators;
+        operators.emplace(
+            "__vnl_operator_addition__",
+            std::make_unique<ImportedOperator>("__vnl_operator_addition__", "Box<T>", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, "public")
+        );
+
+        const ImportedClass
+            importedClass("Box", std::optional<std::string>("Base"), { "Readable" }, true, { "T" }, std::move(properties), std::move(methods), std::move(constructors), std::move(operators));
 
         EXPECT_EQ(importedClass.getName(), "Box");
         ASSERT_TRUE(importedClass.getBaseClass().has_value());
@@ -395,6 +437,10 @@ namespace vnlc {
         const auto* constructor = importedClass.getConstructorByName("init");
         ASSERT_NE(constructor, nullptr);
         EXPECT_EQ(constructor->getAccessModifier(), "public");
+
+        const auto* operatorNode = importedClass.getOperatorByName("__vnl_operator_addition__");
+        ASSERT_NE(operatorNode, nullptr);
+        EXPECT_EQ(operatorNode->getReturnType(), "Box<T>");
     }
 
     TEST_F(VniTest, ImportedClassAllowsNoBaseClassAndEmptyMembers) {
@@ -407,6 +453,7 @@ namespace vnlc {
         EXPECT_TRUE(importedClass.getProperties().empty());
         EXPECT_TRUE(importedClass.getMethods().empty());
         EXPECT_TRUE(importedClass.getConstructors().empty());
+        EXPECT_TRUE(importedClass.getOperators().empty());
     }
 
     TEST_F(VniTest, ImportedInterfaceStoresGenericParametersAndMethods) {
@@ -414,12 +461,22 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
         methods.emplace("read", std::make_unique<ImportedMethod>("read", "string", std::move(parameters), false, false, "public"));
 
-        const ImportedInterface importedInterface("Readable", { "T" }, std::move(methods));
+        std::unordered_map<std::string, std::unique_ptr<ImportedOperator>> operators;
+        operators.emplace(
+            "__vnl_operator_equality__",
+            std::make_unique<ImportedOperator>("__vnl_operator_equality__", "bool", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, "public")
+        );
+
+        const ImportedInterface importedInterface("Readable", { "T" }, std::move(methods), std::move(operators));
 
         EXPECT_EQ(importedInterface.getGenericParameters(), std::vector<std::string>({ "T" }));
         const auto* method = importedInterface.getMethodByName("read");
         ASSERT_NE(method, nullptr);
         EXPECT_EQ(method->getReturnType(), "string");
+
+        const auto* operatorNode = importedInterface.getOperatorByName("__vnl_operator_equality__");
+        ASSERT_NE(operatorNode, nullptr);
+        EXPECT_EQ(operatorNode->getReturnType(), "bool");
     }
 
     TEST_F(VniTest, ImportedEnumStoresGenericParametersAndMembers) {
@@ -554,6 +611,19 @@ namespace vnlc {
                 "accessModifier": "protected"
             }
         },
+        "operators": {
+            "__vnl_operator_addition--int__": {
+                "category": "operator",
+                "returnType": "Box<T>",
+                "parameters": {
+                    "index": {
+                        "category": "parameter",
+                        "type": "int"
+                    }
+                },
+                "accessModifier": "public"
+            }
+        },
         "baseClass": "Base",
         "implementedInterfaces": ["Readable"],
         "final": true
@@ -568,6 +638,14 @@ namespace vnlc {
                 "parameters": {},
                 "static": false,
                 "native": false,
+                "accessModifier": "public"
+            }
+        },
+        "operators": {
+            "__vnl_operator_equality__": {
+                "category": "operator",
+                "returnType": "bool",
+                "parameters": {},
                 "accessModifier": "public"
             }
         }
@@ -653,11 +731,21 @@ namespace vnlc {
         ASSERT_NE(constructorParameter, nullptr);
         EXPECT_EQ(constructorParameter->getType(), "int");
 
+        const auto* classOperator = importedClass->getOperatorByName("__vnl_operator_addition--int__");
+        ASSERT_NE(classOperator, nullptr);
+        EXPECT_EQ(classOperator->getReturnType(), "Box<T>");
+        const auto* operatorParameter = classOperator->getParameterByName("index");
+        ASSERT_NE(operatorParameter, nullptr);
+        EXPECT_EQ(operatorParameter->getType(), "int");
+
         const auto* importedInterfaceIdentifier = module->getIdentifierByName("Readable");
         ASSERT_NE(importedInterfaceIdentifier, nullptr);
         const auto* importedInterface = dynamic_cast<const ImportedInterface*>(importedInterfaceIdentifier);
         ASSERT_NE(importedInterface, nullptr);
         EXPECT_EQ(importedInterface->getGenericParameters(), std::vector<std::string>({ "T" }));
+        const auto* interfaceOperator = importedInterface->getOperatorByName("__vnl_operator_equality__");
+        ASSERT_NE(interfaceOperator, nullptr);
+        EXPECT_EQ(interfaceOperator->getReturnType(), "bool");
 
         const auto* importedEnumIdentifier = module->getIdentifierByName("State");
         ASSERT_NE(importedEnumIdentifier, nullptr);
@@ -852,6 +940,14 @@ namespace vnlc {
         const auto* methodReturnTypeReferenceNode = methodReturnType.get();
         auto constructorParameterType = makeType("int");
         const auto* constructorParameterTypeReferenceNode = constructorParameterType.get();
+        auto operatorParameterType = makeType("int");
+        const auto* operatorParameterTypeReferenceNode = operatorParameterType.get();
+        auto secondOperatorParameterType = makeType("string");
+        const auto* secondOperatorParameterTypeReferenceNode = secondOperatorParameterType.get();
+        auto secondOperatorReturnType = makeType("string");
+        const auto* secondOperatorReturnTypeReferenceNode = secondOperatorReturnType.get();
+        auto operatorReturnType = makeType("string");
+        const auto* operatorReturnTypeReferenceNode = operatorReturnType.get();
 
         std::vector<std::unique_ptr<TypeReferenceNode>> implementedInterfaces;
         implementedInterfaces.push_back(std::move(implementedInterface));
@@ -894,6 +990,36 @@ namespace vnlc {
             std::make_optional(std::move(constructorParameterType))
         ));
         members.push_back(makeConstructor(ConstructorDeclarationKind::AccessModifier::PROTECTED, std::move(constructorParameters), makeMetadata()));
+        std::vector<std::unique_ptr<ValueDeclarationNode>> operatorParameters;
+        operatorParameters.push_back(makeValue(
+            ValueDeclarationKind::Kind::PARAMETER,
+            ValueDeclarationKind::Context::FUNCTION,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
+            "other",
+            std::make_optional(std::move(operatorParameterType))
+        ));
+        members.push_back(makeOperator(
+            OperatorDeclarationKind::Kind::ADDITION,
+            OperatorDeclarationKind::Context::CLASS,
+            OperatorDeclarationKind::AccessModifier::PROTECTED,
+            std::move(operatorParameters),
+            std::make_optional(std::move(operatorReturnType))
+        ));
+        std::vector<std::unique_ptr<ValueDeclarationNode>> secondOperatorParameters;
+        secondOperatorParameters.push_back(makeValue(
+            ValueDeclarationKind::Kind::PARAMETER,
+            ValueDeclarationKind::Context::FUNCTION,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
+            "other",
+            std::make_optional(std::move(secondOperatorParameterType))
+        ));
+        members.push_back(makeOperator(
+            OperatorDeclarationKind::Kind::ADDITION,
+            OperatorDeclarationKind::Context::CLASS,
+            OperatorDeclarationKind::AccessModifier::PUBLIC,
+            std::move(secondOperatorParameters),
+            std::make_optional(std::move(secondOperatorReturnType))
+        ));
 
         auto declaration = makeClass(true, "Box", std::make_optional(std::move(baseClass)), std::move(implementedInterfaces), std::move(genericParameters), std::move(members), makeMetadata());
         const auto* declarationNode = declaration.get();
@@ -904,6 +1030,10 @@ namespace vnlc {
                 { propertyTypeReferenceNode, PrimitiveType::intType() },
                 { methodReturnTypeReferenceNode, PrimitiveType::stringType() },
                 { constructorParameterTypeReferenceNode, PrimitiveType::intType() },
+                { operatorParameterTypeReferenceNode, PrimitiveType::intType() },
+                { secondOperatorParameterTypeReferenceNode, PrimitiveType::stringType() },
+                { secondOperatorReturnTypeReferenceNode, PrimitiveType::stringType() },
+                { operatorReturnTypeReferenceNode, PrimitiveType::stringType() },
             }
         );
 
@@ -935,6 +1065,16 @@ namespace vnlc {
         EXPECT_EQ(constructor["parameters"]["amount"]["type"], "int");
         EXPECT_EQ(constructor["accessModifier"], "protected");
         EXPECT_EQ(constructor["metadata"]["since"], "1.0");
+        ASSERT_EQ(json["Box"]["operators"].size(), 2);
+        const auto& operatorNode = json["Box"]["operators"]["__vnl_operator_addition--int__"];
+        EXPECT_EQ(operatorNode["category"], "operator");
+        EXPECT_EQ(operatorNode["returnType"], "string");
+        EXPECT_EQ(operatorNode["parameters"]["other"]["type"], "int");
+        EXPECT_EQ(operatorNode["accessModifier"], "protected");
+        const auto& secondOperatorNode = json["Box"]["operators"]["__vnl_operator_addition--string__"];
+        EXPECT_EQ(secondOperatorNode["returnType"], "string");
+        EXPECT_EQ(secondOperatorNode["parameters"]["other"]["type"], "string");
+        EXPECT_EQ(secondOperatorNode["accessModifier"], "public");
     }
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesInterfaceWithMethod) {
@@ -955,11 +1095,22 @@ namespace vnlc {
             {},
             std::make_optional(std::move(returnType))
         ));
-        auto declaration = makeInterface("Task", std::move(genericParameters), std::move(methods));
+        auto operatorReturnType = makeType("bool");
+        const auto* operatorReturnTypeReferenceNode = operatorReturnType.get();
+        std::vector<std::unique_ptr<OperatorDeclarationNode>> operators;
+        operators.push_back(makeOperator(
+            OperatorDeclarationKind::Kind::EQUAL,
+            OperatorDeclarationKind::Context::INTERFACE,
+            OperatorDeclarationKind::AccessModifier::PUBLIC,
+            {},
+            std::make_optional(std::move(operatorReturnType))
+        ));
+        auto declaration = std::make_unique<InterfaceDeclarationNode>(makeIdentifier("Task"), std::move(genericParameters), std::move(methods), std::move(operators), testToken, testToken);
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
                 { returnTypeReferenceNode, &testVoidType },
+                { operatorReturnTypeReferenceNode, PrimitiveType::booleanType() },
             }
         );
 
@@ -973,6 +1124,9 @@ namespace vnlc {
         EXPECT_EQ(json["Task"]["methods"]["run"]["returnType"], "void");
         EXPECT_FALSE(json["Task"]["methods"]["run"]["native"]);
         EXPECT_FALSE(json["Task"]["methods"]["run"]["static"]);
+        EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["category"], "operator");
+        EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["returnType"], "bool");
+        EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["accessModifier"], "public");
     }
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesEnumWithMemberAndValue) {
