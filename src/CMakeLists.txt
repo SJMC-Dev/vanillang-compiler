@@ -6,9 +6,8 @@ add_executable(
     log/Logger.cpp
     session/Session.cpp
     token/Token.cpp
-    util/RunningModeUtil.cpp
-    util/TokenKindUtil.cpp
-    util/TypeReferenceNodeUtil.cpp
+    config/RunningModeUtil.cpp
+    token/TokenKindUtil.cpp
     ast/AstNode.cpp
     ast/module/ModuleNode.cpp
     ast/expression/BinaryExpressionNode.cpp

@@ -1,10 +1,10 @@
 #include "App.hpp"
 #include "config/Config.hpp"
+#include "config/RunningModeUtil.hpp"
 #include "error/IllegalInputError.hpp"
 #include "error/PackageNameConflictError.hpp"
 #include "log/Logger.hpp"
 #include "session/Session.hpp"
-#include "util/RunningModeUtil.hpp"
 #include <CLI/CLI.hpp>
 #include <cctype>
 #include <filesystem>

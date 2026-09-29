@@ -3,8 +3,7 @@
 
 #include "lexer/LexerMode.hpp"
 #include "token/Token.hpp"
-
-#include "util/TokenKindUtil.hpp"
+#include "token/TokenKindUtil.hpp"
 #include <istream>
 #include <stack>
 #include <string>

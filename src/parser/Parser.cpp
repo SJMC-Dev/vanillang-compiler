@@ -43,7 +43,7 @@
 #include "parser/ParseResult.hpp"
 #include "token/Token.hpp"
 #include "token/TokenKind.hpp"
-#include "util/TokenKindUtil.hpp"
+#include "token/TokenKindUtil.hpp"
 #include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedClass.hpp"
 #include "vni/import/ImportedEnum.hpp"

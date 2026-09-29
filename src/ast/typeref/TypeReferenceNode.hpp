@@ -2,6 +2,7 @@
 #define VNLC_TYPE_REFERENCE_NODE_HPP
 
 #include "ast/AstNode.hpp"
+#include <string>
 
 namespace vnlc {
     class TypeReferenceNode : public AstNode {
@@ -15,6 +16,7 @@ namespace vnlc {
 
     public:
         [[nodiscard]] const bool hasQuestionMarkSuffix() const noexcept;
+        [[nodiscard]] std::string generateInternalNamePart() const;
     };
 } // namespace vnlc
 

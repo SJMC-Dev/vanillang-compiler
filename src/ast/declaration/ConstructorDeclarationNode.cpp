@@ -1,5 +1,4 @@
 #include "ConstructorDeclarationNode.hpp"
-#include "util/TypeReferenceNodeUtil.hpp"
 
 namespace vnlc {
     std::string ConstructorDeclarationNode::generateInternalName(const std::vector<std::unique_ptr<ValueDeclarationNode>>& parameters) {
@@ -9,7 +8,7 @@ namespace vnlc {
             identifier += '-';
             for (const auto& parameter : parameters) {
                 if (parameter->getType().has_value()) {
-                    identifier += '-' + TypeReferenceNodeUtil::generateNamespaceIdFromTypeName(*parameter->getType().value());
+                    identifier += '-' + parameter->getType().value()->generateInternalNamePart();
                 }
             }
         }
