@@ -7,6 +7,7 @@
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "config/Config.hpp"
@@ -36,6 +37,7 @@ namespace vnlc {
         [[nodiscard]] nlohmann::json stringifyProperty(const ValueDeclarationNode* property);
         [[nodiscard]] nlohmann::json stringifyMethod(const FunctionDeclarationNode* method);
         [[nodiscard]] nlohmann::json stringifyConstructor(const ConstructorDeclarationNode* constructor);
+        [[nodiscard]] nlohmann::json stringifyOperator(const OperatorDeclarationNode* operatorNode);
         [[nodiscard]] nlohmann::json stringifyImported(std::string_view importedAlias);
 
     public:

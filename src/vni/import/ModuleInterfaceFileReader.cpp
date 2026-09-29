@@ -128,6 +128,42 @@ namespace vnlc {
         return std::make_unique<ImportedMethod>(std::move(name), std::move(returnType), std::move(parameters), staticMethod, native, accessModifier);
     }
 
+    std::unique_ptr<ImportedOperator> ModuleInterfaceFileReader::parseImportedOperator(std::string_view key, const nlohmann::json& value) {
+        std::string internalName = std::string(key);
+        std::string returnType;
+        std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
+        std::string accessModifier;
+
+        if (!value.contains("returnType") || !value["returnType"].is_string()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'returnType' field for operator '{}'", internalName));
+        }
+        if (!value.contains("parameters") || !value["parameters"].is_object()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'parameters' field for operator '{}'", internalName));
+        }
+        if (!value.contains("accessModifier") || !value["accessModifier"].is_string() ||
+            std::find(validAccessModifiers.begin(), validAccessModifiers.end(), value["accessModifier"].get<std::string>()) == validAccessModifiers.end()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'accessModifier' field for operator '{}'", internalName));
+        }
+
+        returnType = value["returnType"].get<std::string>();
+        accessModifier = value["accessModifier"].get<std::string>();
+
+        for (auto& [key, value] : value["parameters"].items()) {
+            if (!value.is_object() || value.find("category") == value.end()) {
+                throw ModuleInterfaceFileReaderError("Invalid parameter format");
+            }
+
+            parameters.emplace(key, parseImportedParameter(key, value));
+        }
+
+        if (value.contains("metadata")) {
+            std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
+            return std::make_unique<ImportedOperator>(std::move(internalName), std::move(returnType), std::move(parameters), accessModifier, std::move(metadata));
+        }
+
+        return std::make_unique<ImportedOperator>(std::move(internalName), std::move(returnType), std::move(parameters), accessModifier);
+    }
+
     std::unique_ptr<ImportedConstructor> ModuleInterfaceFileReader::parseImportedConstructor(std::string_view key, const nlohmann::json& value) {
         std::string name = std::string(key);
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
@@ -165,6 +201,7 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>> properties;
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
         std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
+        std::unordered_map<std::string, std::unique_ptr<ImportedOperator>> operators;
         std::optional<std::string> baseClass;
         std::vector<std::string> implementedInterfaces;
         bool final;
@@ -189,6 +226,9 @@ namespace vnlc {
         }
         if (!value.contains("constructors") || !value["constructors"].is_object()) {
             throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'constructors' field for class '{}'", name));
+        }
+        if (!value.contains("operators") || !value["operators"].is_object()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'operators' field for class '{}'", name));
         }
 
         if (value["baseClass"].is_null()) {
@@ -235,6 +275,14 @@ namespace vnlc {
             constructors.emplace(key, parseImportedConstructor(key, value));
         }
 
+        for (auto& [key, value] : value["operators"].items()) {
+            if (!value.is_object() || value.find("category") == value.end()) {
+                throw ModuleInterfaceFileReaderError("Invalid operator format");
+            }
+
+            operators.emplace(key, parseImportedOperator(key, value));
+        }
+
         if (value.contains("metadata")) {
             std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
             return std::make_unique<ImportedClass>(
@@ -246,6 +294,7 @@ namespace vnlc {
                 std::move(properties),
                 std::move(methods),
                 std::move(constructors),
+                std::move(operators),
                 std::move(metadata)
             );
         }
@@ -258,7 +307,8 @@ namespace vnlc {
             std::move(genericParameters),
             std::move(properties),
             std::move(methods),
-            std::move(constructors)
+            std::move(constructors),
+            std::move(operators)
         );
     }
 
@@ -266,12 +316,16 @@ namespace vnlc {
         std::string name = std::string(key);
         std::vector<std::string> genericParameters;
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
+        std::unordered_map<std::string, std::unique_ptr<ImportedOperator>> operators;
 
         if (!value.contains("genericParameters") || !value["genericParameters"].is_array()) {
             throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'genericParameters' field for interface '{}'", name));
         }
         if (!value.contains("methods") || !value["methods"].is_object()) {
             throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'methods' field for interface '{}'", name));
+        }
+        if (!value.contains("operators") || !value["operators"].is_object()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'operators' field for interface '{}'", name));
         }
 
         for (const auto& param : value["genericParameters"]) {
@@ -289,12 +343,20 @@ namespace vnlc {
             methods.emplace(key, parseImportedMethod(key, value));
         }
 
-        if (value.contains("metadata")) {
-            std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
-            return std::make_unique<ImportedInterface>(std::move(name), std::move(genericParameters), std::move(methods), std::move(metadata));
+        for (auto& [key, value] : value["operators"].items()) {
+            if (!value.is_object() || value.find("category") == value.end()) {
+                throw ModuleInterfaceFileReaderError("Invalid operator format");
+            }
+
+            operators.emplace(key, parseImportedOperator(key, value));
         }
 
-        return std::make_unique<ImportedInterface>(std::move(name), std::move(genericParameters), std::move(methods));
+        if (value.contains("metadata")) {
+            std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
+            return std::make_unique<ImportedInterface>(std::move(name), std::move(genericParameters), std::move(methods), std::move(operators), std::move(metadata));
+        }
+
+        return std::make_unique<ImportedInterface>(std::move(name), std::move(genericParameters), std::move(methods), std::move(operators));
     }
 
     std::unique_ptr<ImportedEnum> ModuleInterfaceFileReader::parseImportedEnum(std::string_view key, const nlohmann::json& value) {
@@ -492,6 +554,8 @@ namespace vnlc {
                 importedModule->addIdentifier(parseImportedFunc(key, value));
             } else if (value["category"] == "method") {
                 importedModule->addIdentifier(parseImportedMethod(key, value));
+            } else if (value["category"] == "operator") {
+                importedModule->addIdentifier(parseImportedOperator(key, value));
             } else if (value["category"] == "class") {
                 importedModule->addIdentifier(parseImportedClass(key, value));
             } else if (value["category"] == "interface") {

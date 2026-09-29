@@ -4,6 +4,7 @@
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/EnumMemberDeclarationNode.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/TypeDeclarationNode.hpp"
 #include "ast/expression/BinaryExpressionNode.hpp"
@@ -56,6 +57,7 @@
 #include "vni/import/ImportedInterface.hpp"
 #include "vni/import/ImportedLet.hpp"
 #include "vni/import/ImportedMethod.hpp"
+#include "vni/import/ImportedOperator.hpp"
 #include "vni/import/ImportedParameter.hpp"
 #include "vni/import/ImportedProperty.hpp"
 #include "vni/import/ImportedTypeAlias.hpp"
@@ -106,7 +108,7 @@ namespace vnlc {
         if (dynamic_cast<const ImportedEnumMember*>(&item)) return SymbolKind::ENUM_MEMBER;
         if (dynamic_cast<const ImportedProperty*>(&item) || dynamic_cast<const ImportedEnumValue*>(&item)) return SymbolKind::PROPERTY;
         if (dynamic_cast<const ImportedMethod*>(&item)) return SymbolKind::METHOD;
-        if (dynamic_cast<const ImportedConstructor*>(&item)) return SymbolKind::FUNCTION;
+        if (dynamic_cast<const ImportedConstructor*>(&item)) return SymbolKind::METHOD;
         if (dynamic_cast<const ImportedParameter*>(&item)) return SymbolKind::PARAMETER;
         return SymbolKind::IMPORT_ALIAS;
     }
@@ -279,8 +281,11 @@ namespace vnlc {
         auto& scope = context.getOrCreateImportedScope(kind.value(), parent, item);
         const auto declareChildren = [&](const auto& children) {
             for (const auto& [name, child] : children) {
-                scope.declare(Symbol(getImportedSymbolKind(*child), getImportedAccessModifier(*child), name, child.get()));
                 registerImportedScopes(*child, &scope);
+
+                if (dynamic_cast<const ImportedOperator*>(child.get()) != nullptr) continue;
+                if (dynamic_cast<const ImportedConstructor*>(child.get()) != nullptr) continue;
+                scope.declare(Symbol(getImportedSymbolKind(*child), getImportedAccessModifier(*child), name, child.get()));
             }
         };
         const auto declareGenericParameters = [&](const auto& parameters) {
@@ -297,12 +302,12 @@ namespace vnlc {
         } else if (const auto* classType = dynamic_cast<const ImportedClass*>(&item)) {
             declareChildren(classType->getProperties());
             declareChildren(classType->getMethods());
-            for (const auto& entry : classType->getConstructors()) {
-                registerImportedScopes(*entry.second, &scope);
-            }
+            declareChildren(classType->getConstructors());
+            declareChildren(classType->getOperators());
             declareGenericParameters(classType->getGenericParameters());
         } else if (const auto* interfaceType = dynamic_cast<const ImportedInterface*>(&item)) {
             declareChildren(interfaceType->getMethods());
+            declareChildren(interfaceType->getOperators());
             declareGenericParameters(interfaceType->getGenericParameters());
         } else if (const auto* enumType = dynamic_cast<const ImportedEnum*>(&item)) {
             declareChildren(enumType->getMembers());
@@ -823,8 +828,40 @@ namespace vnlc {
         context.popScope();
     }
 
+    void SemanticAnalyzer::checkOperatorDeclaration(const OperatorDeclarationNode& operatorDecl, MetadataInfo metadataInfo) {
+        context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, &context.currentScope(), &operatorDecl));
+        for (const auto& param : operatorDecl.getParameters()) {
+            Symbol paramSymbol(SymbolKind::PARAMETER, SymbolAccessModifier::PUBLIC, param->getName().getIdentifierString(), param.get());
+            if (!context.currentScope().declare(std::move(paramSymbol))) {
+                context.reportError(*param, fmt::format("Redeclaration of parameter '{}'", param->getName().getIdentifierString()));
+            }
+        }
+
+        for (const auto& param : operatorDecl.getParameters()) {
+            checkValueDeclaration(*param);
+        }
+
+        if (operatorDecl.getContext() == OperatorDeclarationKind::Context::CLASS) {
+            if (operatorDecl.getBody().has_value()) {
+                checkStatement(*operatorDecl.getBody().value());
+            } else {
+                context.reportError(operatorDecl, "Class operators must have a body");
+            }
+        } else if (operatorDecl.getBody().has_value()) {
+            context.reportError(operatorDecl, "Interface operators cannot have a body");
+        }
+
+        if (operatorDecl.getReturnType().has_value()) {
+            checkType(*operatorDecl.getReturnType().value());
+        }
+
+        context.popScope();
+    }
+
     void SemanticAnalyzer::checkClassDeclaration(const ClassDeclarationNode& classDecl, const Config& config, MetadataInfo metadataInfo) {
         context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, &context.currentScope(), &classDecl));
+        std::unordered_set<std::string> operatorNames;
+        std::unordered_set<std::string> constructorNames;
 
         for (const auto& member : classDecl.getMemberDeclarations()) {
             if (auto* varDecl = dynamic_cast<ValueDeclarationNode*>(member.get())) {
@@ -837,8 +874,14 @@ namespace vnlc {
                 if (!context.currentScope().declare(std::move(memberSymbol))) {
                     context.reportError(*funcDecl, fmt::format("Redeclaration of class member '{}'", funcDecl->getName().getIdentifierString()));
                 }
-            } else if (dynamic_cast<ConstructorDeclarationNode*>(member.get()) == nullptr) {
-                context.reportError(*member, "Invalid class member declaration");
+            } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
+                if (!operatorNames.insert(std::string(operatorDecl->getInternalName())).second) {
+                    context.reportError(*operatorDecl, fmt::format("Redeclaration of class member '{}'", operatorDecl->getInternalName()));
+                }
+            } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
+                if (!constructorNames.insert(std::string(constructorDecl->getInternalName())).second) {
+                    context.reportError(*constructorDecl, fmt::format("Redeclaration of class member '{}'", constructorDecl->getInternalName()));
+                }
             }
         }
 
@@ -856,6 +899,8 @@ namespace vnlc {
                 checkFunctionDeclaration(*funcDecl);
             } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
                 checkConstructorDeclaration(*constructorDecl);
+            } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
+                checkOperatorDeclaration(*operatorDecl);
             } else {
                 context.reportError(*member, "Invalid class member declaration");
             }
@@ -866,11 +911,18 @@ namespace vnlc {
 
     void SemanticAnalyzer::checkInterfaceDeclaration(const InterfaceDeclarationNode& interfaceDecl, const Config& config, MetadataInfo metadataInfo) {
         context.pushScope(std::make_unique<Scope>(ScopeKind::INTERFACE, &context.currentScope(), &interfaceDecl));
+        std::unordered_set<std::string> operatorNames;
 
         for (const auto& member : interfaceDecl.getMethodDeclarations()) {
             Symbol memberSymbol(SymbolKind::METHOD, static_cast<SymbolAccessModifier>(member->getAccessModifier()), member->getName().getIdentifierString(), member.get());
             if (!context.currentScope().declare(std::move(memberSymbol))) {
                 context.reportError(*member, fmt::format("Redeclaration of interface method '{}'", member->getName().getIdentifierString()));
+            }
+        }
+
+        for (const auto& operatorDecl : interfaceDecl.getOperatorDeclarations()) {
+            if (!operatorNames.insert(std::string(operatorDecl->getInternalName())).second) {
+                context.reportError(*operatorDecl, fmt::format("Redeclaration of interface operator '{}'", operatorDecl->getInternalName()));
             }
         }
 
@@ -887,6 +939,10 @@ namespace vnlc {
             } else {
                 context.reportError(*member, "Invalid interface member declaration");
             }
+        }
+
+        for (const auto& operatorDecl : interfaceDecl.getOperatorDeclarations()) {
+            checkOperatorDeclaration(*operatorDecl);
         }
 
         context.popScope();

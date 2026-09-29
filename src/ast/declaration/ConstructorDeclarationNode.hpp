@@ -5,7 +5,6 @@
 #include "ast/declaration/DeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/statement/BlockStatementNode.hpp"
-#include "ast/typeref/TypeReferenceNode.hpp"
 #include <memory>
 #include <string>
 #include <string_view>
@@ -16,7 +15,6 @@ namespace vnlc {
     private:
         ConstructorDeclarationNode() = delete;
 
-        [[nodiscard]] static std::string generateNamespaceIdFromTypeName(const TypeReferenceNode& typeNode);
         [[nodiscard]] static std::string generateInternalName(const std::vector<std::unique_ptr<ValueDeclarationNode>>& parameters);
 
         std::string internalName;

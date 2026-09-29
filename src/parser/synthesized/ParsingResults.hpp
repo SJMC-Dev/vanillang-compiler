@@ -56,6 +56,7 @@
 #include "parser/synthesized/MultiplicativeExpressionParsingResult.hpp"     // IWYU pragma: export
 #include "parser/synthesized/NativeFunctionDeclarationParsingResult.hpp"    // IWYU pragma: export
 #include "parser/synthesized/NullishCoalescingExpressionParsingResult.hpp"  // IWYU pragma: export
+#include "parser/synthesized/OperatorDeclarationParsingResult.hpp"          // IWYU pragma: export
 #include "parser/synthesized/ParameterListParsingResult.hpp"                // IWYU pragma: export
 #include "parser/synthesized/ParameterParsingResult.hpp"                    // IWYU pragma: export
 #include "parser/synthesized/PostfixExpressionParsingResult.hpp"            // IWYU pragma: export

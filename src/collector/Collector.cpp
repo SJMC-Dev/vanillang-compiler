@@ -14,6 +14,7 @@
 #include "vni/import/ImportedLet.hpp"
 #include "vni/import/ImportedMethod.hpp"
 #include "vni/import/ImportedModule.hpp"
+#include "vni/import/ImportedOperator.hpp"
 #include "vni/import/ImportedParameter.hpp"
 #include "vni/import/ImportedProperty.hpp"
 #include "vni/import/ImportedTypeAlias.hpp"
@@ -450,6 +451,9 @@ namespace vnlc {
         } else if (const auto* method = dynamic_cast<const ImportedMethod*>(&item)) {
             collectTypeDependencies(method->getReturnType(), dependencies);
             collectChildren(method->getParameters());
+        } else if (const auto* operatorNode = dynamic_cast<const ImportedOperator*>(&item)) {
+            collectTypeDependencies(operatorNode->getReturnType(), dependencies);
+            collectChildren(operatorNode->getParameters());
         } else if (const auto* constructor = dynamic_cast<const ImportedConstructor*>(&item)) {
             collectChildren(constructor->getParameters());
         } else if (const auto* classType = dynamic_cast<const ImportedClass*>(&item)) {
@@ -462,8 +466,10 @@ namespace vnlc {
             collectChildren(classType->getProperties());
             collectChildren(classType->getMethods());
             collectChildren(classType->getConstructors());
+            collectChildren(classType->getOperators());
         } else if (const auto* interfaceType = dynamic_cast<const ImportedInterface*>(&item)) {
             collectChildren(interfaceType->getMethods());
+            collectChildren(interfaceType->getOperators());
         } else if (const auto* enumType = dynamic_cast<const ImportedEnum*>(&item)) {
             collectChildren(enumType->getMembers());
         } else if (const auto* enumMember = dynamic_cast<const ImportedEnumMember*>(&item)) {

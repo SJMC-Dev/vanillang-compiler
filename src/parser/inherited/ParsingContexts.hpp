@@ -10,6 +10,7 @@
 #include "parser/inherited/InterfaceDeclarationParsingContext.hpp"       // IWYU pragma: export
 #include "parser/inherited/ModuleParsingContext.hpp"                     // IWYU pragma: export
 #include "parser/inherited/NativeFunctionDeclarationParsingContext.hpp"  // IWYU pragma: export
+#include "parser/inherited/OperatorDeclarationParsingContext.hpp"        // IWYU pragma: export
 #include "parser/inherited/PropertyDeclarationParsingContext.hpp"        // IWYU pragma: export
 #include "parser/inherited/RegularFunctionDeclarationParsingContext.hpp" // IWYU pragma: export
 #include "parser/inherited/TypeAliasDeclarationParsingContext.hpp"       // IWYU pragma: export

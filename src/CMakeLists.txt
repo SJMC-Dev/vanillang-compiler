@@ -8,6 +8,7 @@ add_executable(
     token/Token.cpp
     util/RunningModeUtil.cpp
     util/TokenKindUtil.cpp
+    util/TypeReferenceNodeUtil.cpp
     ast/AstNode.cpp
     ast/module/ModuleNode.cpp
     ast/expression/BinaryExpressionNode.cpp
@@ -34,6 +35,7 @@ add_executable(
     ast/declaration/TypeDeclarationNode.cpp
     ast/declaration/FunctionDeclarationNode.cpp
     ast/declaration/ConstructorDeclarationNode.cpp
+    ast/declaration/OperatorDeclarationNode.cpp
     ast/declaration/ValueDeclarationNode.cpp
     ast/declaration/TypeAliasDeclarationNode.cpp
     ast/declaration/ClassDeclarationNode.cpp
@@ -93,6 +95,7 @@ add_executable(
     vni/import/ImportedEnumMember.cpp
     vni/import/ImportedProperty.cpp
     vni/import/ImportedMethod.cpp
+    vni/import/ImportedOperator.cpp
     vni/import/ImportedFunc.cpp
     vni/import/ImportedClass.cpp
     vni/import/ImportedConstructor.cpp

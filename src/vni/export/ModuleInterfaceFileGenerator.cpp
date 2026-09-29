@@ -2,6 +2,7 @@
 #include "ast/declaration/ClassDeclarationNode.hpp"
 #include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include <cassert>
@@ -154,6 +155,7 @@ namespace vnlc {
         nlohmann::json propertiesObj = nlohmann::json::object();
         nlohmann::json methodsObj = nlohmann::json::object();
         nlohmann::json constructorsObj = nlohmann::json::object();
+        nlohmann::json operatorsObj = nlohmann::json::object();
 
         for (const auto& memberDeclaration : classNode->getMemberDeclarations()) {
             if (const auto* property = dynamic_cast<const ValueDeclarationNode*>(memberDeclaration.get())) {
@@ -162,12 +164,15 @@ namespace vnlc {
                 methodsObj.emplace(method->getName().getIdentifierString(), stringifyMethod(method));
             } else if (const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(memberDeclaration.get())) {
                 constructorsObj.emplace(constructor->getInternalName(), stringifyConstructor(constructor));
+            } else if (const auto* operatorNode = dynamic_cast<const OperatorDeclarationNode*>(memberDeclaration.get())) {
+                operatorsObj.emplace(operatorNode->getInternalName(), stringifyOperator(operatorNode));
             }
         }
 
         classObj.emplace("properties", propertiesObj);
         classObj.emplace("methods", methodsObj);
         classObj.emplace("constructors", constructorsObj);
+        classObj.emplace("operators", operatorsObj);
 
         return classObj;
     }
@@ -189,6 +194,13 @@ namespace vnlc {
             methodsObj.emplace(method->getName().getIdentifierString(), methodObj);
         }
         interfaceObj.emplace("methods", methodsObj);
+
+        nlohmann::json operatorsObj = nlohmann::json::object();
+        for (const auto& operatorNode : interfaceNode->getOperatorDeclarations()) {
+            nlohmann::json operatorObj = stringifyOperator(operatorNode.get());
+            operatorsObj.emplace(operatorNode->getInternalName(), operatorObj);
+        }
+        interfaceObj.emplace("operators", operatorsObj);
 
         return interfaceObj;
     }
@@ -385,6 +397,46 @@ namespace vnlc {
         constructorObj.emplace("accessModifier", accessModifier);
 
         return constructorObj;
+    }
+
+    nlohmann::json ModuleInterfaceFileGenerator::stringifyOperator(const OperatorDeclarationNode* operatorNode) {
+        nlohmann::json operatorObj = nlohmann::json::object();
+        operatorObj.emplace("category", "operator");
+
+        const auto& metadata = operatorNode->getMetadataTerms();
+        if (!metadata.empty()) {
+            operatorObj.emplace("metadata", stringifyMetadata(metadata));
+        }
+
+        const auto& returnTypeReferenceNode = operatorNode->getReturnType();
+        if (returnTypeReferenceNode.has_value()) {
+            const auto* type = semantic.getTypeByTypeReferenceNode(returnTypeReferenceNode.value().get());
+            if (type != nullptr) {
+                operatorObj.emplace("returnType", type->getFullTypeName());
+            }
+        }
+
+        nlohmann::json parametersObj = nlohmann::json::object();
+        for (const auto& parameter : operatorNode->getParameters()) {
+            parametersObj.emplace(parameter->getName().getIdentifierString(), stringifyParameter(parameter.get()));
+        }
+        operatorObj.emplace("parameters", parametersObj);
+
+        std::string accessModifier;
+        switch (operatorNode->getAccessModifier()) {
+            case OperatorDeclarationKind::AccessModifier::PUBLIC:
+                accessModifier = "public";
+                break;
+            case OperatorDeclarationKind::AccessModifier::PROTECTED:
+                accessModifier = "protected";
+                break;
+            case OperatorDeclarationKind::AccessModifier::PRIVATE:
+                accessModifier = "private";
+                break;
+        }
+        operatorObj.emplace("accessModifier", accessModifier);
+
+        return operatorObj;
     }
 
     void ModuleInterfaceFileGenerator::generate() {

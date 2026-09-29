@@ -2,6 +2,7 @@
 #include "ast/declaration/DeclarationNode.hpp"
 #include "ast/declaration/ExportDeclarationNode.hpp"
 #include "ast/declaration/ImportDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/BinaryExpressionKind.hpp"
@@ -743,42 +744,55 @@ namespace vnlc {
             metadataTerms = std::move(metadataResult.metadata);
         }
 
-        auto result = parseFunctionSignature();
+        std::unique_ptr<DeclarationNode> node;
+        if (check(TokenKind::OP)) {
+            OperatorDeclarationParsingContext context{
+                .context = OperatorDeclarationKind::Context::INTERFACE,
+                .accessModifier = OperatorDeclarationKind::AccessModifier::PUBLIC,
+                .hasMetadata = hasMetadata,
+                .metadataTerms = std::move(metadataTerms),
+            };
 
-        Token lastToken = peek();
+            auto result = parseOperatorDeclaration(std::move(context));
+
+            node = std::move(result.declaration);
+        } else {
+            auto result = parseFunctionSignature();
+
+            Token lastToken = peek();
+
+            if (hasMetadata) {
+                node = std::make_unique<FunctionDeclarationNode>(
+                    FunctionDeclarationKind::Kind::REGULAR,
+                    FunctionDeclarationKind::Context::INTERFACE,
+                    FunctionDeclarationKind::AccessModifier::PUBLIC,
+                    FunctionDeclarationKind::Binding::INSTANCE,
+                    std::move(result.name),
+                    std::move(result.parameters),
+                    std::move(result.returnType),
+                    std::nullopt,
+                    firstToken,
+                    lastToken,
+                    std::move(metadataTerms)
+                );
+            } else {
+                node = std::make_unique<FunctionDeclarationNode>(
+                    FunctionDeclarationKind::Kind::REGULAR,
+                    FunctionDeclarationKind::Context::INTERFACE,
+                    FunctionDeclarationKind::AccessModifier::PUBLIC,
+                    FunctionDeclarationKind::Binding::INSTANCE,
+                    std::move(result.name),
+                    std::move(result.parameters),
+                    std::move(result.returnType),
+                    std::nullopt,
+                    firstToken,
+                    lastToken
+                );
+            }
+        }
 
         if (!endsWithNewlineOrEOF) {
             throw SyntaxError("Expected newline after interface method declaration", peek().getLine(), peek().getColumn());
-        }
-
-        std::unique_ptr<FunctionDeclarationNode> node;
-        if (hasMetadata) {
-            node = std::make_unique<FunctionDeclarationNode>(
-                FunctionDeclarationKind::Kind::REGULAR,
-                FunctionDeclarationKind::Context::INTERFACE,
-                FunctionDeclarationKind::AccessModifier::PUBLIC,
-                FunctionDeclarationKind::Binding::INSTANCE,
-                std::move(result.name),
-                std::move(result.parameters),
-                std::move(result.returnType),
-                std::nullopt,
-                firstToken,
-                lastToken,
-                std::move(metadataTerms)
-            );
-        } else {
-            node = std::make_unique<FunctionDeclarationNode>(
-                FunctionDeclarationKind::Kind::REGULAR,
-                FunctionDeclarationKind::Context::INTERFACE,
-                FunctionDeclarationKind::AccessModifier::PUBLIC,
-                FunctionDeclarationKind::Binding::INSTANCE,
-                std::move(result.name),
-                std::move(result.parameters),
-                std::move(result.returnType),
-                std::nullopt,
-                firstToken,
-                lastToken
-            );
         }
 
         return InterfaceMethodDeclarationParsingResult{
@@ -925,6 +939,110 @@ namespace vnlc {
         }
     }
 
+    OperatorDeclarationParsingResult Parser::parseOperatorDeclaration(OperatorDeclarationParsingContext context) {
+        Token firstToken = peek();
+
+        if (!match(TokenKind::OP)) {
+            throw SyntaxError("Expected 'op' keyword", peek().getLine(), peek().getColumn());
+        }
+
+        OperatorDeclarationKind::Kind operatorKind;
+
+        if (match(TokenKind::LEFT_PARENTHESIS)) {
+            if (!match(TokenKind::RIGHT_PARENTHESIS)) {
+                throw SyntaxError("Expected ')' in function call operator", peek().getLine(), peek().getColumn());
+            }
+            operatorKind = OperatorDeclarationKind::Kind::CALL;
+        } else if (match(TokenKind::LEFT_BRACKET)) {
+            if (!match(TokenKind::RIGHT_BRACKET)) {
+                throw SyntaxError("Expected ']' in subscript operator", peek().getLine(), peek().getColumn());
+            }
+            operatorKind = OperatorDeclarationKind::Kind::SUBSCRIPT;
+        } else {
+            static const std::unordered_map<TokenKind, OperatorDeclarationKind::Kind> operatorKinds = {
+                { TokenKind::PLUS, OperatorDeclarationKind::Kind::ADDITION },
+                { TokenKind::MINUS, OperatorDeclarationKind::Kind::SUBTRACTION },
+                { TokenKind::ASTERISK, OperatorDeclarationKind::Kind::MULTIPLICATION },
+                { TokenKind::SLASH, OperatorDeclarationKind::Kind::DIVISION },
+                { TokenKind::DOUBLE_SLASH, OperatorDeclarationKind::Kind::INTEGER_DIVISION },
+                { TokenKind::PERCENT, OperatorDeclarationKind::Kind::MODULO },
+                { TokenKind::DOUBLE_ASTERISK, OperatorDeclarationKind::Kind::EXPONENT },
+                { TokenKind::DOUBLE_EQUAL, OperatorDeclarationKind::Kind::EQUAL },
+                { TokenKind::EXCLAMATION_EQUAL, OperatorDeclarationKind::Kind::NOT_EQUAL },
+                { TokenKind::LEFT_ANGLE, OperatorDeclarationKind::Kind::LESS_THAN },
+                { TokenKind::RIGHT_ANGLE, OperatorDeclarationKind::Kind::GREATER_THAN },
+                { TokenKind::LEFT_ANGLE_EQUAL, OperatorDeclarationKind::Kind::LESS_THAN_OR_EQUAL },
+                { TokenKind::RIGHT_ANGLE_EQUAL, OperatorDeclarationKind::Kind::GREATER_THAN_OR_EQUAL },
+                { TokenKind::AMPERSAND, OperatorDeclarationKind::Kind::BITWISE_AND },
+                { TokenKind::PIPE, OperatorDeclarationKind::Kind::BITWISE_OR },
+                { TokenKind::CARET, OperatorDeclarationKind::Kind::BITWISE_XOR },
+                { TokenKind::TILDE, OperatorDeclarationKind::Kind::BITWISE_NOT },
+                { TokenKind::DOUBLE_LEFT_ANGLE, OperatorDeclarationKind::Kind::SHIFT_LEFT },
+                { TokenKind::DOUBLE_RIGHT_ANGLE, OperatorDeclarationKind::Kind::SHIFT_RIGHT },
+                { TokenKind::TRIPLE_RIGHT_ANGLE, OperatorDeclarationKind::Kind::SHIFT_RIGHT_UNSIGNED },
+                { TokenKind::DOUBLE_DOT, OperatorDeclarationKind::Kind::RANGE },
+            };
+
+            auto kind = operatorKinds.find(peek().getKind());
+            if (kind == operatorKinds.end()) {
+                throw SyntaxError("Expected overloadable operator", peek().getLine(), peek().getColumn());
+            }
+            operatorKind = kind->second;
+            advance();
+        }
+
+        if (!match(TokenKind::LEFT_PARENTHESIS)) {
+            throw SyntaxError("Expected '(' after operator", peek().getLine(), peek().getColumn());
+        }
+
+        std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
+        if (!check(TokenKind::RIGHT_PARENTHESIS)) {
+            auto parameterListResult = parseParameterList();
+            parameters = std::move(parameterListResult.parameters);
+        }
+
+        if (!match(TokenKind::RIGHT_PARENTHESIS)) {
+            throw SyntaxError("Expected ')' after parameter list", peek().getLine(), peek().getColumn());
+        }
+
+        std::optional<std::unique_ptr<TypeReferenceNode>> returnType = std::nullopt;
+        if (match(TokenKind::ARROW)) {
+            if (!match(TokenKind::VOID_KEYWORD)) {
+                auto typeResult = parseType();
+                returnType = std::make_optional<std::unique_ptr<TypeReferenceNode>>(std::move(typeResult.type));
+            }
+        }
+
+        std::optional<std::unique_ptr<BlockStatementNode>> body = std::nullopt;
+        if (context.context == OperatorDeclarationKind::Context::CLASS) {
+            auto bodyResult = parseFunctionBody();
+            body = std::move(bodyResult.body);
+        }
+
+        Token lastToken = peek();
+
+        if (context.hasMetadata) {
+            return OperatorDeclarationParsingResult{
+                .declaration = std::make_unique<OperatorDeclarationNode>(
+                    operatorKind,
+                    context.context,
+                    context.accessModifier,
+                    std::move(parameters),
+                    std::move(returnType),
+                    std::move(body),
+                    firstToken,
+                    lastToken,
+                    std::move(context.metadataTerms)
+                ),
+            };
+        } else {
+            return OperatorDeclarationParsingResult{
+                .declaration = std::make_unique<
+                    OperatorDeclarationNode>(operatorKind, context.context, context.accessModifier, std::move(parameters), std::move(returnType), std::move(body), firstToken, lastToken),
+            };
+        }
+    }
+
     ParameterListParsingResult Parser::parseParameterList() {
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
 
@@ -1023,6 +1141,7 @@ namespace vnlc {
         std::unique_ptr<IdentifierNode> name;
         std::vector<std::unique_ptr<IdentifierNode>> genericParameterNames;
         std::vector<std::unique_ptr<FunctionDeclarationNode>> methodDeclarations;
+        std::vector<std::unique_ptr<OperatorDeclarationNode>> operatorDeclarations;
 
         Token firstToken = peek();
 
@@ -1047,16 +1166,32 @@ namespace vnlc {
 
         auto bodyResult = parseInterfaceBody();
 
+        for (auto& declaration : bodyResult.declarations) {
+            if (auto* methodDeclaration = dynamic_cast<FunctionDeclarationNode*>(declaration.get())) {
+                methodDeclarations.emplace_back(static_cast<FunctionDeclarationNode*>(declaration.release()));
+            } else if (auto* operatorDeclaration = dynamic_cast<OperatorDeclarationNode*>(declaration.get())) {
+                operatorDeclarations.emplace_back(static_cast<OperatorDeclarationNode*>(declaration.release()));
+            }
+        }
+
         Token lastToken = peek();
 
         if (context.hasMetadata) {
             return InterfaceDeclarationParsingResult{
-                .declaration = std::make_unique<
-                    InterfaceDeclarationNode>(std::move(name), std::move(genericParameterNames), std::move(bodyResult.declarations), firstToken, lastToken, std::move(context.metadataTerms)),
+                .declaration = std::make_unique<InterfaceDeclarationNode>(
+                    std::move(name),
+                    std::move(genericParameterNames),
+                    std::move(methodDeclarations),
+                    std::move(operatorDeclarations),
+                    firstToken,
+                    lastToken,
+                    std::move(context.metadataTerms)
+                ),
             };
         } else {
             return InterfaceDeclarationParsingResult{
-                .declaration = std::make_unique<InterfaceDeclarationNode>(std::move(name), std::move(genericParameterNames), std::move(bodyResult.declarations), firstToken, lastToken),
+                .declaration = std::make_unique<
+                    InterfaceDeclarationNode>(std::move(name), std::move(genericParameterNames), std::move(methodDeclarations), std::move(operatorDeclarations), firstToken, lastToken),
             };
         }
     }
@@ -1483,7 +1618,7 @@ namespace vnlc {
     }
 
     InterfaceBodyParsingResult Parser::parseInterfaceBody() {
-        std::vector<std::unique_ptr<FunctionDeclarationNode>> declarations;
+        std::vector<std::unique_ptr<DeclarationNode>> declarations;
 
         if (!match(TokenKind::LEFT_BRACE)) {
             throw SyntaxError("Expected '{' at the beginning of interface body", peek().getLine(), peek().getColumn());
@@ -1615,33 +1750,79 @@ namespace vnlc {
             Token lastToken = peek();
             constructorResult.constructor->resetPosition(firstToken, lastToken);
 
+            if (!endsWithNewlineOrEOF) {
+                throw SyntaxError("Expected newline after constructor declaration", peek().getLine(), peek().getColumn());
+            }
+
             return ClassMemberParsingResult{
                 .declaration = std::move(constructorResult.constructor),
+            };
+        }
+
+        if (check(TokenKind::OP)) {
+            OperatorDeclarationParsingContext operatorContext{
+                .context = OperatorDeclarationKind::Context::CLASS,
+                .accessModifier = static_cast<OperatorDeclarationKind::AccessModifier>(accessModifier),
+                .hasMetadata = hasMetadata,
+                .metadataTerms = std::move(metadataTerms),
+            };
+            auto operatorResult = parseOperatorDeclaration(std::move(operatorContext));
+
+            Token lastToken = peek();
+            operatorResult.declaration->resetPosition(firstToken, lastToken);
+
+            if (!endsWithNewlineOrEOF) {
+                throw SyntaxError("Expected newline after operator declaration", peek().getLine(), peek().getColumn());
+            }
+
+            return ClassMemberParsingResult{
+                .declaration = std::move(operatorResult.declaration),
             };
         }
 
         if (match(TokenKind::STATIC)) {
             binding = Binding::STATIC;
         } else if (match(TokenKind::OVERRIDE)) {
-            FunctionDeclarationParsingContext functionDeclarationContext{
-                .context = FunctionDeclarationKind::Context::CLASS,
-                .accessModifier = static_cast<FunctionDeclarationKind::AccessModifier>(accessModifier),
-                .binding = static_cast<FunctionDeclarationKind::Binding>(binding),
-                .hasMetadata = hasMetadata,
-                .metadataTerms = std::move(metadataTerms),
-            };
-            auto functionDeclarationResult = parseFunctionDeclaration(std::move(functionDeclarationContext));
+            if (check(TokenKind::FUNC)) {
+                FunctionDeclarationParsingContext functionDeclarationContext{
+                    .context = FunctionDeclarationKind::Context::CLASS,
+                    .accessModifier = static_cast<FunctionDeclarationKind::AccessModifier>(accessModifier),
+                    .binding = static_cast<FunctionDeclarationKind::Binding>(binding),
+                    .hasMetadata = hasMetadata,
+                    .metadataTerms = std::move(metadataTerms),
+                };
+                auto functionDeclarationResult = parseFunctionDeclaration(std::move(functionDeclarationContext));
 
-            Token lastToken = peek();
-            functionDeclarationResult.declaration->resetPosition(firstToken, lastToken);
+                Token lastToken = peek();
+                functionDeclarationResult.declaration->resetPosition(firstToken, lastToken);
 
-            if (!endsWithNewlineOrEOF) {
-                throw SyntaxError("Expected newline after method declaration", peek().getLine(), peek().getColumn());
+                if (!endsWithNewlineOrEOF) {
+                    throw SyntaxError("Expected newline after method declaration", peek().getLine(), peek().getColumn());
+                }
+
+                return ClassMemberParsingResult{
+                    .declaration = std::move(functionDeclarationResult.declaration),
+                };
+            } else if (check(TokenKind::OP)) {
+                OperatorDeclarationParsingContext operatorContext{
+                    .context = OperatorDeclarationKind::Context::CLASS,
+                    .accessModifier = static_cast<OperatorDeclarationKind::AccessModifier>(accessModifier),
+                    .hasMetadata = hasMetadata,
+                    .metadataTerms = std::move(metadataTerms),
+                };
+                auto operatorResult = parseOperatorDeclaration(std::move(operatorContext));
+
+                Token lastToken = peek();
+                operatorResult.declaration->resetPosition(firstToken, lastToken);
+
+                if (!endsWithNewlineOrEOF) {
+                    throw SyntaxError("Expected newline after operator declaration", peek().getLine(), peek().getColumn());
+                }
+
+                return ClassMemberParsingResult{
+                    .declaration = std::move(operatorResult.declaration),
+                };
             }
-
-            return ClassMemberParsingResult{
-                .declaration = std::move(functionDeclarationResult.declaration),
-            };
         }
 
         if (check(TokenKind::FUNC) || check(TokenKind::NATIVE)) {

@@ -8,10 +8,21 @@ namespace vnlc {
         const Token& firstToken,
         const Token& lastToken
     ) noexcept
+        : InterfaceDeclarationNode(std::move(name), std::move(genericParameterNames), std::move(methodDeclarations), {}, firstToken, lastToken) {}
+
+    InterfaceDeclarationNode::InterfaceDeclarationNode(
+        std::unique_ptr<IdentifierNode>&& name,
+        std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
+        std::vector<std::unique_ptr<FunctionDeclarationNode>>&& methodDeclarations,
+        std::vector<std::unique_ptr<OperatorDeclarationNode>>&& operatorDeclarations,
+        const Token& firstToken,
+        const Token& lastToken
+    ) noexcept
         : TypeDeclarationNode(firstToken, lastToken),
           name(std::move(name)),
           genericParameterNames(std::move(genericParameterNames)),
-          methodDeclarations(std::move(methodDeclarations)) {}
+          methodDeclarations(std::move(methodDeclarations)),
+          operatorDeclarations(std::move(operatorDeclarations)) {}
 
     InterfaceDeclarationNode::InterfaceDeclarationNode(
         std::unique_ptr<IdentifierNode>&& name,
@@ -21,10 +32,22 @@ namespace vnlc {
         const Token& lastToken,
         std::vector<DeclarationItem::MetadataTerm>&& metadataTerms
     ) noexcept
+        : InterfaceDeclarationNode(std::move(name), std::move(genericParameterNames), std::move(methodDeclarations), {}, firstToken, lastToken, std::move(metadataTerms)) {}
+
+    InterfaceDeclarationNode::InterfaceDeclarationNode(
+        std::unique_ptr<IdentifierNode>&& name,
+        std::vector<std::unique_ptr<IdentifierNode>>&& genericParameterNames,
+        std::vector<std::unique_ptr<FunctionDeclarationNode>>&& methodDeclarations,
+        std::vector<std::unique_ptr<OperatorDeclarationNode>>&& operatorDeclarations,
+        const Token& firstToken,
+        const Token& lastToken,
+        std::vector<DeclarationItem::MetadataTerm>&& metadataTerms
+    ) noexcept
         : TypeDeclarationNode(firstToken, lastToken, std::move(metadataTerms)),
           name(std::move(name)),
           genericParameterNames(std::move(genericParameterNames)),
-          methodDeclarations(std::move(methodDeclarations)) {}
+          methodDeclarations(std::move(methodDeclarations)),
+          operatorDeclarations(std::move(operatorDeclarations)) {}
 
     const IdentifierNode& InterfaceDeclarationNode::getName() const noexcept {
         return *name;
@@ -36,5 +59,9 @@ namespace vnlc {
 
     const std::vector<std::unique_ptr<FunctionDeclarationNode>>& InterfaceDeclarationNode::getMethodDeclarations() const noexcept {
         return methodDeclarations;
+    }
+
+    const std::vector<std::unique_ptr<OperatorDeclarationNode>>& InterfaceDeclarationNode::getOperatorDeclarations() const noexcept {
+        return operatorDeclarations;
     }
 } // namespace vnlc

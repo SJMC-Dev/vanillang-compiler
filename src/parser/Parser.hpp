@@ -63,6 +63,7 @@ namespace vnlc {
         [[nodiscard]] VariableDeclarationPrimaryParsingResult parseVariableDeclarationPrimary(VariableDeclarationPrimaryParsingContext context);
         [[nodiscard]] RegularFunctionDeclarationParsingResult parseRegularFunctionDeclaration(RegularFunctionDeclarationParsingContext context);
         [[nodiscard]] NativeFunctionDeclarationParsingResult parseNativeFunctionDeclaration(NativeFunctionDeclarationParsingContext context);
+        [[nodiscard]] OperatorDeclarationParsingResult parseOperatorDeclaration(OperatorDeclarationParsingContext context);
         [[nodiscard]] ParameterListParsingResult parseParameterList();
         [[nodiscard]] ClassDeclarationParsingResult parseClassDeclaration(ClassDeclarationParsingContext context);
         [[nodiscard]] InterfaceDeclarationParsingResult parseInterfaceDeclaration(InterfaceDeclarationParsingContext context);

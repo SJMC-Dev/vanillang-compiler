@@ -8,6 +8,7 @@
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/ImportDeclarationNode.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/TypeAliasDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
@@ -62,6 +63,7 @@ namespace vnlc {
         void checkValueDeclaration(const ValueDeclarationNode& varDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkFunctionDeclaration(const FunctionDeclarationNode& funcDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkConstructorDeclaration(const ConstructorDeclarationNode& constructorDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
+        void checkOperatorDeclaration(const OperatorDeclarationNode& operatorDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkClassDeclaration(const ClassDeclarationNode& classDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkInterfaceDeclaration(const InterfaceDeclarationNode& interfaceDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkEnumDeclaration(const EnumDeclarationNode& enumDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
