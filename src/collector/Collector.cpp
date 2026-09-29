@@ -5,6 +5,7 @@
 #include "error/SyntaxError.hpp"
 #include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedClass.hpp"
+#include "vni/import/ImportedConstructor.hpp"
 #include "vni/import/ImportedEnum.hpp"
 #include "vni/import/ImportedEnumMember.hpp"
 #include "vni/import/ImportedEnumValue.hpp"
@@ -449,6 +450,8 @@ namespace vnlc {
         } else if (const auto* method = dynamic_cast<const ImportedMethod*>(&item)) {
             collectTypeDependencies(method->getReturnType(), dependencies);
             collectChildren(method->getParameters());
+        } else if (const auto* constructor = dynamic_cast<const ImportedConstructor*>(&item)) {
+            collectChildren(constructor->getParameters());
         } else if (const auto* classType = dynamic_cast<const ImportedClass*>(&item)) {
             if (classType->getBaseClass().has_value()) {
                 collectTypeDependencies(classType->getBaseClass().value(), dependencies);
@@ -458,6 +461,7 @@ namespace vnlc {
             }
             collectChildren(classType->getProperties());
             collectChildren(classType->getMethods());
+            collectChildren(classType->getConstructors());
         } else if (const auto* interfaceType = dynamic_cast<const ImportedInterface*>(&item)) {
             collectChildren(interfaceType->getMethods());
         } else if (const auto* enumType = dynamic_cast<const ImportedEnum*>(&item)) {

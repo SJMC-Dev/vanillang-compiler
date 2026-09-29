@@ -128,11 +128,43 @@ namespace vnlc {
         return std::make_unique<ImportedMethod>(std::move(name), std::move(returnType), std::move(parameters), staticMethod, native, accessModifier);
     }
 
+    std::unique_ptr<ImportedConstructor> ModuleInterfaceFileReader::parseImportedConstructor(std::string_view key, const nlohmann::json& value) {
+        std::string name = std::string(key);
+        std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
+        std::string accessModifier;
+
+        if (!value.contains("parameters") || !value["parameters"].is_object()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'parameters' field for constructor '{}'", name));
+        }
+        if (!value.contains("accessModifier") || !value["accessModifier"].is_string() ||
+            std::find(validAccessModifiers.begin(), validAccessModifiers.end(), value["accessModifier"].get<std::string>()) == validAccessModifiers.end()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'accessModifier' field for constructor '{}'", name));
+        }
+
+        accessModifier = value["accessModifier"].get<std::string>();
+
+        for (auto& [key, value] : value["parameters"].items()) {
+            if (!value.is_object() || value.find("category") == value.end()) {
+                throw ModuleInterfaceFileReaderError("Invalid parameter format");
+            }
+
+            parameters.emplace(key, parseImportedParameter(key, value));
+        }
+
+        if (value.contains("metadata")) {
+            std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
+            return std::make_unique<ImportedConstructor>(std::move(name), std::move(parameters), accessModifier, std::move(metadata));
+        }
+
+        return std::make_unique<ImportedConstructor>(std::move(name), std::move(parameters), accessModifier);
+    }
+
     std::unique_ptr<ImportedClass> ModuleInterfaceFileReader::parseImportedClass(std::string_view key, const nlohmann::json& value) {
         std::string name = std::string(key);
         std::vector<std::string> genericParameters;
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>> properties;
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
+        std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
         std::optional<std::string> baseClass;
         std::vector<std::string> implementedInterfaces;
         bool final;
@@ -154,6 +186,9 @@ namespace vnlc {
         }
         if (!value.contains("final") || !value["final"].is_boolean()) {
             throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'final' field for class '{}'", name));
+        }
+        if (!value.contains("constructors") || !value["constructors"].is_object()) {
+            throw ModuleInterfaceFileReaderError(fmt::format("Missing or invalid 'constructors' field for class '{}'", name));
         }
 
         if (value["baseClass"].is_null()) {
@@ -192,6 +227,14 @@ namespace vnlc {
             methods.emplace(key, parseImportedMethod(key, value));
         }
 
+        for (auto& [key, value] : value["constructors"].items()) {
+            if (!value.is_object() || value.find("category") == value.end()) {
+                throw ModuleInterfaceFileReaderError("Invalid constructor format");
+            }
+
+            constructors.emplace(key, parseImportedConstructor(key, value));
+        }
+
         if (value.contains("metadata")) {
             std::unordered_map<std::string, std::optional<std::string>> metadata = parseImportedMetadata(value["metadata"]);
             return std::make_unique<ImportedClass>(
@@ -202,12 +245,21 @@ namespace vnlc {
                 std::move(genericParameters),
                 std::move(properties),
                 std::move(methods),
+                std::move(constructors),
                 std::move(metadata)
             );
         }
 
-        return std::make_unique<
-            ImportedClass>(std::move(name), std::move(baseClass), std::move(implementedInterfaces), final, std::move(genericParameters), std::move(properties), std::move(methods));
+        return std::make_unique<ImportedClass>(
+            std::move(name),
+            std::move(baseClass),
+            std::move(implementedInterfaces),
+            final,
+            std::move(genericParameters),
+            std::move(properties),
+            std::move(methods),
+            std::move(constructors)
+        );
     }
 
     std::unique_ptr<ImportedInterface> ModuleInterfaceFileReader::parseImportedInterface(std::string_view key, const nlohmann::json& value) {

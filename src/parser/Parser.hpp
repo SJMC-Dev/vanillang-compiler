@@ -13,7 +13,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -50,9 +49,6 @@ namespace vnlc {
 
         [[nodiscard]] static std::optional<PrimitiveTypeReferenceKind> getPrimitiveTypeReferenceKind(TokenKind kind);
         [[nodiscard]] static std::optional<PrimitiveTypeExpressionKind> getPrimitiveTypeExpressionKind(TokenKind kind);
-        [[nodiscard]] static std::string_view getPrimitiveTypeName(PrimitiveTypeReferenceKind kind);
-
-        [[nodiscard]] std::string generateNamespaceIdFromTypeName(const TypeReferenceNode& typeNode);
 
         [[nodiscard]] ModuleParsingResult parseModule(ModuleParsingContext context);
         [[nodiscard]] TopIdentifierDeclarationParsingResult parseTopIdentifierDeclaration();

@@ -33,6 +33,7 @@ add_executable(
     ast/declaration/DeclarationNode.cpp
     ast/declaration/TypeDeclarationNode.cpp
     ast/declaration/FunctionDeclarationNode.cpp
+    ast/declaration/ConstructorDeclarationNode.cpp
     ast/declaration/ValueDeclarationNode.cpp
     ast/declaration/TypeAliasDeclarationNode.cpp
     ast/declaration/ClassDeclarationNode.cpp
@@ -94,6 +95,7 @@ add_executable(
     vni/import/ImportedMethod.cpp
     vni/import/ImportedFunc.cpp
     vni/import/ImportedClass.cpp
+    vni/import/ImportedConstructor.cpp
     vni/import/ImportedInterface.cpp
     vni/import/ImportedEnum.cpp
     vni/import/ImportedEnumValue.cpp

@@ -231,67 +231,6 @@ namespace vnlc {
         }
     }
 
-    std::string_view Parser::getPrimitiveTypeName(PrimitiveTypeReferenceKind kind) {
-        switch (kind) {
-            case PrimitiveTypeReferenceKind::BYTE:
-                return "byte";
-            case PrimitiveTypeReferenceKind::SHORT:
-                return "short";
-            case PrimitiveTypeReferenceKind::INT:
-                return "int";
-            case PrimitiveTypeReferenceKind::LONG:
-                return "long";
-            case PrimitiveTypeReferenceKind::FLOAT:
-                return "float";
-            case PrimitiveTypeReferenceKind::DOUBLE:
-                return "double";
-            case PrimitiveTypeReferenceKind::BOOLEAN:
-                return "bool";
-            case PrimitiveTypeReferenceKind::STRING:
-                return "string";
-        }
-        return {};
-    }
-
-    std::string Parser::generateNamespaceIdFromTypeName(const TypeReferenceNode& typeReferenceNode) {
-        std::string name;
-
-        if (const auto* primitiveTypeReferenceNode = dynamic_cast<const PrimitiveTypeReferenceNode*>(&typeReferenceNode)) {
-            return std::string(getPrimitiveTypeName(primitiveTypeReferenceNode->getKind()));
-        }
-
-        const auto* customizedTypeReferenceNode = dynamic_cast<const CustomizedTypeReferenceNode*>(&typeReferenceNode);
-        if (customizedTypeReferenceNode == nullptr) {
-            return name;
-        }
-
-        for (auto& part : customizedTypeReferenceNode->getNameParts()) {
-            std::string partName = std::string(part->getIdentifierString());
-            name += partName + ".";
-        }
-
-        if (name.ends_with(".")) {
-            name.pop_back();
-        }
-
-        if (!customizedTypeReferenceNode->getGenericArguments().empty()) {
-            name += ".-";
-
-            for (auto& generic : customizedTypeReferenceNode->getGenericArguments()) {
-                name += generateNamespaceIdFromTypeName(*generic);
-                name += "-";
-            }
-
-            if (name.ends_with("-")) {
-                name.pop_back();
-            }
-
-            name += "-.";
-        }
-
-        return name;
-    }
-
     ParseResult Parser::parse(const Config& config) {
         ModuleParsingContext context(config);
         auto result = parseModule(context);
@@ -1656,8 +1595,17 @@ namespace vnlc {
             metadataTerms = std::move(metadataResult.metadata);
         }
 
+        if (match(TokenKind::PUBLIC)) {
+            accessModifier = AccessModifier::PUBLIC;
+        } else if (match(TokenKind::PROTECTED)) {
+            accessModifier = AccessModifier::PROTECTED;
+        } else if (match(TokenKind::PRIVATE)) {
+            accessModifier = AccessModifier::PRIVATE;
+        }
+
         if (check(TokenKind::INIT)) {
             ConstructorParsingContext constructorContext{
+                .accessModifier = static_cast<FunctionDeclarationKind::AccessModifier>(accessModifier),
                 .hasMetadata = hasMetadata,
                 .metadataTerms = std::move(metadataTerms),
             };
@@ -1670,12 +1618,6 @@ namespace vnlc {
             return ClassMemberParsingResult{
                 .declaration = std::move(constructorResult.constructor),
             };
-        }
-
-        if (match(TokenKind::PUBLIC)) {
-            accessModifier = AccessModifier::PUBLIC;
-        } else if (match(TokenKind::PRIVATE)) {
-            accessModifier = AccessModifier::PRIVATE;
         }
 
         if (match(TokenKind::STATIC)) {
@@ -1749,11 +1691,9 @@ namespace vnlc {
 
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
 
-        Token identifierFirstToken = peek();
         if (!match(TokenKind::INIT)) {
             throw SyntaxError("Expected 'init' keyword", peek().getLine(), peek().getColumn());
         }
-        Token identifierLastToken = peek();
 
         if (!match(TokenKind::LEFT_PARENTHESIS)) {
             throw SyntaxError("Expected '('", peek().getLine(), peek().getColumn());
@@ -1773,52 +1713,16 @@ namespace vnlc {
 
         auto bodyResult = parseFunctionBody();
 
-        std::string name = "__vnl_constructor";
-
-        if (!parameters.empty()) {
-            name += '-';
-            for (auto& parameter : parameters) {
-                if (parameter->getType().has_value()) {
-                    name += '-' + generateNamespaceIdFromTypeName(*parameter->getType().value());
-                }
-            }
-        }
-
-        name += "__";
-        std::unique_ptr<IdentifierNode> nameNode = std::make_unique<IdentifierNode>(name, identifierFirstToken, identifierLastToken);
-
         Token lastToken = peek();
 
         if (context.hasMetadata) {
             return ConstructorParsingResult{
-                .constructor = std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationKind::Kind::REGULAR,
-                    FunctionDeclarationKind::Context::CLASS,
-                    FunctionDeclarationKind::AccessModifier::PUBLIC,
-                    FunctionDeclarationKind::Binding::INSTANCE,
-                    std::move(nameNode),
-                    std::move(parameters),
-                    std::nullopt,
-                    std::move(bodyResult.body),
-                    firstToken,
-                    lastToken,
-                    std::move(context.metadataTerms)
-                ),
+                .constructor = std::make_unique<
+                    ConstructorDeclarationNode>(context.accessModifier, std::move(parameters), std::move(bodyResult.body), firstToken, lastToken, std::move(context.metadataTerms)),
             };
         } else {
             return ConstructorParsingResult{
-                .constructor = std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationKind::Kind::REGULAR,
-                    FunctionDeclarationKind::Context::CLASS,
-                    FunctionDeclarationKind::AccessModifier::PUBLIC,
-                    FunctionDeclarationKind::Binding::INSTANCE,
-                    std::move(nameNode),
-                    std::move(parameters),
-                    std::nullopt,
-                    std::move(bodyResult.body),
-                    firstToken,
-                    lastToken
-                ),
+                .constructor = std::make_unique<ConstructorDeclarationNode>(context.accessModifier, std::move(parameters), std::move(bodyResult.body), firstToken, lastToken),
             };
         }
     }

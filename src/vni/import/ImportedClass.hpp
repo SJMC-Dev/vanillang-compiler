@@ -1,6 +1,7 @@
 #ifndef VNLC_IMPORTED_CLASS_HPP
 #define VNLC_IMPORTED_CLASS_HPP
 
+#include "vni/import/ImportedConstructor.hpp"
 #include "vni/import/ImportedIdentifier.hpp"
 #include "vni/import/ImportedMethod.hpp"
 #include "vni/import/ImportedProperty.hpp"
@@ -17,6 +18,7 @@ namespace vnlc {
         std::vector<std::string> genericParameters;
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>> properties;
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
+        std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
 
     public:
         ImportedClass(
@@ -27,6 +29,7 @@ namespace vnlc {
             std::vector<std::string>&& genericParameters,
             std::unordered_map<std::string, std::unique_ptr<ImportedProperty>>&& properties,
             std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods,
+            std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>&& constructors,
             std::unordered_map<std::string, std::optional<std::string>>&& metadata
         );
 
@@ -37,7 +40,8 @@ namespace vnlc {
             bool final,
             std::vector<std::string>&& genericParameters,
             std::unordered_map<std::string, std::unique_ptr<ImportedProperty>>&& properties,
-            std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods
+            std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods,
+            std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>&& constructors
         );
 
         [[nodiscard]] const std::optional<std::string>& getBaseClass() const;
@@ -46,9 +50,11 @@ namespace vnlc {
         [[nodiscard]] const std::vector<std::string>& getGenericParameters() const;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedProperty>>& getProperties() const;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>& getMethods() const;
+        [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>& getConstructors() const;
 
         [[nodiscard]] const ImportedProperty* getPropertyByName(std::string_view name) const;
         [[nodiscard]] const ImportedMethod* getMethodByName(std::string_view name) const;
+        [[nodiscard]] const ImportedConstructor* getConstructorByName(std::string_view name) const;
     };
 } // namespace vnlc
 

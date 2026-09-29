@@ -9,6 +9,7 @@ namespace vnlc {
         std::vector<std::string>&& genericParameters,
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>>&& properties,
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods,
+        std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>&& constructors,
         std::unordered_map<std::string, std::optional<std::string>>&& metadata
     )
         : ImportedIdentifier(name, std::move(metadata)),
@@ -17,7 +18,8 @@ namespace vnlc {
           final(final),
           genericParameters(std::move(genericParameters)),
           properties(std::move(properties)),
-          methods(std::move(methods)) {}
+          methods(std::move(methods)),
+          constructors(std::move(constructors)) {}
 
     ImportedClass::ImportedClass(
         std::string_view name,
@@ -26,7 +28,8 @@ namespace vnlc {
         bool final,
         std::vector<std::string>&& genericParameters,
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>>&& properties,
-        std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods
+        std::unordered_map<std::string, std::unique_ptr<ImportedMethod>>&& methods,
+        std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>&& constructors
     )
         : ImportedIdentifier(name),
           baseClass(std::move(baseClass)),
@@ -34,7 +37,8 @@ namespace vnlc {
           final(final),
           genericParameters(std::move(genericParameters)),
           properties(std::move(properties)),
-          methods(std::move(methods)) {}
+          methods(std::move(methods)),
+          constructors(std::move(constructors)) {}
 
     const std::optional<std::string>& ImportedClass::getBaseClass() const {
         return baseClass;
@@ -60,6 +64,10 @@ namespace vnlc {
         return methods;
     }
 
+    const std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>>& ImportedClass::getConstructors() const {
+        return constructors;
+    }
+
     const ImportedProperty* ImportedClass::getPropertyByName(std::string_view name) const {
         auto it = properties.find(std::string(name));
         if (it != properties.end()) {
@@ -71,6 +79,14 @@ namespace vnlc {
     const ImportedMethod* ImportedClass::getMethodByName(std::string_view name) const {
         auto it = methods.find(std::string(name));
         if (it != methods.end()) {
+            return it->second.get();
+        }
+        return nullptr;
+    }
+
+    const ImportedConstructor* ImportedClass::getConstructorByName(std::string_view name) const {
+        auto it = constructors.find(std::string(name));
+        if (it != constructors.end()) {
             return it->second.get();
         }
         return nullptr;

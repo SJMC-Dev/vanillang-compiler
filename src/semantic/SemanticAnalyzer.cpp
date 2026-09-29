@@ -1,5 +1,6 @@
 #include "SemanticAnalyzer.hpp"
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/EnumMemberDeclarationNode.hpp"
 #include "ast/declaration/InterfaceDeclarationNode.hpp"
@@ -47,6 +48,7 @@
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedClass.hpp"
+#include "vni/import/ImportedConstructor.hpp"
 #include "vni/import/ImportedEnum.hpp"
 #include "vni/import/ImportedEnumMember.hpp"
 #include "vni/import/ImportedEnumValue.hpp"
@@ -104,6 +106,7 @@ namespace vnlc {
         if (dynamic_cast<const ImportedEnumMember*>(&item)) return SymbolKind::ENUM_MEMBER;
         if (dynamic_cast<const ImportedProperty*>(&item) || dynamic_cast<const ImportedEnumValue*>(&item)) return SymbolKind::PROPERTY;
         if (dynamic_cast<const ImportedMethod*>(&item)) return SymbolKind::METHOD;
+        if (dynamic_cast<const ImportedConstructor*>(&item)) return SymbolKind::FUNCTION;
         if (dynamic_cast<const ImportedParameter*>(&item)) return SymbolKind::PARAMETER;
         return SymbolKind::IMPORT_ALIAS;
     }
@@ -138,6 +141,8 @@ namespace vnlc {
             accessModifier = property->getAccessModifier();
         } else if (const auto* method = dynamic_cast<const ImportedMethod*>(&item)) {
             accessModifier = method->getAccessModifier();
+        } else if (const auto* constructor = dynamic_cast<const ImportedConstructor*>(&item)) {
+            accessModifier = constructor->getAccessModifier();
         }
         if (accessModifier == "private") return SymbolAccessModifier::PRIVATE;
         if (accessModifier == "protected") return SymbolAccessModifier::PROTECTED;
@@ -292,6 +297,9 @@ namespace vnlc {
         } else if (const auto* classType = dynamic_cast<const ImportedClass*>(&item)) {
             declareChildren(classType->getProperties());
             declareChildren(classType->getMethods());
+            for (const auto& entry : classType->getConstructors()) {
+                registerImportedScopes(*entry.second, &scope);
+            }
             declareGenericParameters(classType->getGenericParameters());
         } else if (const auto* interfaceType = dynamic_cast<const ImportedInterface*>(&item)) {
             declareChildren(interfaceType->getMethods());
@@ -307,6 +315,8 @@ namespace vnlc {
             declareChildren(function->getParameters());
         } else if (const auto* method = dynamic_cast<const ImportedMethod*>(&item)) {
             declareChildren(method->getParameters());
+        } else if (const auto* constructor = dynamic_cast<const ImportedConstructor*>(&item)) {
+            declareChildren(constructor->getParameters());
         }
     }
 
@@ -795,6 +805,24 @@ namespace vnlc {
         context.popScope();
     }
 
+    void SemanticAnalyzer::checkConstructorDeclaration(const ConstructorDeclarationNode& constructorDecl, MetadataInfo metadataInfo) {
+        context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, &context.currentScope(), &constructorDecl));
+        for (const auto& param : constructorDecl.getParameters()) {
+            Symbol paramSymbol(SymbolKind::PARAMETER, SymbolAccessModifier::PUBLIC, param->getName().getIdentifierString(), param.get());
+            if (!context.currentScope().declare(std::move(paramSymbol))) {
+                context.reportError(*param, fmt::format("Redeclaration of parameter '{}'", param->getName().getIdentifierString()));
+            }
+        }
+
+        for (const auto& param : constructorDecl.getParameters()) {
+            checkValueDeclaration(*param);
+        }
+
+        checkStatement(constructorDecl.getBody());
+
+        context.popScope();
+    }
+
     void SemanticAnalyzer::checkClassDeclaration(const ClassDeclarationNode& classDecl, const Config& config, MetadataInfo metadataInfo) {
         context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, &context.currentScope(), &classDecl));
 
@@ -809,7 +837,7 @@ namespace vnlc {
                 if (!context.currentScope().declare(std::move(memberSymbol))) {
                     context.reportError(*funcDecl, fmt::format("Redeclaration of class member '{}'", funcDecl->getName().getIdentifierString()));
                 }
-            } else {
+            } else if (dynamic_cast<ConstructorDeclarationNode*>(member.get()) == nullptr) {
                 context.reportError(*member, "Invalid class member declaration");
             }
         }
@@ -826,6 +854,8 @@ namespace vnlc {
                 checkValueDeclaration(*varDecl);
             } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
                 checkFunctionDeclaration(*funcDecl);
+            } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
+                checkConstructorDeclaration(*constructorDecl);
             } else {
                 context.reportError(*member, "Invalid class member declaration");
             }

@@ -3,6 +3,7 @@
 
 #include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedClass.hpp"
+#include "vni/import/ImportedConstructor.hpp"
 #include "vni/import/ImportedEnum.hpp"
 #include "vni/import/ImportedEnumMember.hpp"
 #include "vni/import/ImportedEnumValue.hpp"
@@ -33,6 +34,7 @@ namespace vnlc {
         std::unique_ptr<ImportedLet> parseImportedLet(std::string_view key, const nlohmann::json& value);
         std::unique_ptr<ImportedFunc> parseImportedFunc(std::string_view key, const nlohmann::json& value);
         std::unique_ptr<ImportedMethod> parseImportedMethod(std::string_view key, const nlohmann::json& value);
+        std::unique_ptr<ImportedConstructor> parseImportedConstructor(std::string_view key, const nlohmann::json& value);
         std::unique_ptr<ImportedClass> parseImportedClass(std::string_view key, const nlohmann::json& value);
         std::unique_ptr<ImportedInterface> parseImportedInterface(std::string_view key, const nlohmann::json& value);
         std::unique_ptr<ImportedEnum> parseImportedEnum(std::string_view key, const nlohmann::json& value);

@@ -2,6 +2,7 @@
 #define VNLC_SEMANTIC_ANALYZER_HPP
 
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/ExportDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
@@ -60,6 +61,7 @@ namespace vnlc {
         void checkExport(const ExportDeclarationNode& exportDecl);
         void checkValueDeclaration(const ValueDeclarationNode& varDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkFunctionDeclaration(const FunctionDeclarationNode& funcDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
+        void checkConstructorDeclaration(const ConstructorDeclarationNode& constructorDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkClassDeclaration(const ClassDeclarationNode& classDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkInterfaceDeclaration(const InterfaceDeclarationNode& interfaceDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkEnumDeclaration(const EnumDeclarationNode& enumDecl, const Config& config, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
