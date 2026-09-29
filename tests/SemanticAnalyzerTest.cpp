@@ -634,7 +634,8 @@ func test() {
             "visible": {"category": "property", "type": "T", "static": false, "accessModifier": "public"},
             "secret": {"category": "property", "type": "int", "static": true, "accessModifier": "private"}},
         "methods": {"apply": {"category": "method", "returnType": "T", "native": false, "static": false, "accessModifier": "protected",
-            "parameters": {"input": {"category": "parameter", "type": "T"}}}}},
+            "parameters": {"input": {"category": "parameter", "type": "T"}}}},
+        "constructors": {}},
     "Readable": {"category": "interface", "genericParameters": ["R"],
         "methods": {"read": {"category": "method", "returnType": "R", "native": false, "static": false, "accessModifier": "public",
             "parameters": {"input": {"category": "parameter", "type": "R"}}}}},
@@ -1326,7 +1327,7 @@ func test() {
             R"({
     "value": {"category": "let", "type": "int"},
     "run": {"category": "func", "returnType": "void", "parameters": {}, "native": false},
-    "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
+    "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "constructors": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
     "Readable": {"category": "interface", "genericParameters": [], "methods": {}},
     "State": {"category": "enum", "genericParameters": [], "members": {}},
     "Alias": {"category": "typealias", "genericParameters": [], "originalType": "int"},
@@ -1457,7 +1458,7 @@ func test() {
     TEST_F(SemanticAnalyzerImportTest, RegistersReexportedTypeScopesUnderTheirOriginalPackageAndModule) {
         writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"extra.types.Box"},"Alias":{"category":"imported","source":"extra.types.Alias"}})");
         writeFile("another_source/types.vni", R"({
-    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"baseClass":null,"implementedInterfaces":[],"final":false},
+    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"baseClass":null,"implementedInterfaces":[],"final":false},
     "Alias":{"category":"typealias","genericParameters":["T"],"originalType":"T"}
 })");
 

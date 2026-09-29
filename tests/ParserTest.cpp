@@ -1,4 +1,5 @@
 #include "parser/Parser.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/expression/BinaryExpressionNode.hpp"
 #include "ast/expression/IdentifierLikeExpressionNode.hpp"
@@ -134,6 +135,36 @@ namespace vnlc {
         EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationKind::AccessModifier::PUBLIC);
         EXPECT_TRUE(staticProperty->getType().has_value());
         EXPECT_TRUE(staticProperty->getInitializer().has_value());
+    }
+
+    TEST(ParserTest, ConstructorDeclarationsUseConstructorDeclarationNode) {
+        std::stringstream input("class Example {\n    protected init(value: string) {\n        let copy = value\n    }\n}\n");
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 1);
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
+        ASSERT_NE(classDeclaration, nullptr);
+        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 1);
+
+        const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(classDeclaration->getMemberDeclarations().front().get());
+        ASSERT_NE(constructor, nullptr);
+        EXPECT_EQ(constructor->getAccessModifier(), FunctionDeclarationKind::AccessModifier::PROTECTED);
+        ASSERT_EQ(constructor->getParameters().size(), 1);
+        EXPECT_EQ(constructor->getParameters().front()->getName().getIdentifierString(), "value");
+        EXPECT_EQ(constructor->getBody().getStatements().size(), 1);
     }
 
     TEST(ParserTest, ParsesNoneAsPrimaryExpression) {
@@ -319,7 +350,8 @@ namespace vnlc {
         std::filesystem::create_directories(testDirectory / "second_source");
 
         std::ofstream firstModuleInterface(testDirectory / "first_source" / "models.vni");
-        firstModuleInterface << R"({"Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"baseClass":null,"implementedInterfaces":[],"final":false}})";
+        firstModuleInterface
+            << R"({"Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"baseClass":null,"implementedInterfaces":[],"final":false}})";
         firstModuleInterface.close();
 
         std::ofstream secondModuleInterface(testDirectory / "second_source" / "models.vni");

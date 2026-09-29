@@ -22,6 +22,7 @@
 #include "vni/export/ModuleInterfaceFileGenerator.hpp"
 #include "vni/import/ImportedAlias.hpp"
 #include "vni/import/ImportedClass.hpp"
+#include "vni/import/ImportedConstructor.hpp"
 #include "vni/import/ImportedEnum.hpp"
 #include "vni/import/ImportedEnumMember.hpp"
 #include "vni/import/ImportedEnumValue.hpp"
@@ -328,6 +329,21 @@ namespace vnlc {
         EXPECT_FALSE(method.isNative());
     }
 
+    TEST_F(VniTest, ImportedConstructorStoresParametersAndAccessModifier) {
+        std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
+        parameters.emplace("amount", std::make_unique<ImportedParameter>("amount", "int"));
+
+        const ImportedConstructor constructor("init", std::move(parameters), "protected");
+
+        EXPECT_EQ(constructor.getName(), "init");
+        EXPECT_EQ(constructor.getAccessModifier(), "protected");
+        ASSERT_EQ(constructor.getParameters().size(), 1);
+        const auto* parameter = constructor.getParameterByName("amount");
+        ASSERT_NE(parameter, nullptr);
+        EXPECT_EQ(parameter->getType(), "int");
+        EXPECT_EQ(constructor.getParameterByName("missing"), nullptr);
+    }
+
     TEST_F(VniTest, ImportedClassStoresBaseClassInterfacesAndMembers) {
         std::unordered_map<std::string, std::unique_ptr<ImportedProperty>> properties;
         properties.emplace("count", std::make_unique<ImportedProperty>("count", "int", true, "protected"));
@@ -336,7 +352,10 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
         methods.emplace("read", std::make_unique<ImportedMethod>("read", "string", std::move(parameters), false, false, "public"));
 
-        const ImportedClass importedClass("Box", std::optional<std::string>("Base"), { "Readable" }, true, { "T" }, std::move(properties), std::move(methods));
+        std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
+        constructors.emplace("init", std::make_unique<ImportedConstructor>("init", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, "public"));
+
+        const ImportedClass importedClass("Box", std::optional<std::string>("Base"), { "Readable" }, true, { "T" }, std::move(properties), std::move(methods), std::move(constructors));
 
         EXPECT_EQ(importedClass.getName(), "Box");
         ASSERT_TRUE(importedClass.getBaseClass().has_value());
@@ -355,10 +374,14 @@ namespace vnlc {
         EXPECT_EQ(method->getReturnType(), "string");
         EXPECT_FALSE(method->isStatic());
         EXPECT_FALSE(method->isNative());
+
+        const auto* constructor = importedClass.getConstructorByName("init");
+        ASSERT_NE(constructor, nullptr);
+        EXPECT_EQ(constructor->getAccessModifier(), "public");
     }
 
     TEST_F(VniTest, ImportedClassAllowsNoBaseClassAndEmptyMembers) {
-        const ImportedClass importedClass("Empty", std::nullopt, {}, false, {}, {}, {});
+        const ImportedClass importedClass("Empty", std::nullopt, {}, false, {}, {}, {}, {});
 
         EXPECT_FALSE(importedClass.getBaseClass().has_value());
         EXPECT_TRUE(importedClass.getImplementedInterfaces().empty());
@@ -366,6 +389,7 @@ namespace vnlc {
         EXPECT_TRUE(importedClass.getGenericParameters().empty());
         EXPECT_TRUE(importedClass.getProperties().empty());
         EXPECT_TRUE(importedClass.getMethods().empty());
+        EXPECT_TRUE(importedClass.getConstructors().empty());
     }
 
     TEST_F(VniTest, ImportedInterfaceStoresGenericParametersAndMethods) {
@@ -501,6 +525,18 @@ namespace vnlc {
                 "accessModifier": "public"
             }
         },
+        "constructors": {
+            "init": {
+                "category": "constructor",
+                "parameters": {
+                    "amount": {
+                        "category": "parameter",
+                        "type": "int"
+                    }
+                },
+                "accessModifier": "protected"
+            }
+        },
         "baseClass": "Base",
         "implementedInterfaces": ["Readable"],
         "final": true
@@ -593,6 +629,12 @@ namespace vnlc {
         EXPECT_EQ(method->getReturnType(), "T");
         EXPECT_FALSE(method->isStatic());
         EXPECT_FALSE(method->isNative());
+        const auto* constructor = importedClass->getConstructorByName("init");
+        ASSERT_NE(constructor, nullptr);
+        EXPECT_EQ(constructor->getAccessModifier(), "protected");
+        const auto* constructorParameter = constructor->getParameterByName("amount");
+        ASSERT_NE(constructorParameter, nullptr);
+        EXPECT_EQ(constructorParameter->getType(), "int");
 
         const auto* importedInterfaceIdentifier = module->getIdentifierByName("Readable");
         ASSERT_NE(importedInterfaceIdentifier, nullptr);

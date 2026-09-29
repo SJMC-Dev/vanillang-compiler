@@ -21,6 +21,7 @@
                     "category": "method"
                 }
             }
-        }
+        },
+        "constructors": {}
     }
 }
