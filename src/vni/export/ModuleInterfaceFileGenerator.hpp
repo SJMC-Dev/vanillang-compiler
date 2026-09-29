@@ -2,6 +2,7 @@
 #define VNLC_MODULE_INTERFACE_FILE_GENERATOR_HPP
 
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/DeclarationNode.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
@@ -34,6 +35,7 @@ namespace vnlc {
         [[nodiscard]] nlohmann::json stringifyTypeAlias(const TypeAliasDeclarationNode* typeAliasNode);
         [[nodiscard]] nlohmann::json stringifyProperty(const ValueDeclarationNode* property);
         [[nodiscard]] nlohmann::json stringifyMethod(const FunctionDeclarationNode* method);
+        [[nodiscard]] nlohmann::json stringifyConstructor(const ConstructorDeclarationNode* constructor);
         [[nodiscard]] nlohmann::json stringifyImported(std::string_view importedAlias);
 
     public:

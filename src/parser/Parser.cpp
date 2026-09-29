@@ -1605,7 +1605,7 @@ namespace vnlc {
 
         if (check(TokenKind::INIT)) {
             ConstructorParsingContext constructorContext{
-                .accessModifier = static_cast<FunctionDeclarationKind::AccessModifier>(accessModifier),
+                .accessModifier = static_cast<ConstructorDeclarationKind::AccessModifier>(accessModifier),
                 .hasMetadata = hasMetadata,
                 .metadataTerms = std::move(metadataTerms),
             };

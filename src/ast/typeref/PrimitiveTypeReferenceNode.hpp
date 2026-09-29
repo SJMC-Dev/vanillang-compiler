@@ -3,6 +3,7 @@
 
 #include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
+#include <string_view>
 
 namespace vnlc {
     class PrimitiveTypeReferenceNode : public TypeReferenceNode {
@@ -15,6 +16,7 @@ namespace vnlc {
         PrimitiveTypeReferenceNode(PrimitiveTypeReferenceKind kind, bool questionMarkSuffix, const Token& firstToken, const Token& lastToken) noexcept;
 
         [[nodiscard]] const PrimitiveTypeReferenceKind getKind() const noexcept;
+        [[nodiscard]] std::string_view getPrimitiveTypeName() const noexcept;
     };
 } // namespace vnlc
 

@@ -1,5 +1,6 @@
 #include "ModuleInterfaceFileGenerator.hpp"
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "nlohmann/json_fwd.hpp"
@@ -152,17 +153,21 @@ namespace vnlc {
 
         nlohmann::json propertiesObj = nlohmann::json::object();
         nlohmann::json methodsObj = nlohmann::json::object();
+        nlohmann::json constructorsObj = nlohmann::json::object();
 
         for (const auto& memberDeclaration : classNode->getMemberDeclarations()) {
             if (const auto* property = dynamic_cast<const ValueDeclarationNode*>(memberDeclaration.get())) {
                 propertiesObj.emplace(property->getName().getIdentifierString(), stringifyProperty(property));
             } else if (const auto* method = dynamic_cast<const FunctionDeclarationNode*>(memberDeclaration.get())) {
                 methodsObj.emplace(method->getName().getIdentifierString(), stringifyMethod(method));
+            } else if (const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(memberDeclaration.get())) {
+                constructorsObj.emplace(constructor->getInternalName(), stringifyConstructor(constructor));
             }
         }
 
         classObj.emplace("properties", propertiesObj);
         classObj.emplace("methods", methodsObj);
+        classObj.emplace("constructors", constructorsObj);
 
         return classObj;
     }
@@ -347,6 +352,39 @@ namespace vnlc {
         importedObj.emplace("source", importedAlias);
 
         return importedObj;
+    }
+
+    nlohmann::json ModuleInterfaceFileGenerator::stringifyConstructor(const ConstructorDeclarationNode* constructor) {
+        nlohmann::json constructorObj = nlohmann::json::object();
+        constructorObj.emplace("category", "constructor");
+
+        const auto& metadata = constructor->getMetadataTerms();
+        if (!metadata.empty()) {
+            constructorObj.emplace("metadata", stringifyMetadata(metadata));
+        }
+
+        nlohmann::json parametersObj = nlohmann::json::object();
+        for (const auto& parameter : constructor->getParameters()) {
+            parametersObj.emplace(parameter->getName().getIdentifierString(), stringifyParameter(parameter.get()));
+        }
+
+        constructorObj.emplace("parameters", parametersObj);
+
+        std::string accessModifier;
+        switch (constructor->getAccessModifier()) {
+            case ConstructorDeclarationKind::AccessModifier::PUBLIC:
+                accessModifier = "public";
+                break;
+            case ConstructorDeclarationKind::AccessModifier::PROTECTED:
+                accessModifier = "protected";
+                break;
+            case ConstructorDeclarationKind::AccessModifier::PRIVATE:
+                accessModifier = "private";
+                break;
+        }
+        constructorObj.emplace("accessModifier", accessModifier);
+
+        return constructorObj;
     }
 
     void ModuleInterfaceFileGenerator::generate() {
