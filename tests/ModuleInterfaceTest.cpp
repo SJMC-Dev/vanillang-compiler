@@ -1,4 +1,5 @@
 #include "ast/declaration/ClassDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/DeclarationItem.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
 #include "ast/declaration/EnumMemberDeclarationNode.hpp"
@@ -9,6 +10,7 @@
 #include "ast/declaration/ValueDeclarationKind.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/identifier/IdentifierNode.hpp"
+#include "ast/statement/BlockStatementNode.hpp"
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
 #include "config/Config.hpp"
@@ -117,6 +119,21 @@ namespace vnlc {
                 std::move(parameters),
                 std::move(returnType),
                 std::nullopt,
+                testToken,
+                testToken,
+                std::move(metadata)
+            );
+        }
+
+        std::unique_ptr<ConstructorDeclarationNode> makeConstructor(
+            ConstructorDeclarationKind::AccessModifier accessModifier,
+            std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
+            std::vector<DeclarationItem::MetadataTerm>&& metadata = {}
+        ) {
+            return std::make_unique<ConstructorDeclarationNode>(
+                accessModifier,
+                std::move(parameters),
+                std::make_unique<BlockStatementNode>(std::vector<std::unique_ptr<StatementNode>>{}, testToken, testToken),
                 testToken,
                 testToken,
                 std::move(metadata)
@@ -833,6 +850,8 @@ namespace vnlc {
         const auto* propertyTypeReferenceNode = propertyType.get();
         auto methodReturnType = makeType("string");
         const auto* methodReturnTypeReferenceNode = methodReturnType.get();
+        auto constructorParameterType = makeType("int");
+        const auto* constructorParameterTypeReferenceNode = constructorParameterType.get();
 
         std::vector<std::unique_ptr<TypeReferenceNode>> implementedInterfaces;
         implementedInterfaces.push_back(std::move(implementedInterface));
@@ -866,6 +885,15 @@ namespace vnlc {
             {},
             std::make_optional(std::move(methodReturnType))
         ));
+        std::vector<std::unique_ptr<ValueDeclarationNode>> constructorParameters;
+        constructorParameters.push_back(makeValue(
+            ValueDeclarationKind::Kind::PARAMETER,
+            ValueDeclarationKind::Context::FUNCTION,
+            ValueDeclarationKind::AccessModifier::PUBLIC,
+            "amount",
+            std::make_optional(std::move(constructorParameterType))
+        ));
+        members.push_back(makeConstructor(ConstructorDeclarationKind::AccessModifier::PROTECTED, std::move(constructorParameters), makeMetadata()));
 
         auto declaration = makeClass(true, "Box", std::make_optional(std::move(baseClass)), std::move(implementedInterfaces), std::move(genericParameters), std::move(members), makeMetadata());
         const auto* declarationNode = declaration.get();
@@ -875,6 +903,7 @@ namespace vnlc {
                 { implementedInterfaceNode, &interfaceType },
                 { propertyTypeReferenceNode, PrimitiveType::intType() },
                 { methodReturnTypeReferenceNode, PrimitiveType::stringType() },
+                { constructorParameterTypeReferenceNode, PrimitiveType::intType() },
             }
         );
 
@@ -899,6 +928,13 @@ namespace vnlc {
         EXPECT_FALSE(json["Box"]["methods"]["label"]["native"]);
         EXPECT_EQ(json["Box"]["methods"]["label"]["returnType"], "string");
         EXPECT_EQ(json["Box"]["methods"]["label"]["accessModifier"], "private");
+        ASSERT_EQ(json["Box"]["constructors"].size(), 1);
+        const auto& constructor = json["Box"]["constructors"]["__vnl_constructor--int__"];
+        EXPECT_EQ(constructor["category"], "constructor");
+        EXPECT_EQ(constructor["parameters"]["amount"]["category"], "parameter");
+        EXPECT_EQ(constructor["parameters"]["amount"]["type"], "int");
+        EXPECT_EQ(constructor["accessModifier"], "protected");
+        EXPECT_EQ(constructor["metadata"]["since"], "1.0");
     }
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesInterfaceWithMethod) {

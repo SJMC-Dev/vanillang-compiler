@@ -161,7 +161,8 @@ namespace vnlc {
 
         const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(classDeclaration->getMemberDeclarations().front().get());
         ASSERT_NE(constructor, nullptr);
-        EXPECT_EQ(constructor->getAccessModifier(), FunctionDeclarationKind::AccessModifier::PROTECTED);
+        EXPECT_EQ(constructor->getInternalName(), "__vnl_constructor--string__");
+        EXPECT_EQ(constructor->getAccessModifier(), ConstructorDeclarationKind::AccessModifier::PROTECTED);
         ASSERT_EQ(constructor->getParameters().size(), 1);
         EXPECT_EQ(constructor->getParameters().front()->getName().getIdentifierString(), "value");
         EXPECT_EQ(constructor->getBody().getStatements().size(), 1);
@@ -258,6 +259,7 @@ namespace vnlc {
         const auto* primitiveReference = dynamic_cast<const PrimitiveTypeReferenceNode*>(primitiveValueStatement->getVariableDeclaration().getType().value().get());
         ASSERT_NE(primitiveReference, nullptr);
         EXPECT_EQ(primitiveReference->getKind(), PrimitiveTypeReferenceKind::INT);
+        EXPECT_EQ(primitiveReference->getPrimitiveTypeName(), "int");
         EXPECT_TRUE(primitiveReference->hasQuestionMarkSuffix());
 
         const auto* customizedValueStatement = dynamic_cast<const VariableDeclarationStatementNode*>(statements[3].get());
