@@ -1978,12 +1978,16 @@ namespace vnlc {
     EqualityExpressionParsingResult Parser::parseEqualityExpression() {
         static const std::unordered_set<TokenKind> equalityOperators = {
             TokenKind::DOUBLE_EQUAL,
+            TokenKind::TRIPLE_EQUAL,
             TokenKind::EXCLAMATION_EQUAL,
+            TokenKind::EXCLAMATION_DOUBLE_EQUAL,
         };
 
         static const std::unordered_map<TokenKind, BinaryExpressionKind> equalityExpressionKinds = {
             { TokenKind::DOUBLE_EQUAL, BinaryExpressionKind::EQUAL },
+            { TokenKind::TRIPLE_EQUAL, BinaryExpressionKind::REFERENCE_EQUAL },
             { TokenKind::EXCLAMATION_EQUAL, BinaryExpressionKind::NOT_EQUAL },
+            { TokenKind::EXCLAMATION_DOUBLE_EQUAL, BinaryExpressionKind::REFERENCE_NOT_EQUAL },
         };
 
         Token firstToken = peek();
