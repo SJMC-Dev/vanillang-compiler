@@ -5,7 +5,7 @@
 namespace vnlc {
 
     TEST(LexerTest, Keywords) {
-        std::istringstream input("let func if case class this public\nreadonly none true false \n import lambda command");
+        std::istringstream input("let func if case class this public\nreadonly none true false \n import lambda command op");
         Lexer lexer(input);
 
         ASSERT_TRUE(lexer.hasNext());
@@ -66,6 +66,10 @@ namespace vnlc {
         ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::COMMAND);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::OP);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::END_OF_FILE);
         ASSERT_FALSE(lexer.hasNext());
@@ -336,6 +340,29 @@ namespace vnlc {
         ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::LEXICAL_ERROR);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::END_OF_FILE);
+        ASSERT_FALSE(lexer.hasNext());
+    }
+
+    TEST(LexerTest, IdentityEqualityOperators) {
+        std::istringstream input("=== !== == !=");
+        Lexer lexer(input);
+
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::TRIPLE_EQUAL);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::EXCLAMATION_DOUBLE_EQUAL);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::DOUBLE_EQUAL);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::BLANK);
+        ASSERT_TRUE(lexer.hasNext());
+        ASSERT_EQ(lexer.next().getKind(), TokenKind::EXCLAMATION_EQUAL);
         ASSERT_TRUE(lexer.hasNext());
         ASSERT_EQ(lexer.next().getKind(), TokenKind::END_OF_FILE);
         ASSERT_FALSE(lexer.hasNext());
