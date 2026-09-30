@@ -611,6 +611,101 @@ class Vec3 {
         EXPECT_EQ(result.getErrors()[0].getMessage(), "Redeclaration of class member '__vnl_operator_addition--int__'");
     }
 
+    TEST(SemanticAnalyzerTest, CollectsFunctionAndMethodOverloadings) {
+        constexpr std::string_view source = R"(
+func convert(value: int) {}
+func convert(value: string) {}
+class Converter {
+    func convert(value: int) {}
+    func convert(value: string) {}
+}
+interface Readable {
+    func convert(value: int) -> void
+    func convert(value: string) -> void
+}
+)";
+        const auto config = makeConfig("overloads.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+
+        const auto* moduleScope = result.getScopeByAstNode(*module);
+        ASSERT_NE(moduleScope, nullptr);
+        const auto* moduleFunction = dynamic_cast<const FunctionSymbol*>(moduleScope->lookupLocal("convert"));
+        ASSERT_NE(moduleFunction, nullptr);
+        EXPECT_EQ(moduleFunction->getOverloadings().size(), 2);
+        EXPECT_NE(moduleFunction->getOverloadingByInternalName("__vnl_function_convert--int__"), nullptr);
+        EXPECT_NE(moduleFunction->getOverloadingByInternalName("__vnl_function_convert--string__"), nullptr);
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[2].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        const auto* classScope = result.getScopeByAstNode(*classDeclaration);
+        ASSERT_NE(classScope, nullptr);
+        const auto* classFunction = dynamic_cast<const FunctionSymbol*>(classScope->lookupLocal("convert"));
+        ASSERT_NE(classFunction, nullptr);
+        EXPECT_EQ(classFunction->getOverloadings().size(), 2);
+        EXPECT_NE(classFunction->getOverloadingByInternalName("__vnl_function_convert--int__"), nullptr);
+        EXPECT_NE(classFunction->getOverloadingByInternalName("__vnl_function_convert--string__"), nullptr);
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[3].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        const auto* interfaceScope = result.getScopeByAstNode(*interfaceDeclaration);
+        ASSERT_NE(interfaceScope, nullptr);
+        const auto* interfaceFunction = dynamic_cast<const FunctionSymbol*>(interfaceScope->lookupLocal("convert"));
+        ASSERT_NE(interfaceFunction, nullptr);
+        EXPECT_EQ(interfaceFunction->getOverloadings().size(), 2);
+        EXPECT_NE(interfaceFunction->getOverloadingByInternalName("__vnl_function_convert--int__"), nullptr);
+        EXPECT_NE(interfaceFunction->getOverloadingByInternalName("__vnl_function_convert--string__"), nullptr);
+    }
+
+    TEST(SemanticAnalyzerTest, RejectsDuplicateFunctionOverloadings) {
+        constexpr std::string_view source = R"(
+func duplicate(value: int) {}
+func duplicate(value: int) {}
+class Duplicator {
+    func duplicate(value: int) {}
+    func duplicate(value: int) {}
+}
+interface Duplicable {
+    func duplicate(value: int) -> void
+    func duplicate(value: int) -> void
+}
+)";
+        const auto config = makeConfig("duplicate_overloads.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 3);
+        EXPECT_EQ(result.getErrors()[0].getMessage(), "Redeclaration of symbol '__vnl_function_duplicate--int__'");
+        EXPECT_EQ(result.getErrors()[1].getMessage(), "Redeclaration of class member '__vnl_function_duplicate--int__'");
+        EXPECT_EQ(result.getErrors()[2].getMessage(), "Redeclaration of interface method '__vnl_function_duplicate--int__'");
+    }
+
+    TEST(SemanticAnalyzerTest, RejectsFunctionAndNonFunctionNameCollisions) {
+        constexpr std::string_view source = R"(
+let value = 0
+func value(input: int) {}
+)";
+        const auto config = makeConfig("function_collision.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_TRUE(result.hasErrors());
+        ASSERT_EQ(result.getErrors().size(), 1);
+        EXPECT_EQ(result.getErrors()[0].getMessage(), "Redeclaration of symbol 'value'");
+    }
+
     TEST(SemanticContextTest, RetainsPoppedScopesAndTheirParents) {
         const auto config = makeConfig("scopes.vnl");
         const auto module = parseModule("class Sample {}", config);
@@ -839,8 +934,14 @@ class Vec3 {
             const auto* scope = result.getScopeByAstNode(*module);
             EXPECT_NE(scope, nullptr);
             if (scope == nullptr) return nullptr;
-            const auto* symbol = asRegularSymbol(scope->lookupLocal(name));
-            return symbol != nullptr ? symbol->getImportedNode() : nullptr;
+            const Symbol* symbol = scope->lookupLocal(name);
+            if (const auto* regularSymbol = dynamic_cast<const RegularSymbol*>(symbol)) {
+                return regularSymbol->getImportedNode();
+            }
+            if (const auto* functionSymbol = dynamic_cast<const FunctionSymbol*>(symbol); functionSymbol != nullptr && functionSymbol->isUnique()) {
+                return functionSymbol->getOverloadings().begin()->second.getImportedNode();
+            }
+            return nullptr;
         }
     };
 
@@ -1145,10 +1246,15 @@ class Vec3 {
         EXPECT_EQ(apiSymbol->getImportedNode(), api);
 
         const auto expectChildScope = [&](const Scope& parent, std::string_view name, ScopeKind kind) -> const Scope* {
-            const auto* symbol = asRegularSymbol(parent.lookupLocal(name));
+            const Symbol* symbol = parent.lookupLocal(name);
             EXPECT_NE(symbol, nullptr);
             if (symbol == nullptr) return nullptr;
-            const auto* node = symbol->getImportedNode();
+            const ImportedItem* node = nullptr;
+            if (const auto* regularSymbol = dynamic_cast<const RegularSymbol*>(symbol)) {
+                node = regularSymbol->getImportedNode();
+            } else if (const auto* functionSymbol = dynamic_cast<const FunctionSymbol*>(symbol); functionSymbol != nullptr && functionSymbol->isUnique()) {
+                node = functionSymbol->getOverloadings().begin()->second.getImportedNode();
+            }
             EXPECT_NE(node, nullptr);
             if (node == nullptr) return nullptr;
             const auto* scope = result.getScopeByImportedNode(*node);
@@ -1170,17 +1276,21 @@ class Vec3 {
         ASSERT_NE(boxScope, nullptr);
         const auto* visible = asRegularSymbol(boxScope->lookupLocal("visible"));
         const auto* secret = asRegularSymbol(boxScope->lookupLocal("secret"));
-        const auto* method = asRegularSymbol(boxScope->lookupLocal("__vnl_function_apply--T__"));
+        const auto* method = dynamic_cast<const FunctionSymbol*>(boxScope->lookupLocal("apply"));
         ASSERT_NE(visible, nullptr);
         ASSERT_NE(secret, nullptr);
         ASSERT_NE(method, nullptr);
+        ASSERT_TRUE(method->isUnique());
         EXPECT_EQ(visible->getKind(), RegularSymbolKind::PROPERTY);
         EXPECT_EQ(visible->getAccessModifier(), RegularSymbolAccessModifier::PUBLIC);
         EXPECT_EQ(secret->getAccessModifier(), RegularSymbolAccessModifier::PRIVATE);
-        EXPECT_EQ(method->getKind(), RegularSymbolKind::METHOD);
-        EXPECT_EQ(method->getAccessModifier(), RegularSymbolAccessModifier::PROTECTED);
+        EXPECT_EQ(method->getName(), "apply");
+        const auto* methodOverloading = method->getOverloadingByInternalName("__vnl_function_apply--T__");
+        ASSERT_NE(methodOverloading, nullptr);
+        EXPECT_EQ(methodOverloading->getKind(), RegularSymbolKind::METHOD);
+        EXPECT_EQ(methodOverloading->getAccessModifier(), RegularSymbolAccessModifier::PROTECTED);
         EXPECT_EQ(result.getScopeByImportedNode(*visible->getImportedNode()), nullptr);
-        const auto* methodScope = expectChildScope(*boxScope, "__vnl_function_apply--T__", ScopeKind::FUNCTION);
+        const auto* methodScope = expectChildScope(*boxScope, "apply", ScopeKind::FUNCTION);
         ASSERT_NE(methodScope, nullptr);
         const auto* input = asRegularSymbol(methodScope->lookupLocal("input"));
         ASSERT_NE(input, nullptr);
@@ -1196,7 +1306,7 @@ class Vec3 {
 
         const auto* interfaceScope = expectChildScope(*apiScope, "Readable", ScopeKind::INTERFACE);
         ASSERT_NE(interfaceScope, nullptr);
-        const auto* readScope = expectChildScope(*interfaceScope, "__vnl_function_read--R__", ScopeKind::FUNCTION);
+        const auto* readScope = expectChildScope(*interfaceScope, "read", ScopeKind::FUNCTION);
         ASSERT_NE(readScope, nullptr);
         EXPECT_NE(readScope->lookupLocal("input"), nullptr);
         EXPECT_NE(interfaceScope->lookupLocal("R"), nullptr);
@@ -1217,7 +1327,7 @@ class Vec3 {
         const auto* aliasScope = expectChildScope(*apiScope, "Alias", ScopeKind::TYPE_ALIAS);
         ASSERT_NE(aliasScope, nullptr);
         EXPECT_NE(aliasScope->lookupLocal("A"), nullptr);
-        const auto* functionScope = expectChildScope(*apiScope, "__vnl_function_run--int__", ScopeKind::FUNCTION);
+        const auto* functionScope = expectChildScope(*apiScope, "run", ScopeKind::FUNCTION);
         ASSERT_NE(functionScope, nullptr);
         EXPECT_NE(functionScope->lookupLocal("amount"), nullptr);
         const auto* external = asRegularSymbol(apiScope->lookupLocal("External"));
@@ -1227,24 +1337,29 @@ class Vec3 {
         const auto* extraPackage = getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         EXPECT_EQ(result.getScopeByImportedNode(*extraPackage), nullptr);
-        for (const auto name : { "api", "Box", "T", "__vnl_function_apply--T__", "input", "Ready", "payload", "extra", "External" }) {
+        for (const auto name : { "api", "Box", "T", "apply", "input", "Ready", "payload", "extra", "External" }) {
             EXPECT_EQ(localScope->lookupLocal(name), nullptr);
         }
     }
 
     TEST_F(SemanticAnalyzerImportTest, CreatesScopesForDirectAndWildcardImportsOfScopedIdentifiers) {
         writeScopedModule();
-        const std::vector<std::pair<std::string, ScopeKind>> scopedIdentifiers = {
-            { "Box", ScopeKind::CLASS },
-            { "Readable", ScopeKind::INTERFACE },
-            { "State", ScopeKind::ENUM },
-            { "Alias", ScopeKind::TYPE_ALIAS },
-            { "__vnl_function_method__", ScopeKind::FUNCTION },
-            { "Ready", ScopeKind::ENUM_MEMBER },
+        struct ScopedIdentifier {
+            std::string path;
+            std::string name;
+            ScopeKind kind;
         };
-        for (const auto& [name, kind] : scopedIdentifiers) {
-            SCOPED_TRACE(name);
-            const auto result = analyze("import pkg.api." + name + " as selected\nexport selected\n");
+        const std::vector<ScopedIdentifier> scopedIdentifiers = {
+            { "Box", "Box", ScopeKind::CLASS },
+            { "Readable", "Readable", ScopeKind::INTERFACE },
+            { "State", "State", ScopeKind::ENUM },
+            { "Alias", "Alias", ScopeKind::TYPE_ALIAS },
+            { "__vnl_function_method__", "method", ScopeKind::FUNCTION },
+            { "Ready", "Ready", ScopeKind::ENUM_MEMBER },
+        };
+        for (const auto& [path, name, kind] : scopedIdentifiers) {
+            SCOPED_TRACE(path);
+            const auto result = analyze("import pkg.api." + path + " as selected\nexport selected\n");
             ASSERT_FALSE(result.hasErrors());
             const auto* node = findImportedNode(result, "selected");
             ASSERT_NE(node, nullptr);
@@ -1261,13 +1376,8 @@ class Vec3 {
         const auto result = analyze("import pkg.api.*\n");
         ASSERT_FALSE(result.hasErrors());
         const std::vector<std::pair<std::string, ScopeKind>> wildcardScopedIdentifiers = {
-            { "__vnl_function_run--int__", ScopeKind::FUNCTION },
-            { "Box", ScopeKind::CLASS },
-            { "Readable", ScopeKind::INTERFACE },
-            { "State", ScopeKind::ENUM },
-            { "Alias", ScopeKind::TYPE_ALIAS },
-            { "__vnl_function_method__", ScopeKind::FUNCTION },
-            { "Ready", ScopeKind::ENUM_MEMBER },
+            { "run", ScopeKind::FUNCTION },     { "Box", ScopeKind::CLASS },       { "Readable", ScopeKind::INTERFACE }, { "State", ScopeKind::ENUM },
+            { "Alias", ScopeKind::TYPE_ALIAS }, { "method", ScopeKind::FUNCTION }, { "Ready", ScopeKind::ENUM_MEMBER },
         };
         for (const auto& [name, kind] : wildcardScopedIdentifiers) {
             const auto* node = findImportedNode(result, name);
@@ -1322,9 +1432,11 @@ class Vec3 {
             EXPECT_EQ(classScope, result.getScopeByImportedNode(*second));
             EXPECT_EQ(classScope->findParent(), apiScope);
             EXPECT_EQ(apiScope->findParent(), packageScope);
-            const auto* method = asRegularSymbol(classScope->lookupLocal("__vnl_function_apply--T__"));
+            const auto* method = dynamic_cast<const FunctionSymbol*>(classScope->lookupLocal("apply"));
             ASSERT_NE(method, nullptr);
-            const auto* methodScope = result.getScopeByImportedNode(*method->getImportedNode());
+            ASSERT_TRUE(method->isUnique());
+            const auto* methodOverloading = &method->getOverloadings().begin()->second;
+            const auto* methodScope = result.getScopeByImportedNode(*methodOverloading->getImportedNode());
             ASSERT_NE(methodScope, nullptr);
             EXPECT_EQ(methodScope->findParent(), classScope);
             EXPECT_EQ(methodScope->lookup("T"), classScope->lookupLocal("T"));
@@ -1432,6 +1544,72 @@ class Vec3 {
         EXPECT_EQ(scope->lookupLocal("count"), nullptr);
     }
 
+    TEST_F(SemanticAnalyzerImportTest, CollectsImportedFunctionAndMethodOverloadings) {
+        writeFile(
+            "dependency_source/api.vni",
+            R"({
+    "__vnl_function_convert--int__": {"category": "func", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "int"}}, "native": false},
+    "__vnl_function_convert--string__": {"category": "func", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "string"}}, "native": false},
+    "Converter": {"category": "class", "genericParameters": [], "properties": {}, "methods": {
+        "__vnl_function_convert--int__": {"category": "method", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "int"}}, "native": false, "static": false, "accessModifier": "public"},
+        "__vnl_function_convert--string__": {"category": "method", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "string"}}, "native": false, "static": false, "accessModifier": "public"}
+    }, "constructors": {}, "operators": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
+    "Readable": {"category": "interface", "genericParameters": [], "methods": {
+        "__vnl_function_convert--int__": {"category": "method", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "int"}}, "native": false, "static": false, "accessModifier": "public"},
+        "__vnl_function_convert--string__": {"category": "method", "name": "convert", "returnType": "void", "parameters": {"value": {"category": "parameter", "type": "string"}}, "native": false, "static": false, "accessModifier": "public"}
+    }, "operators": {}}
+})"
+        );
+
+        const auto wildcardResult = analyze("import pkg.api.*\n");
+        ASSERT_FALSE(wildcardResult.hasErrors());
+        const auto* localScope = wildcardResult.getScopeByAstNode(*module);
+        ASSERT_NE(localScope, nullptr);
+        const auto* moduleFunction = dynamic_cast<const FunctionSymbol*>(localScope->lookupLocal("convert"));
+        ASSERT_NE(moduleFunction, nullptr);
+        EXPECT_EQ(moduleFunction->getOverloadings().size(), 2);
+
+        const auto* package = getImportedPackageByName("pkg");
+        ASSERT_NE(package, nullptr);
+        const auto* importedModule = package->getModuleByName("api");
+        ASSERT_NE(importedModule, nullptr);
+        const auto* classDeclaration = importedModule->getIdentifierByName("Converter");
+        ASSERT_NE(classDeclaration, nullptr);
+        const auto* classScope = wildcardResult.getScopeByImportedNode(*classDeclaration);
+        ASSERT_NE(classScope, nullptr);
+        const auto* classFunction = dynamic_cast<const FunctionSymbol*>(classScope->lookupLocal("convert"));
+        ASSERT_NE(classFunction, nullptr);
+        EXPECT_EQ(classFunction->getOverloadings().size(), 2);
+
+        const auto* interfaceDeclaration = importedModule->getIdentifierByName("Readable");
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        const auto* interfaceScope = wildcardResult.getScopeByImportedNode(*interfaceDeclaration);
+        ASSERT_NE(interfaceScope, nullptr);
+        const auto* interfaceFunction = dynamic_cast<const FunctionSymbol*>(interfaceScope->lookupLocal("convert"));
+        ASSERT_NE(interfaceFunction, nullptr);
+        EXPECT_EQ(interfaceFunction->getOverloadings().size(), 2);
+
+        const auto directResult = analyze("import pkg.api.convert\n");
+        ASSERT_FALSE(directResult.hasErrors());
+        const auto* directScope = directResult.getScopeByAstNode(*module);
+        ASSERT_NE(directScope, nullptr);
+        const auto* directFunction = dynamic_cast<const FunctionSymbol*>(directScope->lookupLocal("convert"));
+        ASSERT_NE(directFunction, nullptr);
+        EXPECT_EQ(directFunction->getOverloadings().size(), 2);
+
+        const auto aliasResult = analyze("import pkg.api.convert as parse\n");
+        ASSERT_FALSE(aliasResult.hasErrors());
+        const auto* aliasScope = aliasResult.getScopeByAstNode(*module);
+        ASSERT_NE(aliasScope, nullptr);
+        const auto* aliasFunction = dynamic_cast<const FunctionSymbol*>(aliasScope->lookupLocal("parse"));
+        ASSERT_NE(aliasFunction, nullptr);
+        EXPECT_EQ(aliasFunction->getOverloadings().size(), 2);
+
+        const auto duplicateResult = analyze("import pkg.api.convert\nimport pkg.api.convert\n");
+        ASSERT_EQ(duplicateResult.getErrors().size(), 1);
+        EXPECT_EQ(duplicateResult.getErrors().front().getMessage(), "Redeclaration of symbol 'convert'");
+    }
+
     TEST_F(SemanticAnalyzerImportTest, DeclaresImportedSymbolsWithTheirKindsAndOriginalTargets) {
         writeFile(
             "dependency_source/api.vni",
@@ -1449,18 +1627,29 @@ class Vec3 {
     "parameter": {"category": "parameter", "type": "int"}
 })"
         );
-        const std::vector<std::pair<std::string, RegularSymbolKind>> identifiers = {
-            { "value", RegularSymbolKind::VARIABLE },      { "__vnl_function_run__", RegularSymbolKind::FUNCTION },
-            { "Box", RegularSymbolKind::CLASS },           { "Readable", RegularSymbolKind::INTERFACE },
-            { "State", RegularSymbolKind::ENUM },          { "Alias", RegularSymbolKind::TYPE_ALIAS },
-            { "External", RegularSymbolKind::VARIABLE },   { "__vnl_function_method__", RegularSymbolKind::METHOD },
-            { "Ready", RegularSymbolKind::ENUM_MEMBER },   { "property", RegularSymbolKind::PROPERTY },
-            { "parameter", RegularSymbolKind::PARAMETER },
+        struct ImportedIdentifier {
+            std::string path;
+            std::string name;
+            RegularSymbolKind kind;
+            bool function;
+        };
+        const std::vector<ImportedIdentifier> identifiers = {
+            { "value", "value", RegularSymbolKind::VARIABLE, false },
+            { "__vnl_function_run__", "run", RegularSymbolKind::FUNCTION, true },
+            { "Box", "Box", RegularSymbolKind::CLASS, false },
+            { "Readable", "Readable", RegularSymbolKind::INTERFACE, false },
+            { "State", "State", RegularSymbolKind::ENUM, false },
+            { "Alias", "Alias", RegularSymbolKind::TYPE_ALIAS, false },
+            { "External", "External", RegularSymbolKind::VARIABLE, false },
+            { "__vnl_function_method__", "method", RegularSymbolKind::METHOD, true },
+            { "Ready", "Ready", RegularSymbolKind::ENUM_MEMBER, false },
+            { "property", "property", RegularSymbolKind::PROPERTY, false },
+            { "parameter", "parameter", RegularSymbolKind::PARAMETER, false },
         };
 
-        for (const auto& [name, kind] : identifiers) {
+        for (const auto& [path, name, kind, function] : identifiers) {
             for (const bool aliased : { false, true }) {
-                const auto source = "import pkg.api." + name + (aliased ? " as selected\n" : "\n");
+                const auto source = "import pkg.api." + path + (aliased ? " as selected\n" : "\n");
                 SCOPED_TRACE(source);
                 const auto result = analyze(source);
 
@@ -1473,24 +1662,42 @@ class Vec3 {
                 ASSERT_NE(scope, nullptr);
                 EXPECT_EQ(scope->lookupLocal("pkg"), nullptr);
                 EXPECT_EQ(scope->lookupLocal("api"), nullptr);
-                const auto* symbol = asRegularSymbol(scope->lookupLocal(aliased ? "selected" : name));
+                const Symbol* symbol = scope->lookupLocal(aliased ? "selected" : name);
                 ASSERT_NE(symbol, nullptr);
-                EXPECT_EQ(symbol->getName(), aliased ? "selected" : name);
-                EXPECT_EQ(symbol->getKind(), kind);
-                EXPECT_EQ(symbol->getOrigin(), RegularSymbolOrigin::IMPORTED);
-                EXPECT_EQ(symbol->getLocalNode(), nullptr);
-                if (name == "External") {
+
+                const ImportedItem* expectedTarget = nullptr;
+                if (path == "External") {
                     const auto* extraPackage = getImportedPackageByName("extra");
                     ASSERT_NE(extraPackage, nullptr);
                     const auto* toolsModule = extraPackage->getModuleByName("tools");
                     ASSERT_NE(toolsModule, nullptr);
-                    EXPECT_EQ(symbol->getImportedNode(), toolsModule->getIdentifierByName("enabled"));
+                    expectedTarget = toolsModule->getIdentifierByName("enabled");
                 } else {
-                    EXPECT_EQ(symbol->getImportedNode(), importedModule->getIdentifierByName(name));
+                    expectedTarget = importedModule->getIdentifierByName(path);
                 }
-                for (const auto& [otherName, otherKind] : identifiers) {
-                    if (aliased || otherName != name) {
-                        EXPECT_EQ(scope->lookupLocal(otherName), nullptr);
+
+                if (function) {
+                    const auto* functionSymbol = dynamic_cast<const FunctionSymbol*>(symbol);
+                    ASSERT_NE(functionSymbol, nullptr);
+                    EXPECT_EQ(functionSymbol->getName(), aliased ? "selected" : name);
+                    ASSERT_TRUE(functionSymbol->isUnique());
+                    const auto& overloading = functionSymbol->getOverloadings().begin()->second;
+                    EXPECT_EQ(overloading.getKind(), kind);
+                    EXPECT_EQ(overloading.getOrigin(), RegularSymbolOrigin::IMPORTED);
+                    EXPECT_EQ(overloading.getLocalNode(), nullptr);
+                    EXPECT_EQ(overloading.getImportedNode(), expectedTarget);
+                } else {
+                    const auto* regularSymbol = dynamic_cast<const RegularSymbol*>(symbol);
+                    ASSERT_NE(regularSymbol, nullptr);
+                    EXPECT_EQ(regularSymbol->getName(), aliased ? "selected" : name);
+                    EXPECT_EQ(regularSymbol->getKind(), kind);
+                    EXPECT_EQ(regularSymbol->getOrigin(), RegularSymbolOrigin::IMPORTED);
+                    EXPECT_EQ(regularSymbol->getLocalNode(), nullptr);
+                    EXPECT_EQ(regularSymbol->getImportedNode(), expectedTarget);
+                }
+                for (const auto& otherIdentifier : identifiers) {
+                    if (aliased || otherIdentifier.name != name) {
+                        EXPECT_EQ(scope->lookupLocal(otherIdentifier.name), nullptr);
                     }
                 }
             }
@@ -1888,6 +2095,18 @@ class Vec3 {
                 EXPECT_EQ(error.getMessage(), "Redeclaration of symbol 'value'");
             }
         }
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, RejectsFunctionRedeclarationsAcrossImportsAndLocalDeclarations) {
+        writeFile(
+            "dependency_source/api.vni",
+            R"({"__vnl_function_add--int__":{"category":"func","name":"add","returnType":"void","parameters":{"value":{"category":"parameter","type":"int"}},"native":false}})"
+        );
+
+        const auto result = analyze("import pkg.api.add\nfunc add(value: string) {}\n");
+
+        ASSERT_EQ(result.getErrors().size(), 1);
+        EXPECT_EQ(result.getErrors().front().getMessage(), "Redeclaration of symbol 'add'");
     }
 
     TEST_F(SemanticAnalyzerImportTest, FailedImportsPreserveEarlierBindingsWithoutDeclaringPartialNames) {
