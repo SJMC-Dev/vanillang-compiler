@@ -68,6 +68,10 @@ namespace vnlc {
             return collector.collect(config);
         }
 
+        const RegularSymbol* asRegularSymbol(const Symbol* symbol) {
+            return dynamic_cast<const RegularSymbol*>(symbol);
+        }
+
     } // namespace
 
     class SemanticAnalyzerAccessTest : public testing::Test {
@@ -178,14 +182,16 @@ class GenericPrivateShadow<privateMember> extends Base {}
                 classes.push_back(&dynamic_cast<const ClassDeclarationNode&>(*declaration));
             }
             for (const auto* classDeclaration : classes) {
-                ASSERT_TRUE(context.currentScope().declare(Symbol(SymbolKind::CLASS, SymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration)));
+                ASSERT_TRUE(context.currentScope().declare(
+                    RegularSymbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration)
+                ));
                 const auto fullName = std::string(module->getFullName()) + "." + std::string(classDeclaration->getName().getIdentifierString());
                 context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const Type*>{}, classDeclaration));
             }
             accessModules.push_back(parseModule("let privateMember = 0\n", config));
-            ASSERT_TRUE(
-                context.currentScope().declare(Symbol(SymbolKind::VARIABLE, SymbolAccessModifier::PUBLIC, "privateMember", accessModules.back()->getTopIdentifierDeclarations().front().get()))
-            );
+            ASSERT_TRUE(context.currentScope().declare(
+                RegularSymbol(RegularSymbolKind::VARIABLE, RegularSymbolAccessModifier::PUBLIC, "privateMember", accessModules.back()->getTopIdentifierDeclarations().front().get())
+            ));
             for (const auto* classDeclaration : classes) {
                 analyzer->checkClassDeclaration(*classDeclaration, config);
             }
@@ -262,9 +268,9 @@ class GenericPrivateShadow<privateMember> extends Base {}
             return allowed;
         }
 
-        bool canAccessIdentifier(std::string_view accessor, std::string_view identifier, std::optional<SymbolKind> localSymbolKind = std::nullopt, bool nestedBlock = false) {
-            const auto parameter = localSymbolKind == SymbolKind::PARAMETER ? std::string(identifier) + ": int" : "";
-            const auto variable = localSymbolKind == SymbolKind::VARIABLE ? "let " + std::string(identifier) + " = 0\n" : "";
+        bool canAccessIdentifier(std::string_view accessor, std::string_view identifier, std::optional<RegularSymbolKind> localSymbolKind = std::nullopt, bool nestedBlock = false) {
+            const auto parameter = localSymbolKind == RegularSymbolKind::PARAMETER ? std::string(identifier) + ": int" : "";
+            const auto variable = localSymbolKind == RegularSymbolKind::VARIABLE ? "let " + std::string(identifier) + " = 0\n" : "";
             const auto body = variable + std::string(identifier) + "\n";
             accessModules.push_back(parseModule("func inspect(" + parameter + ") {\n" + (nestedBlock ? "{\n" + body + "}\n" : body) + "}\n", config));
             const auto& function = dynamic_cast<const FunctionDeclarationNode&>(*accessModules.back()->getTopIdentifierDeclarations().front());
@@ -275,13 +281,15 @@ class GenericPrivateShadow<privateMember> extends Base {}
             auto& context = analyzer->context;
             const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const AstNode*>(module.get()) : findClass(accessor));
             context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, parent, &function));
-            if (localSymbolKind == SymbolKind::PARAMETER) {
-                EXPECT_TRUE(context.currentScope().declare(Symbol(SymbolKind::PARAMETER, SymbolAccessModifier::PUBLIC, identifier, function.getParameters().front().get())));
+            if (localSymbolKind == RegularSymbolKind::PARAMETER) {
+                EXPECT_TRUE(
+                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::PARAMETER, RegularSymbolAccessModifier::PUBLIC, identifier, function.getParameters().front().get()))
+                );
             }
             if (nestedBlock) context.pushScope(std::make_unique<Scope>(ScopeKind::BLOCK, &context.currentScope(), &block));
-            if (localSymbolKind == SymbolKind::VARIABLE) {
+            if (localSymbolKind == RegularSymbolKind::VARIABLE) {
                 const auto& declaration = dynamic_cast<const VariableDeclarationStatementNode&>(*block.getStatements().front()).getVariableDeclaration();
-                EXPECT_TRUE(context.currentScope().declare(Symbol(SymbolKind::VARIABLE, SymbolAccessModifier::PUBLIC, identifier, &declaration)));
+                EXPECT_TRUE(context.currentScope().declare(RegularSymbol(RegularSymbolKind::VARIABLE, RegularSymbolAccessModifier::PUBLIC, identifier, &declaration)));
             }
             const bool allowed = analyzer->checkAccessModifier(expression);
             if (nestedBlock) context.popScope();
@@ -313,7 +321,7 @@ class GenericPrivateShadow<privateMember> extends Base {}
     }
 
     TEST_F(SemanticAnalyzerAccessTest, LocalVariablesAndParametersHideInheritedPrivateMembers) {
-        for (const auto localSymbolKind : { SymbolKind::VARIABLE, SymbolKind::PARAMETER }) {
+        for (const auto localSymbolKind : { RegularSymbolKind::VARIABLE, RegularSymbolKind::PARAMETER }) {
             for (const bool nestedBlock : { false, true }) {
                 SCOPED_TRACE(nestedBlock);
                 EXPECT_TRUE(canAccessIdentifier("Derived", "privateMember", localSymbolKind, nestedBlock));
@@ -611,7 +619,7 @@ class Vec3 {
 
         context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
         const auto* moduleScope = &context.currentScope();
-        ASSERT_TRUE(context.currentScope().declare(Symbol(SymbolKind::CLASS, SymbolAccessModifier::PUBLIC, "Sample", classDeclaration)));
+        ASSERT_TRUE(context.currentScope().declare(RegularSymbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, "Sample", classDeclaration)));
         context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, moduleScope, classDeclaration));
         const auto* classScope = &context.currentScope();
 
@@ -627,7 +635,7 @@ class Vec3 {
         ASSERT_EQ(context.getScopeByAstNode(module.get()), moduleScope);
         ASSERT_EQ(context.getScopeByAstNode(classDeclaration), classScope);
         EXPECT_EQ(classScope->findParent(), moduleScope);
-        const auto* symbol = classScope->lookup("Sample");
+        const auto* symbol = asRegularSymbol(classScope->lookup("Sample"));
         ASSERT_NE(symbol, nullptr);
         EXPECT_EQ(symbol->getLocalNode(), classDeclaration);
     }
@@ -767,26 +775,33 @@ class Vec3 {
             for (const auto& topIdentifierDecl : module->getTopIdentifierDeclarations()) {
                 DeclarationNode* declaration = topIdentifierDecl.get();
                 if (auto* valueDecl = dynamic_cast<ValueDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(
-                        Symbol(SymbolKind::VARIABLE, static_cast<SymbolAccessModifier>(valueDecl->getAccessModifier()), valueDecl->getName().getIdentifierString(), valueDecl)
-                    );
+                    context.currentScope().declare(RegularSymbol(
+                        RegularSymbolKind::VARIABLE,
+                        static_cast<RegularSymbolAccessModifier>(valueDecl->getAccessModifier()),
+                        valueDecl->getName().getIdentifierString(),
+                        valueDecl
+                    ));
                     analyzer.checkValueDeclaration(*valueDecl);
                 } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(declaration)) {
                     context.currentScope().declare(
-                        Symbol(SymbolKind::FUNCTION, static_cast<SymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl)
+                        RegularSymbol(RegularSymbolKind::FUNCTION, static_cast<RegularSymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl)
                     );
                     analyzer.checkFunctionDeclaration(*funcDecl);
                 } else if (auto* classDecl = dynamic_cast<ClassDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(Symbol(SymbolKind::CLASS, SymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl));
+                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl));
                     analyzer.checkClassDeclaration(*classDecl, config);
                 } else if (auto* interfaceDecl = dynamic_cast<InterfaceDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(Symbol(SymbolKind::INTERFACE, SymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl));
+                    context.currentScope().declare(
+                        RegularSymbol(RegularSymbolKind::INTERFACE, RegularSymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl)
+                    );
                     analyzer.checkInterfaceDeclaration(*interfaceDecl, config);
                 } else if (auto* enumDecl = dynamic_cast<EnumDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(Symbol(SymbolKind::ENUM, SymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl));
+                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::ENUM, RegularSymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl));
                     analyzer.checkEnumDeclaration(*enumDecl, config);
                 } else if (auto* typeAliasDecl = dynamic_cast<TypeAliasDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(Symbol(SymbolKind::TYPE_ALIAS, SymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl));
+                    context.currentScope().declare(
+                        RegularSymbol(RegularSymbolKind::TYPE_ALIAS, RegularSymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl)
+                    );
                     analyzer.checkTypeAliasDeclaration(*typeAliasDecl, config);
                     typeAlias = typeAliasDecl;
                 }
@@ -797,7 +812,7 @@ class Vec3 {
             }
             context.pushScope(std::make_unique<Scope>(ScopeKind::TYPE_ALIAS, &context.currentScope(), typeAlias));
             for (const auto& genericParameter : typeAlias->getGenericParameterNames()) {
-                context.currentScope().declare(Symbol(SymbolKind::GENERIC_PARAMETER, SymbolAccessModifier::PUBLIC, genericParameter->getIdentifierString(), typeAlias));
+                context.currentScope().declare(RegularSymbol(RegularSymbolKind::GENERIC_PARAMETER, RegularSymbolAccessModifier::PUBLIC, genericParameter->getIdentifierString(), typeAlias));
             }
             callback(analyzer, *typeAlias);
             context.popScope();
@@ -824,7 +839,7 @@ class Vec3 {
             const auto* scope = result.getScopeByAstNode(*module);
             EXPECT_NE(scope, nullptr);
             if (scope == nullptr) return nullptr;
-            const auto* symbol = scope->lookupLocal(name);
+            const auto* symbol = asRegularSymbol(scope->lookupLocal(name));
             return symbol != nullptr ? symbol->getImportedNode() : nullptr;
         }
     };
@@ -957,7 +972,7 @@ class Vec3 {
             EXPECT_EQ(boxType->getFullTypeName(), "pkg.api.Box<int>");
             EXPECT_EQ(boxType->getCustomizedKind(), CustomizedTypeKind::CLASS);
             EXPECT_EQ(boxType->getOrigin(), CustomizedTypeOrigin::IMPORTED);
-            const auto* symbol = context.currentScope().lookup("ImportedBox");
+            const auto* symbol = asRegularSymbol(context.currentScope().lookup("ImportedBox"));
             ASSERT_NE(symbol, nullptr);
             EXPECT_EQ(boxType->getImportedNode(), symbol->getImportedNode());
             ASSERT_EQ(boxType->getGenericArguments().size(), 1);
@@ -1092,7 +1107,7 @@ class Vec3 {
             EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
             const auto* moduleScope = context.currentScope().findParent();
             ASSERT_NE(moduleScope, nullptr);
-            const auto* symbol = moduleScope->lookupLocal("ImportedBox");
+            const auto* symbol = asRegularSymbol(moduleScope->lookupLocal("ImportedBox"));
             ASSERT_NE(symbol, nullptr);
             EXPECT_EQ(customizedType->getImportedNode(), symbol->getImportedNode());
             EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), customizedType);
@@ -1124,13 +1139,13 @@ class Vec3 {
         ASSERT_NE(apiScope, nullptr);
         EXPECT_EQ(apiScope->getKind(), ScopeKind::MODULE);
         EXPECT_EQ(apiScope->findParent(), packageScope);
-        const auto* apiSymbol = packageScope->lookupLocal("api");
+        const auto* apiSymbol = asRegularSymbol(packageScope->lookupLocal("api"));
         ASSERT_NE(apiSymbol, nullptr);
-        EXPECT_EQ(apiSymbol->getKind(), SymbolKind::MODULE);
+        EXPECT_EQ(apiSymbol->getKind(), RegularSymbolKind::MODULE);
         EXPECT_EQ(apiSymbol->getImportedNode(), api);
 
         const auto expectChildScope = [&](const Scope& parent, std::string_view name, ScopeKind kind) -> const Scope* {
-            const auto* symbol = parent.lookupLocal(name);
+            const auto* symbol = asRegularSymbol(parent.lookupLocal(name));
             EXPECT_NE(symbol, nullptr);
             if (symbol == nullptr) return nullptr;
             const auto* node = symbol->getImportedNode();
@@ -1153,28 +1168,28 @@ class Vec3 {
 
         const auto* boxScope = expectChildScope(*apiScope, "Box", ScopeKind::CLASS);
         ASSERT_NE(boxScope, nullptr);
-        const auto* visible = boxScope->lookupLocal("visible");
-        const auto* secret = boxScope->lookupLocal("secret");
-        const auto* method = boxScope->lookupLocal("__vnl_function_apply--T__");
+        const auto* visible = asRegularSymbol(boxScope->lookupLocal("visible"));
+        const auto* secret = asRegularSymbol(boxScope->lookupLocal("secret"));
+        const auto* method = asRegularSymbol(boxScope->lookupLocal("__vnl_function_apply--T__"));
         ASSERT_NE(visible, nullptr);
         ASSERT_NE(secret, nullptr);
         ASSERT_NE(method, nullptr);
-        EXPECT_EQ(visible->getKind(), SymbolKind::PROPERTY);
-        EXPECT_EQ(visible->getAccessModifier(), SymbolAccessModifier::PUBLIC);
-        EXPECT_EQ(secret->getAccessModifier(), SymbolAccessModifier::PRIVATE);
-        EXPECT_EQ(method->getKind(), SymbolKind::METHOD);
-        EXPECT_EQ(method->getAccessModifier(), SymbolAccessModifier::PROTECTED);
+        EXPECT_EQ(visible->getKind(), RegularSymbolKind::PROPERTY);
+        EXPECT_EQ(visible->getAccessModifier(), RegularSymbolAccessModifier::PUBLIC);
+        EXPECT_EQ(secret->getAccessModifier(), RegularSymbolAccessModifier::PRIVATE);
+        EXPECT_EQ(method->getKind(), RegularSymbolKind::METHOD);
+        EXPECT_EQ(method->getAccessModifier(), RegularSymbolAccessModifier::PROTECTED);
         EXPECT_EQ(result.getScopeByImportedNode(*visible->getImportedNode()), nullptr);
         const auto* methodScope = expectChildScope(*boxScope, "__vnl_function_apply--T__", ScopeKind::FUNCTION);
         ASSERT_NE(methodScope, nullptr);
-        const auto* input = methodScope->lookupLocal("input");
+        const auto* input = asRegularSymbol(methodScope->lookupLocal("input"));
         ASSERT_NE(input, nullptr);
-        EXPECT_EQ(input->getKind(), SymbolKind::PARAMETER);
-        EXPECT_EQ(input->getOrigin(), SymbolOrigin::IMPORTED);
+        EXPECT_EQ(input->getKind(), RegularSymbolKind::PARAMETER);
+        EXPECT_EQ(input->getOrigin(), RegularSymbolOrigin::IMPORTED);
         EXPECT_EQ(result.getScopeByImportedNode(*input->getImportedNode()), nullptr);
-        const auto* generic = boxScope->lookupLocal("T");
+        const auto* generic = asRegularSymbol(boxScope->lookupLocal("T"));
         ASSERT_NE(generic, nullptr);
-        EXPECT_EQ(generic->getKind(), SymbolKind::GENERIC_PARAMETER);
+        EXPECT_EQ(generic->getKind(), RegularSymbolKind::GENERIC_PARAMETER);
         EXPECT_EQ(generic->getImportedNode(), boxScope->getImportedNode());
         EXPECT_EQ(methodScope->lookup("T"), generic);
         EXPECT_EQ(methodScope->lookup("localOnly"), nullptr);
@@ -1191,10 +1206,10 @@ class Vec3 {
         ASSERT_NE(enumScope, nullptr);
         const auto* memberScope = expectChildScope(*enumScope, "Ready", ScopeKind::ENUM_MEMBER);
         ASSERT_NE(memberScope, nullptr);
-        const auto* payload = memberScope->lookupLocal("payload");
+        const auto* payload = asRegularSymbol(memberScope->lookupLocal("payload"));
         ASSERT_NE(payload, nullptr);
-        EXPECT_EQ(payload->getKind(), SymbolKind::PROPERTY);
-        EXPECT_EQ(payload->getOrigin(), SymbolOrigin::IMPORTED);
+        EXPECT_EQ(payload->getKind(), RegularSymbolKind::PROPERTY);
+        EXPECT_EQ(payload->getOrigin(), RegularSymbolOrigin::IMPORTED);
         EXPECT_EQ(result.getScopeByImportedNode(*payload->getImportedNode()), nullptr);
         EXPECT_NE(enumScope->lookupLocal("E"), nullptr);
         EXPECT_EQ(memberScope->lookup("E"), enumScope->lookupLocal("E"));
@@ -1205,9 +1220,9 @@ class Vec3 {
         const auto* functionScope = expectChildScope(*apiScope, "__vnl_function_run--int__", ScopeKind::FUNCTION);
         ASSERT_NE(functionScope, nullptr);
         EXPECT_NE(functionScope->lookupLocal("amount"), nullptr);
-        const auto* external = apiScope->lookupLocal("External");
+        const auto* external = asRegularSymbol(apiScope->lookupLocal("External"));
         ASSERT_NE(external, nullptr);
-        EXPECT_EQ(external->getKind(), SymbolKind::IMPORT_ALIAS);
+        EXPECT_EQ(external->getKind(), RegularSymbolKind::IMPORT_ALIAS);
         EXPECT_EQ(result.getScopeByImportedNode(*external->getImportedNode()), nullptr);
         const auto* extraPackage = getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
@@ -1307,7 +1322,7 @@ class Vec3 {
             EXPECT_EQ(classScope, result.getScopeByImportedNode(*second));
             EXPECT_EQ(classScope->findParent(), apiScope);
             EXPECT_EQ(apiScope->findParent(), packageScope);
-            const auto* method = classScope->lookupLocal("__vnl_function_apply--T__");
+            const auto* method = asRegularSymbol(classScope->lookupLocal("__vnl_function_apply--T__"));
             ASSERT_NE(method, nullptr);
             const auto* methodScope = result.getScopeByImportedNode(*method->getImportedNode());
             ASSERT_NE(methodScope, nullptr);
@@ -1327,16 +1342,16 @@ class Vec3 {
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
-        const auto* sub = packageScope->lookupLocal("sub");
+        const auto* sub = asRegularSymbol(packageScope->lookupLocal("sub"));
         ASSERT_NE(sub, nullptr);
         const auto* subScope = result.getScopeByImportedNode(*sub->getImportedNode());
         ASSERT_NE(subScope, nullptr);
         EXPECT_EQ(subScope->findParent(), packageScope);
-        const auto* other = subScope->lookupLocal("other");
+        const auto* other = asRegularSymbol(subScope->lookupLocal("other"));
         ASSERT_NE(other, nullptr);
         const auto* otherScope = result.getScopeByImportedNode(*other->getImportedNode());
         ASSERT_NE(otherScope, nullptr);
-        const auto* flag = otherScope->lookupLocal("flag");
+        const auto* flag = asRegularSymbol(otherScope->lookupLocal("flag"));
         ASSERT_NE(flag, nullptr);
         EXPECT_EQ(flag->getImportedNode(), findImportedNode(result, "flag"));
         EXPECT_EQ(otherScope->findParent(), subScope);
@@ -1352,12 +1367,12 @@ class Vec3 {
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
-        const auto* types = packageScope->lookupLocal("types");
+        const auto* types = asRegularSymbol(packageScope->lookupLocal("types"));
         ASSERT_NE(types, nullptr);
         const auto* typesScope = result.getScopeByImportedNode(*types->getImportedNode());
         ASSERT_NE(typesScope, nullptr);
         EXPECT_EQ(typesScope->findParent(), packageScope);
-        const auto* remote = typesScope->lookupLocal("Remote");
+        const auto* remote = asRegularSymbol(typesScope->lookupLocal("Remote"));
         ASSERT_NE(remote, nullptr);
         const auto* remoteScope = result.getScopeByImportedNode(*remote->getImportedNode());
         ASSERT_NE(remoteScope, nullptr);
@@ -1434,13 +1449,13 @@ class Vec3 {
     "parameter": {"category": "parameter", "type": "int"}
 })"
         );
-        const std::vector<std::pair<std::string, SymbolKind>> identifiers = {
-            { "value", SymbolKind::VARIABLE },      { "__vnl_function_run__", SymbolKind::FUNCTION },
-            { "Box", SymbolKind::CLASS },           { "Readable", SymbolKind::INTERFACE },
-            { "State", SymbolKind::ENUM },          { "Alias", SymbolKind::TYPE_ALIAS },
-            { "External", SymbolKind::VARIABLE },   { "__vnl_function_method__", SymbolKind::METHOD },
-            { "Ready", SymbolKind::ENUM_MEMBER },   { "property", SymbolKind::PROPERTY },
-            { "parameter", SymbolKind::PARAMETER },
+        const std::vector<std::pair<std::string, RegularSymbolKind>> identifiers = {
+            { "value", RegularSymbolKind::VARIABLE },      { "__vnl_function_run__", RegularSymbolKind::FUNCTION },
+            { "Box", RegularSymbolKind::CLASS },           { "Readable", RegularSymbolKind::INTERFACE },
+            { "State", RegularSymbolKind::ENUM },          { "Alias", RegularSymbolKind::TYPE_ALIAS },
+            { "External", RegularSymbolKind::VARIABLE },   { "__vnl_function_method__", RegularSymbolKind::METHOD },
+            { "Ready", RegularSymbolKind::ENUM_MEMBER },   { "property", RegularSymbolKind::PROPERTY },
+            { "parameter", RegularSymbolKind::PARAMETER },
         };
 
         for (const auto& [name, kind] : identifiers) {
@@ -1458,11 +1473,11 @@ class Vec3 {
                 ASSERT_NE(scope, nullptr);
                 EXPECT_EQ(scope->lookupLocal("pkg"), nullptr);
                 EXPECT_EQ(scope->lookupLocal("api"), nullptr);
-                const auto* symbol = scope->lookupLocal(aliased ? "selected" : name);
+                const auto* symbol = asRegularSymbol(scope->lookupLocal(aliased ? "selected" : name));
                 ASSERT_NE(symbol, nullptr);
                 EXPECT_EQ(symbol->getName(), aliased ? "selected" : name);
                 EXPECT_EQ(symbol->getKind(), kind);
-                EXPECT_EQ(symbol->getOrigin(), SymbolOrigin::IMPORTED);
+                EXPECT_EQ(symbol->getOrigin(), RegularSymbolOrigin::IMPORTED);
                 EXPECT_EQ(symbol->getLocalNode(), nullptr);
                 if (name == "External") {
                     const auto* extraPackage = getImportedPackageByName("extra");
@@ -1541,11 +1556,11 @@ class Vec3 {
             ASSERT_NE(enabled, nullptr);
             EXPECT_EQ(enabled->getName(), "enabled");
             for (const auto name : { "External", "renamed", "enabled" }) {
-                const auto* symbol = scope->lookupLocal(name);
+                const auto* symbol = asRegularSymbol(scope->lookupLocal(name));
                 ASSERT_NE(symbol, nullptr);
                 EXPECT_EQ(symbol->getName(), name);
-                EXPECT_EQ(symbol->getKind(), SymbolKind::VARIABLE);
-                EXPECT_EQ(symbol->getOrigin(), SymbolOrigin::IMPORTED);
+                EXPECT_EQ(symbol->getKind(), RegularSymbolKind::VARIABLE);
+                EXPECT_EQ(symbol->getOrigin(), RegularSymbolOrigin::IMPORTED);
                 EXPECT_EQ(symbol->getImportedNode(), enabled);
             }
             for (const auto name : { "pkg", "api", "bridge", "extra", "tools" }) {
@@ -1584,9 +1599,9 @@ class Vec3 {
             for (const auto name : { "selected", "Alias" }) {
                 SCOPED_TRACE(name);
                 const bool isClass = std::string_view(name) == "selected";
-                const auto* symbol = localScope->lookupLocal(name);
+                const auto* symbol = asRegularSymbol(localScope->lookupLocal(name));
                 ASSERT_NE(symbol, nullptr);
-                EXPECT_EQ(symbol->getKind(), isClass ? SymbolKind::CLASS : SymbolKind::TYPE_ALIAS);
+                EXPECT_EQ(symbol->getKind(), isClass ? RegularSymbolKind::CLASS : RegularSymbolKind::TYPE_ALIAS);
                 const auto* node = symbol->getImportedNode();
                 ASSERT_EQ(node, typesModule->getIdentifierByName(isClass ? "Box" : "Alias"));
                 ASSERT_NE(node, nullptr);
@@ -1669,7 +1684,7 @@ class Vec3 {
         ASSERT_NE(scope, nullptr);
         EXPECT_EQ(scope->lookupLocal("External"), nullptr);
         for (const auto name : { "enabled", "tools", "extra" }) {
-            const auto* symbol = scope->lookupLocal(name);
+            const auto* symbol = asRegularSymbol(scope->lookupLocal(name));
             ASSERT_NE(symbol, nullptr);
             EXPECT_NE(symbol->getLocalNode(), nullptr);
             EXPECT_EQ(symbol->getImportedNode(), nullptr);
@@ -1690,9 +1705,9 @@ class Vec3 {
         EXPECT_EQ(findImportedNode(result, "External"), toolsModule->getIdentifierByName("enabled"));
         const auto* scope = result.getScopeByAstNode(*module);
         ASSERT_NE(scope, nullptr);
-        const auto* external = scope->lookupLocal("External");
+        const auto* external = asRegularSymbol(scope->lookupLocal("External"));
         ASSERT_NE(external, nullptr);
-        EXPECT_EQ(external->getKind(), SymbolKind::VARIABLE);
+        EXPECT_EQ(external->getKind(), RegularSymbolKind::VARIABLE);
         for (const auto name : { "repeated", "bridge", "back", "enabled", "other", "tools" }) {
             EXPECT_EQ(scope->lookupLocal(name), nullptr);
         }
@@ -1720,10 +1735,10 @@ class Vec3 {
             }
             const auto* scope = result.getScopeByAstNode(*module);
             ASSERT_NE(scope, nullptr);
-            const auto* external = scope->lookupLocal("External");
+            const auto* external = asRegularSymbol(scope->lookupLocal("External"));
             ASSERT_NE(external, nullptr);
             EXPECT_EQ(external->getImportedNode(), target);
-            EXPECT_EQ(external->getKind(), std::string_view(source) == "extra.tools" ? SymbolKind::MODULE : SymbolKind::PACKAGE);
+            EXPECT_EQ(external->getKind(), std::string_view(source) == "extra.tools" ? RegularSymbolKind::MODULE : RegularSymbolKind::PACKAGE);
             ASSERT_NE(target, nullptr);
             const auto* targetScope = result.getScopeByImportedNode(*target);
             ASSERT_NE(targetScope, nullptr);
@@ -1771,9 +1786,9 @@ class Vec3 {
             EXPECT_EQ(findImportedNode(result, "External"), findImportedNode(result, "enabled"));
             const auto* scope = result.getScopeByAstNode(*module);
             ASSERT_NE(scope, nullptr);
-            const auto* external = scope->lookupLocal("External");
+            const auto* external = asRegularSymbol(scope->lookupLocal("External"));
             ASSERT_NE(external, nullptr);
-            EXPECT_EQ(external->getKind(), SymbolKind::VARIABLE);
+            EXPECT_EQ(external->getKind(), RegularSymbolKind::VARIABLE);
         }
     }
 
@@ -1886,9 +1901,9 @@ class Vec3 {
         EXPECT_EQ(findImportedNode(result, "kept"), package->getModuleByName("api"));
         const auto* scope = result.getScopeByAstNode(*module);
         ASSERT_NE(scope, nullptr);
-        const auto* staged = scope->lookupLocal("staged");
+        const auto* staged = asRegularSymbol(scope->lookupLocal("staged"));
         ASSERT_NE(staged, nullptr);
-        EXPECT_EQ(staged->getOrigin(), SymbolOrigin::LOCAL);
+        EXPECT_EQ(staged->getOrigin(), RegularSymbolOrigin::LOCAL);
         EXPECT_NE(staged->getLocalNode(), nullptr);
         EXPECT_EQ(staged->getImportedNode(), nullptr);
     }

@@ -111,6 +111,12 @@ add_executable(
     ModuleInterfaceTest.cpp
 )
 
+add_executable(
+    vnlctest_symbol
+    ${SYMBOL_FILES}
+    SymbolTest.cpp
+)
+
 target_include_directories(
     vnlctest_lexer
     PRIVATE
@@ -141,6 +147,12 @@ target_include_directories(
     "${PROJECT_SOURCE_DIR}/src"
 )
 
+target_include_directories(
+    vnlctest_symbol
+    PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+)
+
 target_link_libraries(
     vnlctest_lexer
     PRIVATE
@@ -184,6 +196,12 @@ target_link_libraries(
     fmt::fmt
     nlohmann_json::nlohmann_json
     CLI11::CLI11
+)
+
+target_link_libraries(
+    vnlctest_symbol
+    PRIVATE
+    GTest::gtest_main
 )
 
 target_compile_definitions(
@@ -198,3 +216,4 @@ gtest_discover_tests(vnlctest_parser)
 gtest_discover_tests(vnlctest_collector)
 gtest_discover_tests(vnlctest_semantic)
 gtest_discover_tests(vnlctest_vni)
+gtest_discover_tests(vnlctest_symbol)
