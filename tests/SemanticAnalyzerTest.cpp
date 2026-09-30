@@ -87,6 +87,83 @@ type Identity<T> = T
         ASSERT_FALSE(result.hasErrors());
     }
 
+    TEST(SemanticAnalyzerTest, SubstitutesGenericArgumentsThroughLocalAliasTypeNames) {
+        constexpr std::string_view source = R"(
+class Box<T> {}
+type Identity<T> = T
+type Boxed<T> = Box<Identity<T>>
+type Result = Boxed<int>
+)";
+        const auto config = makeConfig("local_alias_type_names.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto& resultAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*module->getTopIdentifierDeclarations()[3]);
+        const auto* customizedType = dynamic_cast<const CustomizedType*>(result.getTypeByTypeReferenceNode(&resultAlias.getOriginalType()));
+        ASSERT_NE(customizedType, nullptr);
+        EXPECT_EQ(customizedType->getFullTypeName(), std::string(module->getFullName()) + ".Box<int>");
+        ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+        EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
+        EXPECT_EQ(customizedType->getLocalNode(), module->getTopIdentifierDeclarations().front().get());
+    }
+
+    TEST(SemanticAnalyzerTest, SubstitutesAliasesInsideGenericArgumentTypeNames) {
+        constexpr std::string_view source = R"(
+class Box<T> {}
+class Inner<T> {}
+type Alias<T> = Inner<T>
+type Result = Box<Alias<int>>
+)";
+        const auto config = makeConfig("nested_alias_type_names.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto& resultAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*module->getTopIdentifierDeclarations()[3]);
+        const auto* customizedType = dynamic_cast<const CustomizedType*>(result.getTypeByTypeReferenceNode(&resultAlias.getOriginalType()));
+        ASSERT_NE(customizedType, nullptr);
+        EXPECT_EQ(customizedType->getFullTypeName(), std::string(module->getFullName()) + ".Box<" + std::string(module->getFullName()) + ".Inner<int>>");
+        ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+        const auto* innerType = dynamic_cast<const CustomizedType*>(customizedType->getGenericArguments().front());
+        ASSERT_NE(innerType, nullptr);
+        EXPECT_EQ(innerType->getFullTypeName(), std::string(module->getFullName()) + ".Inner<int>");
+        ASSERT_EQ(innerType->getGenericArguments().size(), 1);
+        EXPECT_EQ(innerType->getGenericArguments().front(), PrimitiveType::intType());
+    }
+
+    TEST(SemanticAnalyzerTest, ResolvesNestedAliasArgumentsToTheFinalTypeNode) {
+        constexpr std::string_view source = R"(
+class Bar<K, V> {}
+type Foo<T> = Bar<T, int>
+type Baz<U> = Foo<U>
+type Result = Baz<float>
+)";
+        const auto config = makeConfig("nested_alias_arguments.vnl");
+        auto module = parseModule(source, config);
+
+        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
+        SemanticAnalyzer analyzer(*module, imports);
+        const auto result = analyzer.analyze(config);
+
+        ASSERT_FALSE(result.hasErrors());
+        const auto& resultAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*module->getTopIdentifierDeclarations()[3]);
+        const auto* customizedType = dynamic_cast<const CustomizedType*>(result.getTypeByTypeReferenceNode(&resultAlias.getOriginalType()));
+        ASSERT_NE(customizedType, nullptr);
+        EXPECT_EQ(customizedType->getFullTypeName(), std::string(module->getFullName()) + ".Bar<float, int>");
+        ASSERT_EQ(customizedType->getGenericArguments().size(), 2);
+        EXPECT_EQ(customizedType->getGenericArguments()[0], PrimitiveType::floatType());
+        EXPECT_EQ(customizedType->getGenericArguments()[1], PrimitiveType::intType());
+        EXPECT_EQ(customizedType->getLocalNode(), module->getTopIdentifierDeclarations().front().get());
+        EXPECT_EQ(result.getCustomizedTypeByFullTypeName(std::string(module->getFullName()) + ".Bar<float, int>"), customizedType);
+    }
+
     TEST(SemanticAnalyzerTest, RejectsGenericArgumentCountMismatchWithoutCheckingArguments) {
         constexpr std::string_view source = R"(
 class Box<T> {}
@@ -158,21 +235,27 @@ interface Addable {
         const auto config = makeConfig("operators.vnl");
         auto module = parseModule(source, config);
 
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[0].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_operator_addition--Vec3__");
+        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_operator_addition--int__");
+        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[2].get())->setInternalName("__vnl_operator_subscript--int__");
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        interfaceDeclaration->getOperatorDeclarations().front()->setInternalName("__vnl_operator_addition--Addable__");
+
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
 
         ASSERT_FALSE(result.hasErrors());
 
-        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[0].get());
-        ASSERT_NE(classDeclaration, nullptr);
         const auto* classScope = result.getScopeByAstNode(*classDeclaration);
         ASSERT_NE(classScope, nullptr);
         EXPECT_EQ(classScope->lookupLocal("__vnl_operator_addition--Vec3__"), nullptr);
         EXPECT_EQ(classScope->lookupLocal("__vnl_operator_addition--int__"), nullptr);
 
-        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
-        ASSERT_NE(interfaceDeclaration, nullptr);
         const auto* interfaceScope = result.getScopeByAstNode(*interfaceDeclaration);
         ASSERT_NE(interfaceScope, nullptr);
         EXPECT_EQ(interfaceScope->lookupLocal("__vnl_operator_addition--Addable__"), nullptr);
@@ -212,6 +295,12 @@ class Vec3 {
         const auto config = makeConfig("duplicate_operators.vnl");
         auto module = parseModule(source, config);
 
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
+        ASSERT_NE(classDeclaration, nullptr);
+        for (const auto& member : classDeclaration->getMemberDeclarations()) {
+            dynamic_cast<const OperatorDeclarationNode*>(member.get())->setInternalName("__vnl_operator_addition--int__");
+        }
+
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
@@ -237,6 +326,20 @@ interface Readable {
         const auto config = makeConfig("overloads.vnl");
         auto module = parseModule(source, config);
 
+        const auto& topLevelDeclarations = module->getTopIdentifierDeclarations();
+        dynamic_cast<const FunctionDeclarationNode*>(topLevelDeclarations[0].get())->setInternalName("__vnl_function_convert--int__");
+        dynamic_cast<const FunctionDeclarationNode*>(topLevelDeclarations[1].get())->setInternalName("__vnl_function_convert--string__");
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(topLevelDeclarations[2].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_function_convert--int__");
+        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_convert--string__");
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(topLevelDeclarations[3].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        interfaceDeclaration->getMethodDeclarations()[0]->setInternalName("__vnl_function_convert--int__");
+        interfaceDeclaration->getMethodDeclarations()[1]->setInternalName("__vnl_function_convert--string__");
+
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         SemanticAnalyzer analyzer(*module, imports);
         const auto result = analyzer.analyze(config);
@@ -251,8 +354,6 @@ interface Readable {
         EXPECT_NE(moduleFunction->getOverloadingByInternalName("__vnl_function_convert--int__"), nullptr);
         EXPECT_NE(moduleFunction->getOverloadingByInternalName("__vnl_function_convert--string__"), nullptr);
 
-        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[2].get());
-        ASSERT_NE(classDeclaration, nullptr);
         const auto* classScope = result.getScopeByAstNode(*classDeclaration);
         ASSERT_NE(classScope, nullptr);
         const auto* classFunction = dynamic_cast<const FunctionSymbol*>(classScope->lookupLocal("convert"));
@@ -261,8 +362,6 @@ interface Readable {
         EXPECT_NE(classFunction->getOverloadingByInternalName("__vnl_function_convert--int__"), nullptr);
         EXPECT_NE(classFunction->getOverloadingByInternalName("__vnl_function_convert--string__"), nullptr);
 
-        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[3].get());
-        ASSERT_NE(interfaceDeclaration, nullptr);
         const auto* interfaceScope = result.getScopeByAstNode(*interfaceDeclaration);
         ASSERT_NE(interfaceScope, nullptr);
         const auto* interfaceFunction = dynamic_cast<const FunctionSymbol*>(interfaceScope->lookupLocal("convert"));
@@ -287,6 +386,20 @@ interface Duplicable {
 )";
         const auto config = makeConfig("duplicate_overloads.vnl");
         auto module = parseModule(source, config);
+
+        const auto& topLevelDeclarations = module->getTopIdentifierDeclarations();
+        dynamic_cast<const FunctionDeclarationNode*>(topLevelDeclarations[0].get())->setInternalName("__vnl_function_duplicate--int__");
+        dynamic_cast<const FunctionDeclarationNode*>(topLevelDeclarations[1].get())->setInternalName("__vnl_function_duplicate--int__");
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(topLevelDeclarations[2].get());
+        ASSERT_NE(classDeclaration, nullptr);
+        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_function_duplicate--int__");
+        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_duplicate--int__");
+
+        const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(topLevelDeclarations[3].get());
+        ASSERT_NE(interfaceDeclaration, nullptr);
+        interfaceDeclaration->getMethodDeclarations()[0]->setInternalName("__vnl_function_duplicate--int__");
+        interfaceDeclaration->getMethodDeclarations()[1]->setInternalName("__vnl_function_duplicate--int__");
 
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
         SemanticAnalyzer analyzer(*module, imports);
@@ -402,6 +515,8 @@ func value(input: int) {}
             std::filesystem::remove_all(testDirectory);
             config.dependencyPackageRootPaths.emplace("pkg", testDirectory / "dependency_source");
             config.dependencyPackageRootPaths.emplace("extra", testDirectory / "another_source");
+            config.dependencyPackageRootPaths.emplace("vanillang", testDirectory / "standard_library");
+            writeFile("standard_library/typesystem.vni", R"({"Optional":{"category":"enum","genericParameters":["T"],"members":{}}})");
             writeFile("dependency_source/api.vni", R"({"value":{"category":"let","type":"int"},"count":{"category":"let","type":"int"}})");
             writeFile("dependency_source/sub/other.vni", R"({"flag":{"category":"let","type":"bool"}})");
             writeFile("dependency_source/sub/second.vni", R"({"caption":{"category":"let","type":"string"}})");
@@ -471,56 +586,22 @@ func value(input: int) {}
             module = parseModule(source, config);
             const auto& imports = collectionResult->getImports();
             SemanticAnalyzer analyzer(*module, imports);
-            auto& context = analyzer.context;
-            context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
-            for (const auto& importDecl : module->getImportDeclarations()) {
-                analyzer.checkImport(*importDecl, config);
-            }
+            analyzer.checkModule(*module, config);
             const TypeAliasDeclarationNode* typeAlias = nullptr;
             for (const auto& topIdentifierDecl : module->getTopIdentifierDeclarations()) {
-                DeclarationNode* declaration = topIdentifierDecl.get();
-                if (auto* valueDecl = dynamic_cast<ValueDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(RegularSymbol(
-                        RegularSymbolKind::VARIABLE,
-                        static_cast<RegularSymbolAccessModifier>(valueDecl->getAccessModifier()),
-                        valueDecl->getName().getIdentifierString(),
-                        valueDecl
-                    ));
-                    analyzer.checkValueDeclaration(*valueDecl);
-                } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(
-                        RegularSymbol(RegularSymbolKind::FUNCTION, static_cast<RegularSymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl)
-                    );
-                    analyzer.checkFunctionDeclaration(*funcDecl);
-                } else if (auto* classDecl = dynamic_cast<ClassDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl));
-                    analyzer.checkClassDeclaration(*classDecl, config);
-                } else if (auto* interfaceDecl = dynamic_cast<InterfaceDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(
-                        RegularSymbol(RegularSymbolKind::INTERFACE, RegularSymbolAccessModifier::PUBLIC, interfaceDecl->getName().getIdentifierString(), interfaceDecl)
-                    );
-                    analyzer.checkInterfaceDeclaration(*interfaceDecl, config);
-                } else if (auto* enumDecl = dynamic_cast<EnumDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::ENUM, RegularSymbolAccessModifier::PUBLIC, enumDecl->getName().getIdentifierString(), enumDecl));
-                    analyzer.checkEnumDeclaration(*enumDecl, config);
-                } else if (auto* typeAliasDecl = dynamic_cast<TypeAliasDeclarationNode*>(declaration)) {
-                    context.currentScope().declare(
-                        RegularSymbol(RegularSymbolKind::TYPE_ALIAS, RegularSymbolAccessModifier::PUBLIC, typeAliasDecl->getAliasName().getIdentifierString(), typeAliasDecl)
-                    );
-                    analyzer.checkTypeAliasDeclaration(*typeAliasDecl, config);
+                if (const auto* typeAliasDecl = dynamic_cast<const TypeAliasDeclarationNode*>(topIdentifierDecl.get())) {
                     typeAlias = typeAliasDecl;
                 }
             }
             if (typeAlias == nullptr) {
-                context.popScope();
                 return;
             }
-            context.pushScope(std::make_unique<Scope>(ScopeKind::TYPE_ALIAS, &context.currentScope(), typeAlias));
-            for (const auto& genericParameter : typeAlias->getGenericParameterNames()) {
-                context.currentScope().declare(RegularSymbol(RegularSymbolKind::GENERIC_PARAMETER, RegularSymbolAccessModifier::PUBLIC, genericParameter->getIdentifierString(), typeAlias));
+
+            auto& context = analyzer.context;
+            if (!context.pushExistingScope(typeAlias)) {
+                return;
             }
             callback(analyzer, *typeAlias);
-            context.popScope();
             context.popScope();
         }
 
@@ -568,23 +649,26 @@ func value(input: int) {}
                                            PrimitiveType::stringType() }) {
             const auto primitiveName = std::string(primitiveType->getFullTypeName());
             SCOPED_TRACE(primitiveName);
-            withAliasType("type Result = " + primitiveName + "?\n", [this, primitiveType, &primitiveName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
-                auto& context = semanticContext(analyzer);
-                ASSERT_TRUE(context.getErrors().empty());
-                const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
-                ASSERT_NE(optionalType, nullptr);
-                EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
-                EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<" + primitiveName + ">");
-                ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
-                EXPECT_EQ(optionalType->getGenericArguments().front(), primitiveType);
-                EXPECT_EQ(context.getCustomizedTypeByFullTypeName(std::string(optionalType->getFullTypeName())), optionalType);
-                EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), optionalType);
-            });
+            withAliasType(
+                "import vanillang.typesystem.Optional\ntype Result = " + primitiveName + "?\n",
+                [this, primitiveType, &primitiveName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+                    auto& context = semanticContext(analyzer);
+                    ASSERT_TRUE(context.getErrors().empty()) << context.getErrors().front().getMessage();
+                    const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
+                    ASSERT_NE(optionalType, nullptr);
+                    EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
+                    EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<" + primitiveName + ">");
+                    ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
+                    EXPECT_EQ(optionalType->getGenericArguments().front(), primitiveType);
+                    EXPECT_EQ(context.getCustomizedTypeByFullTypeName(std::string(optionalType->getFullTypeName())), optionalType);
+                    EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), optionalType);
+                }
+            );
         }
     }
 
     TEST_F(SemanticAnalyzerImportTest, RegistersNestedOptionalLocalTypesWithTheirOriginalArguments) {
-        withAliasType("class Box<T> {}\ntype Result = Box<int?>?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+        withAliasType("import vanillang.typesystem.Optional\nclass Box<T> {}\ntype Result = Box<int?>?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
             ASSERT_TRUE(context.getErrors().empty());
             const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
@@ -616,31 +700,34 @@ func value(input: int) {}
 
     TEST_F(SemanticAnalyzerImportTest, RegistersOptionalImportedTypesWithTheirOriginalDeclarations) {
         writeScopedModule();
-        withAliasType("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int>?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
-            auto& context = semanticContext(analyzer);
-            ASSERT_TRUE(context.getErrors().empty());
-            const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
-            ASSERT_NE(optionalType, nullptr);
-            EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
-            EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<pkg.api.Box<int>>");
-            ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
-            const auto* boxType = dynamic_cast<const CustomizedType*>(optionalType->getGenericArguments().front());
-            ASSERT_NE(boxType, nullptr);
-            EXPECT_EQ(boxType->getFullTypeName(), "pkg.api.Box<int>");
-            EXPECT_EQ(boxType->getCustomizedKind(), CustomizedTypeKind::CLASS);
-            EXPECT_EQ(boxType->getOrigin(), CustomizedTypeOrigin::IMPORTED);
-            const auto* symbol = asRegularSymbol(context.currentScope().lookup("ImportedBox"));
-            ASSERT_NE(symbol, nullptr);
-            EXPECT_EQ(boxType->getImportedNode(), symbol->getImportedNode());
-            ASSERT_EQ(boxType->getGenericArguments().size(), 1);
-            EXPECT_EQ(boxType->getGenericArguments().front(), PrimitiveType::intType());
-            EXPECT_EQ(context.getCustomizedTypeByFullTypeName("pkg.api.Box<int>"), boxType);
-            EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), optionalType);
-        });
+        withAliasType(
+            "import pkg.api.Box as ImportedBox\nimport vanillang.typesystem.Optional\ntype Result = ImportedBox<int>?\n",
+            [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+                auto& context = semanticContext(analyzer);
+                ASSERT_TRUE(context.getErrors().empty());
+                const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
+                ASSERT_NE(optionalType, nullptr);
+                EXPECT_EQ(optionalType->getCustomizedKind(), CustomizedTypeKind::ENUM);
+                EXPECT_EQ(optionalType->getFullTypeName(), "vanillang.typesystem.Optional<pkg.api.Box<int>>");
+                ASSERT_EQ(optionalType->getGenericArguments().size(), 1);
+                const auto* boxType = dynamic_cast<const CustomizedType*>(optionalType->getGenericArguments().front());
+                ASSERT_NE(boxType, nullptr);
+                EXPECT_EQ(boxType->getFullTypeName(), "pkg.api.Box<int>");
+                EXPECT_EQ(boxType->getCustomizedKind(), CustomizedTypeKind::CLASS);
+                EXPECT_EQ(boxType->getOrigin(), CustomizedTypeOrigin::IMPORTED);
+                const auto* symbol = asRegularSymbol(context.currentScope().lookup("ImportedBox"));
+                ASSERT_NE(symbol, nullptr);
+                EXPECT_EQ(boxType->getImportedNode(), symbol->getImportedNode());
+                ASSERT_EQ(boxType->getGenericArguments().size(), 1);
+                EXPECT_EQ(boxType->getGenericArguments().front(), PrimitiveType::intType());
+                EXPECT_EQ(context.getCustomizedTypeByFullTypeName("pkg.api.Box<int>"), boxType);
+                EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), optionalType);
+            }
+        );
     }
 
     TEST_F(SemanticAnalyzerImportTest, RegistersOptionalGenericParametersWithTheirOriginalDeclarations) {
-        withAliasType("type Result<T> = T?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+        withAliasType("import vanillang.typesystem.Optional\ntype Result<T> = T?\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
             auto& context = semanticContext(analyzer);
             ASSERT_TRUE(context.getErrors().empty());
             const auto* optionalType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
@@ -658,7 +745,7 @@ func value(input: int) {}
     }
 
     TEST_F(SemanticAnalyzerImportTest, RetainsSharedOptionalTypesAndTheirOriginalTypesInAnalysisResults) {
-        const auto result = analyze("class Box<T> {}\ntype Original = Box<int>\ntype First = Box<int>?\ntype Second = Box<int>?\n");
+        const auto result = analyze("import vanillang.typesystem.Optional\nclass Box<T> {}\ntype Original = Box<int>\ntype First = Box<int>?\ntype Second = Box<int>?\n");
         ASSERT_FALSE(result.hasErrors());
         const auto& declarations = module->getTopIdentifierDeclarations();
         const auto& originalAlias = dynamic_cast<const TypeAliasDeclarationNode&>(*declarations.at(1));
@@ -677,7 +764,9 @@ func value(input: int) {}
     }
 
     TEST_F(SemanticAnalyzerImportTest, DoesNotRegisterOptionalTypesWithUnresolvedOriginalTypes) {
-        const auto result = analyze("class Box<T> {}\ntype MissingOptional = Missing?\ntype MissingArgument = Box<Missing?>\ntype MissingOptionalArgument = Box<Missing?>?\n");
+        const auto result = analyze(
+            "import vanillang.typesystem.Optional\nclass Box<T> {}\ntype MissingOptional = Missing?\ntype MissingArgument = Box<Missing?>\ntype MissingOptionalArgument = Box<Missing?>?\n"
+        );
         ASSERT_EQ(result.getErrors().size(), 3);
         for (const auto& error : result.getErrors()) {
             EXPECT_EQ(error.getMessage(), "Use of undeclared type 'Missing'");
@@ -693,8 +782,6 @@ func value(input: int) {}
     }
 
     TEST_F(SemanticAnalyzerImportTest, ReusesOptionalTypesAcrossSugarAndExplicitReferencesInEitherOrder) {
-        config.dependencyPackageRootPaths.emplace("vanillang", testDirectory / "standard_library");
-        writeFile("standard_library/typesystem.vni", R"({"Optional":{"category":"enum","genericParameters":["T"],"members":{}}})");
         for (const std::string_view firstType : { "int?", "Optional<int>" }) {
             SCOPED_TRACE(firstType);
             const std::string secondType = firstType == "int?" ? "Optional<int>" : "int?";
@@ -769,6 +856,48 @@ func value(input: int) {}
             EXPECT_EQ(customizedType->getImportedNode(), symbol->getImportedNode());
             EXPECT_EQ(checkedType(analyzer, typeAlias.getOriginalType()), customizedType);
         });
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, SubstitutesGenericArgumentsInImportedAliasTypeNames) {
+        writeFile(
+            "dependency_source/api.vni",
+            R"({
+    "Box": {"category": "class", "genericParameters": ["T"], "properties": {}, "methods": {}, "constructors": {}, "operators": {},
+        "baseClass": null, "implementedInterfaces": [], "final": false},
+    "Wrapped": {"category": "typealias", "genericParameters": ["T"], "originalType": "pkg.api.Box<T>"}
+})"
+        );
+
+        withAliasType("import pkg.api.Wrapped\ntype Result = Wrapped<int>\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+            auto& context = semanticContext(analyzer);
+            ASSERT_TRUE(context.getErrors().empty()) << context.getErrors().front().getMessage();
+            const auto* customizedType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
+            ASSERT_NE(customizedType, nullptr);
+            EXPECT_EQ(customizedType->getFullTypeName(), "pkg.api.Box<int>");
+            EXPECT_EQ(customizedType->getOrigin(), CustomizedTypeOrigin::IMPORTED);
+            ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+            EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
+        });
+    }
+
+    TEST_F(SemanticAnalyzerImportTest, SubstitutesGenericArgumentsInPrefixedImportedAliasTypeNames) {
+        writeFile("dependency_source/api.vni", R"({"Identity":{"category":"typealias","genericParameters":["T"],"originalType":"T"}})");
+
+        withAliasType(
+            "import pkg.api as api\n"
+            "class Box<T> {}\n"
+            "type Wrapper<T> = Box<api.Identity<T>>\n"
+            "type Result = Wrapper<int>\n",
+            [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
+                auto& context = semanticContext(analyzer);
+                ASSERT_TRUE(context.getErrors().empty()) << context.getErrors().front().getMessage();
+                const auto* customizedType = dynamic_cast<const CustomizedType*>(context.getTypeByTypeReferenceNode(&typeAlias.getOriginalType()));
+                ASSERT_NE(customizedType, nullptr);
+                EXPECT_EQ(customizedType->getFullTypeName(), std::string(module->getFullName()) + ".Box<int>");
+                ASSERT_EQ(customizedType->getGenericArguments().size(), 1);
+                EXPECT_EQ(customizedType->getGenericArguments().front(), PrimitiveType::intType());
+            }
+        );
     }
 
     TEST_F(SemanticAnalyzerImportTest, BuildsImportedPackageModuleAndMemberScopes) {

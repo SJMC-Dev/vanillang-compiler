@@ -63,6 +63,7 @@ namespace vnlc {
         using TypeMap = std::unordered_map<const TypeReferenceNode*, const Type*>;
         using InferredValueTypeMap = std::unordered_map<const ValueDeclarationNode*, const Type*>;
         using InferredFunctionReturnTypeMap = std::unordered_map<const FunctionDeclarationNode*, const Type*>;
+        using InferredOperatorReturnTypeMap = std::unordered_map<const OperatorDeclarationNode*, const Type*>;
 
         std::unique_ptr<IdentifierNode> makeIdentifier(std::string_view name) {
             return std::make_unique<IdentifierNode>(name, testToken, testToken);
@@ -200,8 +201,25 @@ namespace vnlc {
             return std::make_unique<TypeAliasDeclarationNode>(makeIdentifier(name), std::move(genericParameters), std::move(originalType), testToken, testToken);
         }
 
-        SemanticResult makeSemanticResult(TypeMap&& typeMap = {}, InferredValueTypeMap&& inferredValueTypeMap = {}, InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {}) {
-            return SemanticResult({}, {}, {}, {}, {}, {}, std::move(typeMap), std::move(inferredValueTypeMap), std::move(inferredFunctionReturnTypeMap), {});
+        SemanticResult makeSemanticResult(
+            TypeMap&& typeMap = {},
+            InferredValueTypeMap&& inferredValueTypeMap = {},
+            InferredFunctionReturnTypeMap&& inferredFunctionReturnTypeMap = {},
+            InferredOperatorReturnTypeMap&& inferredOperatorReturnTypeMap = {}
+        ) {
+            return SemanticResult(
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                std::move(typeMap),
+                std::move(inferredValueTypeMap),
+                std::move(inferredFunctionReturnTypeMap),
+                std::move(inferredOperatorReturnTypeMap),
+                {}
+            );
         }
 
         Config makeGeneratorConfig(const std::filesystem::path& testDirectory) {
@@ -958,6 +976,7 @@ namespace vnlc {
             std::move(parameters),
             std::make_optional(std::move(returnType))
         );
+        declaration->setInternalName("__vnl_function_add--int__");
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
@@ -1074,6 +1093,11 @@ namespace vnlc {
         ));
 
         auto declaration = makeClass(true, "Box", std::make_optional(std::move(baseClass)), std::move(implementedInterfaces), std::move(genericParameters), std::move(members), makeMetadata());
+        dynamic_cast<const FunctionDeclarationNode*>(declaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_reset__");
+        dynamic_cast<const FunctionDeclarationNode*>(declaration->getMemberDeclarations()[2].get())->setInternalName("__vnl_function_label__");
+        dynamic_cast<const ConstructorDeclarationNode*>(declaration->getMemberDeclarations()[3].get())->setInternalName("__vnl_constructor--int__");
+        dynamic_cast<const OperatorDeclarationNode*>(declaration->getMemberDeclarations()[4].get())->setInternalName("__vnl_operator_addition--int__");
+        dynamic_cast<const OperatorDeclarationNode*>(declaration->getMemberDeclarations()[5].get())->setInternalName("__vnl_operator_addition--string__");
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {
@@ -1149,6 +1173,7 @@ namespace vnlc {
             {},
             std::make_optional(std::move(returnType))
         ));
+        methods.front()->setInternalName("__vnl_function_run__");
         auto operatorReturnType = makeType("bool");
         const auto* operatorReturnTypeReferenceNode = operatorReturnType.get();
         std::vector<std::unique_ptr<OperatorDeclarationNode>> operators;
@@ -1159,6 +1184,7 @@ namespace vnlc {
             {},
             std::make_optional(std::move(operatorReturnType))
         ));
+        operators.front()->setInternalName("__vnl_operator_equality__");
         auto declaration = std::make_unique<InterfaceDeclarationNode>(makeIdentifier("Task"), std::move(genericParameters), std::move(methods), std::move(operators), testToken, testToken);
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(

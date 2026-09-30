@@ -162,14 +162,14 @@ namespace vnlc {
 
         const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(classDeclaration->getMemberDeclarations().front().get());
         ASSERT_NE(constructor, nullptr);
-        EXPECT_EQ(constructor->getInternalName(), "__vnl_constructor--string__");
+        EXPECT_TRUE(constructor->getInternalName().empty());
         EXPECT_EQ(constructor->getAccessModifier(), ConstructorDeclarationKind::AccessModifier::PROTECTED);
         ASSERT_EQ(constructor->getParameters().size(), 1);
         EXPECT_EQ(constructor->getParameters().front()->getName().getIdentifierString(), "value");
         EXPECT_EQ(constructor->getBody().getStatements().size(), 1);
     }
 
-    TEST(ParserTest, FunctionDeclarationsGenerateInternalNames) {
+    TEST(ParserTest, FunctionDeclarationsLeaveInternalNamesUnset) {
         std::stringstream input(
             "func combine(value: int) {}\n"
             "func combine(first: string, second: Vec3) {}\n"
@@ -193,15 +193,15 @@ namespace vnlc {
 
         const auto* first = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[0].get());
         ASSERT_NE(first, nullptr);
-        EXPECT_EQ(first->getInternalName(), "__vnl_function_combine--int__");
+        EXPECT_TRUE(first->getInternalName().empty());
 
         const auto* second = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[1].get());
         ASSERT_NE(second, nullptr);
-        EXPECT_EQ(second->getInternalName(), "__vnl_function_combine--string-Vec3__");
+        EXPECT_TRUE(second->getInternalName().empty());
 
         const auto* third = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[2].get());
         ASSERT_NE(third, nullptr);
-        EXPECT_EQ(third->getInternalName(), "__vnl_function_reset__");
+        EXPECT_TRUE(third->getInternalName().empty());
     }
 
     TEST(ParserTest, OperatorDeclarationsUseOperatorDeclarationNode) {
@@ -248,7 +248,7 @@ namespace vnlc {
         EXPECT_EQ(addition->getContext(), OperatorDeclarationKind::Context::CLASS);
         EXPECT_EQ(addition->getAccessModifier(), OperatorDeclarationKind::AccessModifier::PROTECTED);
         EXPECT_EQ(addition->getOperatorName(), "addition");
-        EXPECT_EQ(addition->getInternalName(), "__vnl_operator_addition--Vec3__");
+        EXPECT_TRUE(addition->getInternalName().empty());
         ASSERT_EQ(addition->getParameters().size(), 1);
         EXPECT_EQ(addition->getParameters().front()->getName().getIdentifierString(), "other");
         EXPECT_TRUE(addition->getReturnType().has_value());
@@ -258,13 +258,13 @@ namespace vnlc {
         ASSERT_NE(subscript, nullptr);
         EXPECT_EQ(subscript->getKind(), OperatorDeclarationKind::Kind::SUBSCRIPT);
         EXPECT_EQ(subscript->getOperatorName(), "subscript");
-        EXPECT_EQ(subscript->getInternalName(), "__vnl_operator_subscript--int__");
+        EXPECT_TRUE(subscript->getInternalName().empty());
 
         const auto* equality = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[2].get());
         ASSERT_NE(equality, nullptr);
         EXPECT_EQ(equality->getKind(), OperatorDeclarationKind::Kind::EQUAL);
         EXPECT_EQ(equality->getOperatorName(), "equality");
-        EXPECT_EQ(equality->getInternalName(), "__vnl_operator_equality--Vec3__");
+        EXPECT_TRUE(equality->getInternalName().empty());
 
         const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module.getTopIdentifierDeclarations()[1].get());
         ASSERT_NE(interfaceDeclaration, nullptr);
@@ -279,7 +279,7 @@ namespace vnlc {
         const auto& call = interfaceDeclaration->getOperatorDeclarations()[1];
         EXPECT_EQ(call->getKind(), OperatorDeclarationKind::Kind::CALL);
         EXPECT_EQ(call->getOperatorName(), "call");
-        EXPECT_EQ(call->getInternalName(), "__vnl_operator_call--int__");
+        EXPECT_TRUE(call->getInternalName().empty());
     }
 
     TEST(ParserTest, ParsesNoneAsPrimaryExpression) {
