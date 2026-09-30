@@ -346,9 +346,10 @@ namespace vnlc {
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
         parameters.emplace("amount", std::make_unique<ImportedParameter>("amount", "int"));
 
-        const ImportedFunc function("add", "int", std::move(parameters), true);
+        const ImportedFunc function("__vnl_function_add--int__", "add", "int", std::move(parameters), true);
 
-        EXPECT_EQ(function.getName(), "add");
+        EXPECT_EQ(function.getName(), "__vnl_function_add--int__");
+        EXPECT_EQ(function.getOriginalName(), "add");
         EXPECT_EQ(function.getReturnType(), "int");
         EXPECT_TRUE(function.isNative());
         ASSERT_EQ(function.getParameters().size(), 1);
@@ -359,8 +360,10 @@ namespace vnlc {
     }
 
     TEST_F(VniTest, ImportedMethodDistinguishesStaticFromNative) {
-        const ImportedMethod method("run", "void", {}, true, false, "public");
+        const ImportedMethod method("__vnl_function_run__", "run", "void", {}, true, false, "public");
 
+        EXPECT_EQ(method.getName(), "__vnl_function_run__");
+        EXPECT_EQ(method.getOriginalName(), "run");
         EXPECT_TRUE(method.isStatic());
         EXPECT_FALSE(method.isNative());
     }
@@ -402,7 +405,7 @@ namespace vnlc {
 
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
-        methods.emplace("read", std::make_unique<ImportedMethod>("read", "string", std::move(parameters), false, false, "public"));
+        methods.emplace("__vnl_function_read__", std::make_unique<ImportedMethod>("__vnl_function_read__", "read", "string", std::move(parameters), false, false, "public"));
 
         std::unordered_map<std::string, std::unique_ptr<ImportedConstructor>> constructors;
         constructors.emplace("init", std::make_unique<ImportedConstructor>("init", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, "public"));
@@ -428,8 +431,10 @@ namespace vnlc {
         EXPECT_EQ(property->getType(), "int");
         EXPECT_TRUE(property->isStatic());
 
-        const auto* method = importedClass.getMethodByName("read");
+        const auto* method = importedClass.getMethodByName("__vnl_function_read__");
         ASSERT_NE(method, nullptr);
+        EXPECT_EQ(method->getName(), "__vnl_function_read__");
+        EXPECT_EQ(method->getOriginalName(), "read");
         EXPECT_EQ(method->getReturnType(), "string");
         EXPECT_FALSE(method->isStatic());
         EXPECT_FALSE(method->isNative());
@@ -459,7 +464,7 @@ namespace vnlc {
     TEST_F(VniTest, ImportedInterfaceStoresGenericParametersAndMethods) {
         std::unordered_map<std::string, std::unique_ptr<ImportedMethod>> methods;
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
-        methods.emplace("read", std::make_unique<ImportedMethod>("read", "string", std::move(parameters), false, false, "public"));
+        methods.emplace("__vnl_function_read__", std::make_unique<ImportedMethod>("__vnl_function_read__", "read", "string", std::move(parameters), false, false, "public"));
 
         std::unordered_map<std::string, std::unique_ptr<ImportedOperator>> operators;
         operators.emplace(
@@ -470,8 +475,10 @@ namespace vnlc {
         const ImportedInterface importedInterface("Readable", { "T" }, std::move(methods), std::move(operators));
 
         EXPECT_EQ(importedInterface.getGenericParameters(), std::vector<std::string>({ "T" }));
-        const auto* method = importedInterface.getMethodByName("read");
+        const auto* method = importedInterface.getMethodByName("__vnl_function_read__");
         ASSERT_NE(method, nullptr);
+        EXPECT_EQ(method->getName(), "__vnl_function_read__");
+        EXPECT_EQ(method->getOriginalName(), "read");
         EXPECT_EQ(method->getReturnType(), "string");
 
         const auto* operatorNode = importedInterface.getOperatorByName("__vnl_operator_equality__");
@@ -520,6 +527,18 @@ namespace vnlc {
         EXPECT_EQ(dynamic_cast<const ImportedLet*>(identifier)->getType(), "int");
     }
 
+    TEST_F(VniTest, ImportedModuleIndexesFunctionsByInternalName) {
+        ImportedModule module("module", {});
+
+        module.addIdentifier(std::make_unique<ImportedFunc>("__vnl_function_add--int__", "add", "int", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, false));
+        module.addIdentifier(std::make_unique<ImportedFunc>("__vnl_function_add--string__", "add", "string", std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>{}, false));
+
+        ASSERT_EQ(module.getIdentifiers().size(), 2);
+        EXPECT_NE(module.getIdentifierByName("__vnl_function_add--int__"), nullptr);
+        EXPECT_NE(module.getIdentifierByName("__vnl_function_add--string__"), nullptr);
+        EXPECT_EQ(module.getIdentifierByName("add"), nullptr);
+    }
+
     TEST_F(VniTest, ImportedPackageExposesSubPackagesAndModules) {
         std::unordered_map<std::string, std::unique_ptr<ImportedModule>> modules;
         modules.emplace("api", std::make_unique<ImportedModule>("api", std::unordered_map<std::string, std::unique_ptr<ImportedIdentifier>>{}));
@@ -554,8 +573,9 @@ namespace vnlc {
             "draft": null
         }
     },
-    "run": {
+    "__vnl_function_run--int__": {
         "category": "func",
+        "name": "run",
         "returnType": "void",
         "parameters": {
             "amount": {
@@ -565,8 +585,9 @@ namespace vnlc {
         },
         "native": true
     },
-    "standaloneMethod": {
+    "__vnl_function_standaloneMethod__": {
         "category": "method",
+        "name": "standaloneMethod",
         "returnType": "string",
         "parameters": {},
         "static": true,
@@ -585,8 +606,9 @@ namespace vnlc {
             }
         },
         "methods": {
-            "read": {
+            "__vnl_function_read--int__": {
                 "category": "method",
+                "name": "read",
                 "returnType": "T",
                 "parameters": {
                     "index": {
@@ -632,8 +654,9 @@ namespace vnlc {
         "category": "interface",
         "genericParameters": ["T"],
         "methods": {
-            "read": {
+            "__vnl_function_read__": {
                 "category": "method",
+                "name": "read",
                 "returnType": "T",
                 "parameters": {},
                 "static": false,
@@ -697,15 +720,24 @@ namespace vnlc {
         ASSERT_NE(value, nullptr);
         EXPECT_EQ(dynamic_cast<const ImportedLet*>(value)->getType(), "int");
 
-        const auto* function = module->getIdentifierByName("run");
+        const auto* function = module->getIdentifierByName("__vnl_function_run--int__");
         ASSERT_NE(function, nullptr);
         const auto* importedFunction = dynamic_cast<const ImportedFunc*>(function);
         ASSERT_NE(importedFunction, nullptr);
+        EXPECT_EQ(importedFunction->getName(), "__vnl_function_run--int__");
+        EXPECT_EQ(importedFunction->getOriginalName(), "run");
         EXPECT_EQ(importedFunction->getReturnType(), "void");
         EXPECT_TRUE(importedFunction->isNative());
         const auto* parameter = importedFunction->getParameterByName("amount");
         ASSERT_NE(parameter, nullptr);
         EXPECT_EQ(parameter->getType(), "int");
+
+        const auto* standaloneMethod = module->getIdentifierByName("__vnl_function_standaloneMethod__");
+        ASSERT_NE(standaloneMethod, nullptr);
+        const auto* importedStandaloneMethod = dynamic_cast<const ImportedMethod*>(standaloneMethod);
+        ASSERT_NE(importedStandaloneMethod, nullptr);
+        EXPECT_EQ(importedStandaloneMethod->getName(), "__vnl_function_standaloneMethod__");
+        EXPECT_EQ(importedStandaloneMethod->getOriginalName(), "standaloneMethod");
 
         const auto* importedClassIdentifier = module->getIdentifierByName("Box");
         ASSERT_NE(importedClassIdentifier, nullptr);
@@ -719,8 +751,10 @@ namespace vnlc {
         ASSERT_NE(property, nullptr);
         EXPECT_TRUE(property->isStatic());
         EXPECT_EQ(property->getAccessModifier(), "protected");
-        const auto* method = importedClass->getMethodByName("read");
+        const auto* method = importedClass->getMethodByName("__vnl_function_read--int__");
         ASSERT_NE(method, nullptr);
+        EXPECT_EQ(method->getName(), "__vnl_function_read--int__");
+        EXPECT_EQ(method->getOriginalName(), "read");
         EXPECT_EQ(method->getReturnType(), "T");
         EXPECT_FALSE(method->isStatic());
         EXPECT_FALSE(method->isNative());
@@ -743,6 +777,10 @@ namespace vnlc {
         const auto* importedInterface = dynamic_cast<const ImportedInterface*>(importedInterfaceIdentifier);
         ASSERT_NE(importedInterface, nullptr);
         EXPECT_EQ(importedInterface->getGenericParameters(), std::vector<std::string>({ "T" }));
+        const auto* interfaceMethod = importedInterface->getMethodByName("__vnl_function_read__");
+        ASSERT_NE(interfaceMethod, nullptr);
+        EXPECT_EQ(interfaceMethod->getName(), "__vnl_function_read__");
+        EXPECT_EQ(interfaceMethod->getOriginalName(), "read");
         const auto* interfaceOperator = importedInterface->getOperatorByName("__vnl_operator_equality__");
         ASSERT_NE(interfaceOperator, nullptr);
         EXPECT_EQ(interfaceOperator->getReturnType(), "bool");
@@ -810,6 +848,19 @@ namespace vnlc {
         ModuleInterfaceFileReader reader(filePath);
 
         EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
+    }
+
+    TEST_F(VniTest, ModuleInterfaceFileReaderThrowsWhenFunctionOrMethodLacksName) {
+        for (const auto contents : {
+                 R"({"__vnl_function_run__":{"category":"func","returnType":"void","parameters":{},"native":false}})",
+                 R"({"__vnl_function_run__":{"category":"method","returnType":"void","parameters":{},"native":false,"static":false,"accessModifier":"public"}})",
+             }) {
+            SCOPED_TRACE(contents);
+            const auto filePath = writeFile("module.vni", contents);
+            ModuleInterfaceFileReader reader(filePath);
+
+            EXPECT_THROW(static_cast<void>(reader.read()), ModuleInterfaceFileReaderError);
+        }
     }
 
     TEST_F(VniTest, ModuleInterfaceFileReaderThrowsOnNonexistentFile) {
@@ -919,11 +970,12 @@ namespace vnlc {
         generator.generate();
         const auto json = readJson(generatedOutputPath(config));
 
-        EXPECT_EQ(json["add"]["category"], "func");
-        EXPECT_EQ(json["add"]["returnType"], "void");
-        EXPECT_TRUE(json["add"]["native"]);
-        EXPECT_EQ(json["add"]["parameters"]["amount"]["category"], "parameter");
-        EXPECT_EQ(json["add"]["parameters"]["amount"]["type"], "int");
+        EXPECT_EQ(json["__vnl_function_add--int__"]["category"], "func");
+        EXPECT_EQ(json["__vnl_function_add--int__"]["name"], "add");
+        EXPECT_EQ(json["__vnl_function_add--int__"]["returnType"], "void");
+        EXPECT_TRUE(json["__vnl_function_add--int__"]["native"]);
+        EXPECT_EQ(json["__vnl_function_add--int__"]["parameters"]["amount"]["category"], "parameter");
+        EXPECT_EQ(json["__vnl_function_add--int__"]["parameters"]["amount"]["type"], "int");
     }
 
     TEST_F(VniTest, ModuleInterfaceFileGeneratorGeneratesClassWithMembersAndModifiers) {
@@ -1052,12 +1104,14 @@ namespace vnlc {
         EXPECT_EQ(json["Box"]["properties"]["count"]["type"], "int");
         EXPECT_TRUE(json["Box"]["properties"]["count"]["static"]);
         EXPECT_EQ(json["Box"]["properties"]["count"]["accessModifier"], "protected");
-        EXPECT_TRUE(json["Box"]["methods"]["reset"]["static"]);
-        EXPECT_TRUE(json["Box"]["methods"]["reset"]["native"]);
-        EXPECT_FALSE(json["Box"]["methods"]["label"]["static"]);
-        EXPECT_FALSE(json["Box"]["methods"]["label"]["native"]);
-        EXPECT_EQ(json["Box"]["methods"]["label"]["returnType"], "string");
-        EXPECT_EQ(json["Box"]["methods"]["label"]["accessModifier"], "private");
+        EXPECT_EQ(json["Box"]["methods"]["__vnl_function_reset__"]["name"], "reset");
+        EXPECT_TRUE(json["Box"]["methods"]["__vnl_function_reset__"]["static"]);
+        EXPECT_TRUE(json["Box"]["methods"]["__vnl_function_reset__"]["native"]);
+        EXPECT_EQ(json["Box"]["methods"]["__vnl_function_label__"]["name"], "label");
+        EXPECT_FALSE(json["Box"]["methods"]["__vnl_function_label__"]["static"]);
+        EXPECT_FALSE(json["Box"]["methods"]["__vnl_function_label__"]["native"]);
+        EXPECT_EQ(json["Box"]["methods"]["__vnl_function_label__"]["returnType"], "string");
+        EXPECT_EQ(json["Box"]["methods"]["__vnl_function_label__"]["accessModifier"], "private");
         ASSERT_EQ(json["Box"]["constructors"].size(), 1);
         const auto& constructor = json["Box"]["constructors"]["__vnl_constructor--int__"];
         EXPECT_EQ(constructor["category"], "constructor");
@@ -1121,9 +1175,10 @@ namespace vnlc {
         EXPECT_EQ(json["Task"]["category"], "interface");
         EXPECT_EQ(json["Task"]["genericParameters"].size(), 1);
         EXPECT_EQ(json["Task"]["genericParameters"][0], "T");
-        EXPECT_EQ(json["Task"]["methods"]["run"]["returnType"], "void");
-        EXPECT_FALSE(json["Task"]["methods"]["run"]["native"]);
-        EXPECT_FALSE(json["Task"]["methods"]["run"]["static"]);
+        EXPECT_EQ(json["Task"]["methods"]["__vnl_function_run__"]["name"], "run");
+        EXPECT_EQ(json["Task"]["methods"]["__vnl_function_run__"]["returnType"], "void");
+        EXPECT_FALSE(json["Task"]["methods"]["__vnl_function_run__"]["native"]);
+        EXPECT_FALSE(json["Task"]["methods"]["__vnl_function_run__"]["static"]);
         EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["category"], "operator");
         EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["returnType"], "bool");
         EXPECT_EQ(json["Task"]["operators"]["__vnl_operator_equality__"]["accessModifier"], "public");

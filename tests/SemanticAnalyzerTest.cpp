@@ -710,23 +710,23 @@ class Vec3 {
         void writeScopedModule() const {
             writeFile("dependency_source/api.vni", R"({
     "value": {"category": "let", "type": "int"},
-    "run": {"category": "func", "returnType": "void", "native": false,
+    "__vnl_function_run--int__": {"category": "func", "name": "run", "returnType": "void", "native": false,
         "parameters": {"amount": {"category": "parameter", "type": "int"}}},
     "Box": {"category": "class", "genericParameters": ["T"], "baseClass": null, "implementedInterfaces": [], "final": false,
         "properties": {
             "visible": {"category": "property", "type": "T", "static": false, "accessModifier": "public"},
             "secret": {"category": "property", "type": "int", "static": true, "accessModifier": "private"}},
-        "methods": {"apply": {"category": "method", "returnType": "T", "native": false, "static": false, "accessModifier": "protected",
+        "methods": {"__vnl_function_apply--T__": {"category": "method", "name": "apply", "returnType": "T", "native": false, "static": false, "accessModifier": "protected",
             "parameters": {"input": {"category": "parameter", "type": "T"}}}},
         "constructors": {}, "operators": {}},
     "Readable": {"category": "interface", "genericParameters": ["R"],
-        "methods": {"read": {"category": "method", "returnType": "R", "native": false, "static": false, "accessModifier": "public",
+        "methods": {"__vnl_function_read--R__": {"category": "method", "name": "read", "returnType": "R", "native": false, "static": false, "accessModifier": "public",
             "parameters": {"input": {"category": "parameter", "type": "R"}}}}, "operators": {}},
     "State": {"category": "enum", "genericParameters": ["E"],
         "members": {"Ready": {"category": "enummember", "associatedValues": {"payload": {"category": "enumvalue", "type": "E"}}}}},
     "Alias": {"category": "typealias", "genericParameters": ["A"], "originalType": "A"},
     "External": {"category": "imported", "source": "extra.tools.enabled"},
-    "method": {"category": "method", "returnType": "void", "native": false, "static": true, "accessModifier": "public",
+    "__vnl_function_method__": {"category": "method", "name": "method", "returnType": "void", "native": false, "static": true, "accessModifier": "public",
         "parameters": {"amount": {"category": "parameter", "type": "int"}}},
     "Ready": {"category": "enummember", "associatedValues": {"payload": {"category": "enumvalue", "type": "int"}}},
     "property": {"category": "property", "type": "int", "static": true, "accessModifier": "public"},
@@ -1155,7 +1155,7 @@ class Vec3 {
         ASSERT_NE(boxScope, nullptr);
         const auto* visible = boxScope->lookupLocal("visible");
         const auto* secret = boxScope->lookupLocal("secret");
-        const auto* method = boxScope->lookupLocal("apply");
+        const auto* method = boxScope->lookupLocal("__vnl_function_apply--T__");
         ASSERT_NE(visible, nullptr);
         ASSERT_NE(secret, nullptr);
         ASSERT_NE(method, nullptr);
@@ -1165,7 +1165,7 @@ class Vec3 {
         EXPECT_EQ(method->getKind(), SymbolKind::METHOD);
         EXPECT_EQ(method->getAccessModifier(), SymbolAccessModifier::PROTECTED);
         EXPECT_EQ(result.getScopeByImportedNode(*visible->getImportedNode()), nullptr);
-        const auto* methodScope = expectChildScope(*boxScope, "apply", ScopeKind::FUNCTION);
+        const auto* methodScope = expectChildScope(*boxScope, "__vnl_function_apply--T__", ScopeKind::FUNCTION);
         ASSERT_NE(methodScope, nullptr);
         const auto* input = methodScope->lookupLocal("input");
         ASSERT_NE(input, nullptr);
@@ -1181,7 +1181,7 @@ class Vec3 {
 
         const auto* interfaceScope = expectChildScope(*apiScope, "Readable", ScopeKind::INTERFACE);
         ASSERT_NE(interfaceScope, nullptr);
-        const auto* readScope = expectChildScope(*interfaceScope, "read", ScopeKind::FUNCTION);
+        const auto* readScope = expectChildScope(*interfaceScope, "__vnl_function_read--R__", ScopeKind::FUNCTION);
         ASSERT_NE(readScope, nullptr);
         EXPECT_NE(readScope->lookupLocal("input"), nullptr);
         EXPECT_NE(interfaceScope->lookupLocal("R"), nullptr);
@@ -1202,7 +1202,7 @@ class Vec3 {
         const auto* aliasScope = expectChildScope(*apiScope, "Alias", ScopeKind::TYPE_ALIAS);
         ASSERT_NE(aliasScope, nullptr);
         EXPECT_NE(aliasScope->lookupLocal("A"), nullptr);
-        const auto* functionScope = expectChildScope(*apiScope, "run", ScopeKind::FUNCTION);
+        const auto* functionScope = expectChildScope(*apiScope, "__vnl_function_run--int__", ScopeKind::FUNCTION);
         ASSERT_NE(functionScope, nullptr);
         EXPECT_NE(functionScope->lookupLocal("amount"), nullptr);
         const auto* external = apiScope->lookupLocal("External");
@@ -1212,7 +1212,7 @@ class Vec3 {
         const auto* extraPackage = getImportedPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         EXPECT_EQ(result.getScopeByImportedNode(*extraPackage), nullptr);
-        for (const auto name : { "api", "Box", "T", "apply", "input", "Ready", "payload", "extra", "External" }) {
+        for (const auto name : { "api", "Box", "T", "__vnl_function_apply--T__", "input", "Ready", "payload", "extra", "External" }) {
             EXPECT_EQ(localScope->lookupLocal(name), nullptr);
         }
     }
@@ -1220,8 +1220,12 @@ class Vec3 {
     TEST_F(SemanticAnalyzerImportTest, CreatesScopesForDirectAndWildcardImportsOfScopedIdentifiers) {
         writeScopedModule();
         const std::vector<std::pair<std::string, ScopeKind>> scopedIdentifiers = {
-            { "run", ScopeKind::FUNCTION },     { "Box", ScopeKind::CLASS },       { "Readable", ScopeKind::INTERFACE }, { "State", ScopeKind::ENUM },
-            { "Alias", ScopeKind::TYPE_ALIAS }, { "method", ScopeKind::FUNCTION }, { "Ready", ScopeKind::ENUM_MEMBER },
+            { "Box", ScopeKind::CLASS },
+            { "Readable", ScopeKind::INTERFACE },
+            { "State", ScopeKind::ENUM },
+            { "Alias", ScopeKind::TYPE_ALIAS },
+            { "__vnl_function_method__", ScopeKind::FUNCTION },
+            { "Ready", ScopeKind::ENUM_MEMBER },
         };
         for (const auto& [name, kind] : scopedIdentifiers) {
             SCOPED_TRACE(name);
@@ -1241,7 +1245,16 @@ class Vec3 {
         }
         const auto result = analyze("import pkg.api.*\n");
         ASSERT_FALSE(result.hasErrors());
-        for (const auto& [name, kind] : scopedIdentifiers) {
+        const std::vector<std::pair<std::string, ScopeKind>> wildcardScopedIdentifiers = {
+            { "__vnl_function_run--int__", ScopeKind::FUNCTION },
+            { "Box", ScopeKind::CLASS },
+            { "Readable", ScopeKind::INTERFACE },
+            { "State", ScopeKind::ENUM },
+            { "Alias", ScopeKind::TYPE_ALIAS },
+            { "__vnl_function_method__", ScopeKind::FUNCTION },
+            { "Ready", ScopeKind::ENUM_MEMBER },
+        };
+        for (const auto& [name, kind] : wildcardScopedIdentifiers) {
             const auto* node = findImportedNode(result, name);
             ASSERT_NE(node, nullptr);
             const auto* scope = result.getScopeByImportedNode(*node);
@@ -1294,7 +1307,7 @@ class Vec3 {
             EXPECT_EQ(classScope, result.getScopeByImportedNode(*second));
             EXPECT_EQ(classScope->findParent(), apiScope);
             EXPECT_EQ(apiScope->findParent(), packageScope);
-            const auto* method = classScope->lookupLocal("apply");
+            const auto* method = classScope->lookupLocal("__vnl_function_apply--T__");
             ASSERT_NE(method, nullptr);
             const auto* methodScope = result.getScopeByImportedNode(*method->getImportedNode());
             ASSERT_NE(methodScope, nullptr);
@@ -1409,22 +1422,25 @@ class Vec3 {
             "dependency_source/api.vni",
             R"({
     "value": {"category": "let", "type": "int"},
-    "run": {"category": "func", "returnType": "void", "parameters": {}, "native": false},
+    "__vnl_function_run__": {"category": "func", "name": "run", "returnType": "void", "parameters": {}, "native": false},
     "Box": {"category": "class", "genericParameters": [], "properties": {}, "methods": {}, "constructors": {}, "operators": {}, "baseClass": null, "implementedInterfaces": [], "final": false},
     "Readable": {"category": "interface", "genericParameters": [], "methods": {}, "operators": {}},
     "State": {"category": "enum", "genericParameters": [], "members": {}},
     "Alias": {"category": "typealias", "genericParameters": [], "originalType": "int"},
     "External": {"category": "imported", "source": "extra.tools.enabled"},
-    "method": {"category": "method", "returnType": "void", "parameters": {}, "native": false, "static": true, "accessModifier": "public"},
+    "__vnl_function_method__": {"category": "method", "name": "method", "returnType": "void", "parameters": {}, "native": false, "static": true, "accessModifier": "public"},
     "Ready": {"category": "enummember", "associatedValues": {}},
     "property": {"category": "property", "type": "int", "static": true, "accessModifier": "public"},
     "parameter": {"category": "parameter", "type": "int"}
 })"
         );
         const std::vector<std::pair<std::string, SymbolKind>> identifiers = {
-            { "value", SymbolKind::VARIABLE },    { "run", SymbolKind::FUNCTION },      { "Box", SymbolKind::CLASS },           { "Readable", SymbolKind::INTERFACE },
-            { "State", SymbolKind::ENUM },        { "Alias", SymbolKind::TYPE_ALIAS },  { "External", SymbolKind::VARIABLE },   { "method", SymbolKind::METHOD },
-            { "Ready", SymbolKind::ENUM_MEMBER }, { "property", SymbolKind::PROPERTY }, { "parameter", SymbolKind::PARAMETER },
+            { "value", SymbolKind::VARIABLE },      { "__vnl_function_run__", SymbolKind::FUNCTION },
+            { "Box", SymbolKind::CLASS },           { "Readable", SymbolKind::INTERFACE },
+            { "State", SymbolKind::ENUM },          { "Alias", SymbolKind::TYPE_ALIAS },
+            { "External", SymbolKind::VARIABLE },   { "__vnl_function_method__", SymbolKind::METHOD },
+            { "Ready", SymbolKind::ENUM_MEMBER },   { "property", SymbolKind::PROPERTY },
+            { "parameter", SymbolKind::PARAMETER },
         };
 
         for (const auto& [name, kind] : identifiers) {

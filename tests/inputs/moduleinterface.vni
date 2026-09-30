@@ -15,14 +15,29 @@
                 "type": "vanillang.ui.TextDisplayUi",
                 "static": false,
                 "accessModifier": "public"
-            },
-            "methods": {
-                "ExampleMethod": {
-                    "category": "method"
-                }
+            }
+        },
+        "methods": {
+            "__vnl_function_ExampleMethod__": {
+                "category": "method",
+                "name": "ExampleMethod",
+                "returnType": "void",
+                "parameters": {},
+                "static": false,
+                "native": false,
+                "accessModifier": "public"
             }
         },
         "constructors": {},
-        "operators": {}
+        "operators": {},
+        "baseClass": null,
+        "implementedInterfaces": []
+    },
+    "__vnl_function_ExampleFunction__": {
+        "category": "func",
+        "name": "ExampleFunction",
+        "returnType": "void",
+        "parameters": {},
+        "native": false
     }
 }
