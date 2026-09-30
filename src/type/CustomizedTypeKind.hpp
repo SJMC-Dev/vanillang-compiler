@@ -7,7 +7,6 @@ namespace vnlc {
         INTERFACE,
         ENUM,
         ENUM_MEMBER,
-        TYPE_ALIAS,
         GENERIC_PARAMETER,
     };
 }

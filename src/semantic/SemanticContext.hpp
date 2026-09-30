@@ -51,6 +51,7 @@ namespace vnlc {
         void reportWarning(const AstNode& node, std::string_view message);
         void reportNote(const AstNode& node, std::string_view message);
         void pushScope(std::unique_ptr<Scope>&& scope);
+        bool pushExistingScope(const AstNode* astNode);
         void popScope();
         Scope& getOrCreateImportedScope(ScopeKind kind, const Scope* parent, const ImportedItem& importedNode);
 

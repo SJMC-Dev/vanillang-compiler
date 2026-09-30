@@ -1,22 +1,7 @@
 #include "ConstructorDeclarationNode.hpp"
+#include "ast/declaration/ConstructorDeclarationNode.hpp"
 
 namespace vnlc {
-    std::string ConstructorDeclarationNode::generateInternalName(const std::vector<std::unique_ptr<ValueDeclarationNode>>& parameters) {
-        std::string identifier = "__vnl_constructor";
-
-        if (!parameters.empty()) {
-            identifier += '-';
-            for (const auto& parameter : parameters) {
-                if (parameter->getType().has_value()) {
-                    identifier += '-' + parameter->getType().value()->generateInternalNamePart();
-                }
-            }
-        }
-
-        identifier += "__";
-        return identifier;
-    }
-
     ConstructorDeclarationNode::ConstructorDeclarationNode(
         ConstructorDeclarationKind::AccessModifier accessModifier,
         std::vector<std::unique_ptr<ValueDeclarationNode>>&& parameters,
@@ -25,7 +10,7 @@ namespace vnlc {
         const Token& lastToken
     )
         : DeclarationNode(firstToken, lastToken),
-          internalName(generateInternalName(parameters)),
+          internalName(""),
           accessModifier(accessModifier),
           parameters(std::move(parameters)),
           body(std::move(body)) {}
@@ -39,7 +24,7 @@ namespace vnlc {
         std::vector<DeclarationItem::MetadataTerm>&& metadataTerms
     )
         : DeclarationNode(firstToken, lastToken, std::move(metadataTerms)),
-          internalName(generateInternalName(parameters)),
+          internalName(""),
           accessModifier(accessModifier),
           parameters(std::move(parameters)),
           body(std::move(body)) {}
@@ -58,5 +43,9 @@ namespace vnlc {
 
     const BlockStatementNode& ConstructorDeclarationNode::getBody() const noexcept {
         return *body;
+    }
+
+    void ConstructorDeclarationNode::setInternalName(std::string_view internalName) const {
+        this->internalName = std::string(internalName);
     }
 } // namespace vnlc

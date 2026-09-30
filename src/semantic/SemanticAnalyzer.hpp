@@ -4,6 +4,7 @@
 #include "ast/declaration/ClassDeclarationNode.hpp"
 #include "ast/declaration/ConstructorDeclarationNode.hpp"
 #include "ast/declaration/EnumDeclarationNode.hpp"
+#include "ast/declaration/EnumMemberDeclarationNode.hpp"
 #include "ast/declaration/ExportDeclarationNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
 #include "ast/declaration/ImportDeclarationNode.hpp"
@@ -13,16 +14,14 @@
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
 #include "ast/expression/IdentifierLikeExpressionNode.hpp"
-#include "ast/expression/MemberAccessExpressionNode.hpp"
 #include "ast/module/ModuleNode.hpp"
+#include "ast/statement/BlockStatementNode.hpp"
 #include "ast/statement/StatementNode.hpp"
-#include "ast/typeref/PrimitiveTypeReferenceKind.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
 #include "config/Config.hpp"
 #include "metadata/MetadataInfo.hpp"
 #include "semantic/SemanticContext.hpp"
 #include "semantic/SemanticResult.hpp"
-#include "symbol/RegularSymbol.hpp"
 #include "symbol/RegularSymbolAccessModifier.hpp"
 #include "symbol/RegularSymbolKind.hpp"
 #include "type/Type.hpp"
@@ -33,12 +32,12 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace vnlc {
     class PrimitiveType;
 
     class SemanticAnalyzer {
-        friend class SemanticAnalyzerAccessTest;
         friend class SemanticAnalyzerImportTest;
 
     private:
@@ -49,20 +48,30 @@ namespace vnlc {
         [[nodiscard]] static RegularSymbolKind getImportedSymbolKind(const ImportedItem& item);
         [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
         [[nodiscard]] static RegularSymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
-        [[nodiscard]] static const PrimitiveType* getPrimitiveType(PrimitiveTypeReferenceKind kind);
-        [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
-        [[nodiscard]] std::string getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
-        [[nodiscard]] std::string getUnwrappedTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
+
+        [[nodiscard]] const ImportedPackage* getImportedRootPackageByName(std::string_view name) const;
+
+        void declareFunctionOverloading(const FunctionDeclarationNode& funcDecl, RegularSymbolKind kind, std::string_view declarationKind);
+        const Type* registerImportedTypeReference(std::string_view fullTypeName);
+        void registerImportedTypeReferences(const ImportedItem& importedItem);
         void registerImportedScopes(const ImportedItem& item, const Scope* parent);
+
+        void collectLocalSymbolsInModule(const ModuleNode& moduleNode);
+        void collectLocalSymbolsInFunction(const FunctionDeclarationNode& functionNode);
+        void collectLocalSymbolsInConstructor(const ConstructorDeclarationNode& constructorNode);
+        void collectLocalSymbolsInOperator(const OperatorDeclarationNode& operatorNode);
+        void collectLocalSymbolsInClass(const ClassDeclarationNode& classNode);
+        void collectLocalSymbolsInInterface(const InterfaceDeclarationNode& interfaceNode);
+        void collectLocalSymbolsInEnum(const EnumDeclarationNode& enumNode);
+        void collectLocalSymbolsInEnumMember(const EnumMemberDeclarationNode& enumMemberNode);
+        void collectLocalSymbolsInTypeAlias(const TypeAliasDeclarationNode& typeAliasNode);
+
         void checkIdentifierExpressionUse(const IdentifierLikeExpressionNode& exprNode, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
-        [[nodiscard]] bool checkAccessModifier(const MemberAccessExpressionNode& memberAccessNode);
-        [[nodiscard]] bool checkAccessModifier(const IdentifierLikeExpressionNode& identifierNode);
-        [[nodiscard]] bool checkMemberAccessModifier(const TypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
+
         [[nodiscard]] MetadataInfo checkMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms, const DeclarationNode& declNode);
-        [[nodiscard]] std::size_t getGenericParameterCount(const RegularSymbol& symbol) const;
+
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);
-        void declareFunctionOverloading(const FunctionDeclarationNode& funcDecl, RegularSymbolKind kind, std::string_view declarationKind);
         void checkExport(const ExportDeclarationNode& exportDecl);
         void checkValueDeclaration(const ValueDeclarationNode& varDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkFunctionDeclaration(const FunctionDeclarationNode& funcDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
@@ -75,9 +84,9 @@ namespace vnlc {
         void checkStatement(const StatementNode& statement);
         void checkExpression(const ExpressionNode& expression);
         const Type* checkType(const TypeReferenceNode& type);
-        const Type* checkUnwrappedType(const TypeReferenceNode& type);
+
         [[nodiscard]] TypeInferenceResult inferExpressionType(const ExpressionNode& expression);
-        [[nodiscard]] TypeInferenceResult inferFunctionReturnType(const FunctionDeclarationNode& funcDecl);
+        [[nodiscard]] TypeInferenceResult inferReturnType(const BlockStatementNode& statement);
 
     public:
         explicit SemanticAnalyzer(const ModuleNode& module);

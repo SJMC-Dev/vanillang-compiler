@@ -15,9 +15,7 @@ namespace vnlc {
     private:
         ConstructorDeclarationNode() = delete;
 
-        [[nodiscard]] static std::string generateInternalName(const std::vector<std::unique_ptr<ValueDeclarationNode>>& parameters);
-
-        std::string internalName;
+        mutable std::string internalName;
         ConstructorDeclarationKind::AccessModifier accessModifier;
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
         std::unique_ptr<BlockStatementNode> body;
@@ -44,6 +42,8 @@ namespace vnlc {
         [[nodiscard]] const ConstructorDeclarationKind::AccessModifier getAccessModifier() const noexcept;
         [[nodiscard]] const std::vector<std::unique_ptr<ValueDeclarationNode>>& getParameters() const noexcept;
         [[nodiscard]] const BlockStatementNode& getBody() const noexcept;
+
+        void setInternalName(std::string_view internalName) const;
     };
 } // namespace vnlc
 

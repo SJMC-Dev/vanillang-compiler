@@ -25,9 +25,7 @@ namespace vnlc {
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
         std::optional<std::unique_ptr<TypeReferenceNode>> returnType;
         std::optional<std::unique_ptr<BlockStatementNode>> body;
-        std::string internalName;
-
-        [[nodiscard]] std::string generateInternalName() const;
+        mutable std::string internalName;
 
     public:
         FunctionDeclarationNode(
@@ -66,6 +64,8 @@ namespace vnlc {
         [[nodiscard]] const std::vector<std::unique_ptr<ValueDeclarationNode>>& getParameters() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<TypeReferenceNode>>& getReturnType() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<BlockStatementNode>>& getBody() const noexcept;
+
+        void setInternalName(std::string_view internalName) const;
     };
 } // namespace vnlc
 

@@ -3,6 +3,7 @@
 
 #include "type/PrimitiveTypeKind.hpp"
 #include "type/Type.hpp"
+#include <string_view>
 
 namespace vnlc {
     class PrimitiveType : public Type {
@@ -23,6 +24,8 @@ namespace vnlc {
     public:
         PrimitiveType(const PrimitiveType&) = delete;
         PrimitiveType(PrimitiveType&&) noexcept = delete;
+
+        [[nodiscard]] static const PrimitiveType* getPrimitiveTypeByFullTypeName(std::string_view name);
 
         [[nodiscard]] PrimitiveTypeKind getPrimitiveKind() const noexcept;
         [[nodiscard]] std::string_view getFullTypeName() const noexcept override;

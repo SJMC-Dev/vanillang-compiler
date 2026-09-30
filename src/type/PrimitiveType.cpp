@@ -3,6 +3,18 @@
 namespace vnlc {
     PrimitiveType::PrimitiveType(PrimitiveTypeKind primitiveKind) : primitiveKind(primitiveKind) {}
 
+    const PrimitiveType* PrimitiveType::getPrimitiveTypeByFullTypeName(std::string_view name) {
+        if (name == "byte") return PrimitiveType::byteType();
+        if (name == "short") return PrimitiveType::shortType();
+        if (name == "int") return PrimitiveType::intType();
+        if (name == "long") return PrimitiveType::longType();
+        if (name == "float") return PrimitiveType::floatType();
+        if (name == "double") return PrimitiveType::doubleType();
+        if (name == "bool") return PrimitiveType::booleanType();
+        if (name == "string") return PrimitiveType::stringType();
+        return nullptr;
+    };
+
     PrimitiveTypeKind PrimitiveType::getPrimitiveKind() const noexcept {
         return primitiveKind;
     }

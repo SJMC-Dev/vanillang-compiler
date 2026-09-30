@@ -20,6 +20,17 @@ namespace vnlc {
         scopeStack.push_back(std::move(scope));
     }
 
+    bool SemanticContext::pushExistingScope(const AstNode* astNode) {
+        auto it = localScopeMap.find(astNode);
+        if (it == localScopeMap.end()) {
+            return false;
+        }
+
+        scopeStack.push_back(std::move(it->second));
+        localScopeMap.erase(it);
+        return true;
+    }
+
     void SemanticContext::popScope() {
         if (scopeStack.back()->getOrigin() == ScopeOrigin::IMPORTED) {
             importedScopeMap.emplace(scopeStack.back()->getImportedNode(), std::move(scopeStack.back()));

@@ -83,7 +83,6 @@ add_executable(
     type/PrimitiveType.cpp
     type/CustomizedType.cpp
     type/VoidType.cpp
-    type/TypeExpressionType.cpp
     type/typeinf/TypeInferenceResult.cpp
     metadata/MetadataInfo.cpp
     vni/import/ImportedItem.cpp

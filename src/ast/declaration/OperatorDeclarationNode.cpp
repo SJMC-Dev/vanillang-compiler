@@ -17,9 +17,8 @@ namespace vnlc {
           accessModifier(accessModifier),
           parameters(std::move(parameters)),
           returnType(std::move(returnType)),
-          body(std::move(body)) {
-        internalName = generateInternalName();
-    }
+          body(std::move(body)),
+          internalName("") {}
 
     OperatorDeclarationNode::OperatorDeclarationNode(
         OperatorDeclarationKind::Kind kind,
@@ -38,25 +37,8 @@ namespace vnlc {
           accessModifier(accessModifier),
           parameters(std::move(parameters)),
           returnType(std::move(returnType)),
-          body(std::move(body)) {
-        internalName = generateInternalName();
-    }
-
-    std::string OperatorDeclarationNode::generateInternalName() const {
-        std::string identifier = "__vnl_operator_" + std::string(getOperatorName());
-
-        if (!parameters.empty()) {
-            identifier += '-';
-            for (const auto& parameter : parameters) {
-                if (parameter->getType().has_value()) {
-                    identifier += '-' + parameter->getType().value()->generateInternalNamePart();
-                }
-            }
-        }
-
-        identifier += "__";
-        return identifier;
-    }
+          body(std::move(body)),
+          internalName("") {}
 
     const OperatorDeclarationKind::Kind OperatorDeclarationNode::getKind() const noexcept {
         return kind;
@@ -136,5 +118,9 @@ namespace vnlc {
 
     const std::optional<std::unique_ptr<BlockStatementNode>>& OperatorDeclarationNode::getBody() const noexcept {
         return body;
+    }
+
+    void OperatorDeclarationNode::setInternalName(std::string_view internalName) const {
+        this->internalName = std::string(internalName);
     }
 } // namespace vnlc
