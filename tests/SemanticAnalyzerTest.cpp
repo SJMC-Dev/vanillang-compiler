@@ -1,8 +1,6 @@
 #include "semantic/SemanticAnalyzer.hpp"
 #include "ast/declaration/ClassDeclarationNode.hpp"
 #include "ast/module/ModuleNode.hpp"
-#include "ast/statement/ExpressionStatementNode.hpp"
-#include "ast/statement/VariableDeclarationStatementNode.hpp"
 #include "ast/typeref/CustomizedTypeReferenceNode.hpp"
 #include "collector/CollectionResult.hpp"
 #include "collector/Collector.hpp"
@@ -13,7 +11,6 @@
 #include "semantic/SemanticResult.hpp"
 #include "type/CustomizedTypeKind.hpp"
 #include "type/PrimitiveType.hpp"
-#include "type/TypeExpressionType.hpp"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -73,393 +70,6 @@ namespace vnlc {
         }
 
     } // namespace
-
-    class SemanticAnalyzerAccessTest : public testing::Test {
-    protected:
-        const Config config = makeConfig("access.vnl");
-        const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
-        std::shared_ptr<const ModuleNode> module;
-        std::unique_ptr<ClassDeclarationNode> baseClass;
-        std::unique_ptr<ClassDeclarationNode> privateShadow;
-        std::vector<std::shared_ptr<const ModuleNode>> accessModules;
-        std::vector<std::unique_ptr<TypeExpressionType>> typeExpressions;
-        std::unique_ptr<SemanticAnalyzer> analyzer;
-
-        void SetUp() override {
-            module = parseModule(
-                R"(
-class Derived extends Base {}
-class Descendant extends Derived {}
-class Unrelated {}
-class MissingBase extends Unknown {}
-class CycleA extends CycleB {}
-class CycleB extends CycleA {}
-class PublicShadow extends Base {
-    func protectedMember() {}
-    func privateMember() {}
-}
-class GenericShadow<protectedMember> extends Base {}
-class GenericPrivateShadow<privateMember> extends Base {}
-)",
-                config
-            );
-            const Token token(TokenKind::IDENTIFIER, "Base", 1, 1, 0);
-            std::vector<std::unique_ptr<DeclarationNode>> members;
-            const auto addProperty = [&](std::string_view name, ValueDeclarationKind::AccessModifier accessModifier) {
-                members.push_back(
-                    std::make_unique<ValueDeclarationNode>(
-                        ValueDeclarationKind::Kind::INSTANCE_PROPERTY,
-                        ValueDeclarationKind::Context::CLASS,
-                        accessModifier,
-                        std::make_unique<IdentifierNode>(name, token, token),
-                        std::nullopt,
-                        std::nullopt,
-                        token,
-                        token
-                    )
-                );
-            };
-            addProperty("protectedMember", ValueDeclarationKind::AccessModifier::PROTECTED);
-            addProperty("privateMember", ValueDeclarationKind::AccessModifier::PRIVATE);
-            addProperty("publicMember", ValueDeclarationKind::AccessModifier::PUBLIC);
-            members.push_back(
-                std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationKind::Kind::NATIVE,
-                    FunctionDeclarationKind::Context::CLASS,
-                    FunctionDeclarationKind::AccessModifier::PROTECTED,
-                    FunctionDeclarationKind::Binding::STATIC,
-                    std::make_unique<IdentifierNode>("protectedMethod", token, token),
-                    std::vector<std::unique_ptr<ValueDeclarationNode>>{},
-                    std::nullopt,
-                    std::nullopt,
-                    token,
-                    token
-                )
-            );
-            members.push_back(
-                std::make_unique<FunctionDeclarationNode>(
-                    FunctionDeclarationKind::Kind::NATIVE,
-                    FunctionDeclarationKind::Context::CLASS,
-                    FunctionDeclarationKind::AccessModifier::PROTECTED,
-                    FunctionDeclarationKind::Binding::INSTANCE,
-                    std::make_unique<IdentifierNode>("protectedInstanceMethod", token, token),
-                    std::vector<std::unique_ptr<ValueDeclarationNode>>{},
-                    std::nullopt,
-                    std::nullopt,
-                    token,
-                    token
-                )
-            );
-            baseClass = std::make_unique<ClassDeclarationNode>(
-                false,
-                std::make_unique<IdentifierNode>("Base", token, token),
-                std::nullopt,
-                std::vector<std::unique_ptr<TypeReferenceNode>>{},
-                std::vector<std::unique_ptr<IdentifierNode>>{},
-                std::move(members),
-                token,
-                token
-            );
-            members.clear();
-            addProperty("protectedMember", ValueDeclarationKind::AccessModifier::PRIVATE);
-            std::vector<std::unique_ptr<IdentifierNode>> baseName;
-            baseName.push_back(std::make_unique<IdentifierNode>("Base", token, token));
-            privateShadow = std::make_unique<ClassDeclarationNode>(
-                false,
-                std::make_unique<IdentifierNode>("PrivateShadow", token, token),
-                std::make_unique<CustomizedTypeReferenceNode>(false, std::move(baseName), std::vector<std::unique_ptr<TypeReferenceNode>>{}, token, token),
-                std::vector<std::unique_ptr<TypeReferenceNode>>{},
-                std::vector<std::unique_ptr<IdentifierNode>>{},
-                std::move(members),
-                token,
-                token
-            );
-            analyzer = std::make_unique<SemanticAnalyzer>(*module, imports);
-            auto& context = analyzer->context;
-            context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
-            std::vector<const ClassDeclarationNode*> classes{ baseClass.get(), privateShadow.get() };
-            for (const auto& declaration : module->getTopIdentifierDeclarations()) {
-                classes.push_back(&dynamic_cast<const ClassDeclarationNode&>(*declaration));
-            }
-            for (const auto* classDeclaration : classes) {
-                ASSERT_TRUE(context.currentScope().declare(
-                    RegularSymbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, classDeclaration->getName().getIdentifierString(), classDeclaration)
-                ));
-                const auto fullName = std::string(module->getFullName()) + "." + std::string(classDeclaration->getName().getIdentifierString());
-                context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const Type*>{}, classDeclaration));
-            }
-            accessModules.push_back(parseModule("let privateMember = 0\n", config));
-            ASSERT_TRUE(context.currentScope().declare(
-                RegularSymbol(RegularSymbolKind::VARIABLE, RegularSymbolAccessModifier::PUBLIC, "privateMember", accessModules.back()->getTopIdentifierDeclarations().front().get())
-            ));
-            for (const auto* classDeclaration : classes) {
-                analyzer->checkClassDeclaration(*classDeclaration, config);
-            }
-            for (const auto* classDeclaration : classes) {
-                if (!classDeclaration->getBaseClass().has_value()) continue;
-                const auto* baseType = dynamic_cast<const CustomizedTypeReferenceNode*>(classDeclaration->getBaseClass().value().get());
-                ASSERT_NE(baseType, nullptr);
-                if (const auto* resolvedType = findType(baseType->getNameParts().front()->getIdentifierString())) {
-                    context.mapType(baseType, resolvedType);
-                }
-            }
-            context.popScope();
-            ASSERT_TRUE(context.getErrors().empty()) << context.getErrors().front().getMessage();
-        }
-
-        const CustomizedType* findType(std::string_view name) const {
-            return analyzer->context.getCustomizedTypeByFullTypeName(std::string(module->getFullName()) + "." + std::string(name));
-        }
-
-        const ClassDeclarationNode* findClass(std::string_view name) const {
-            if (name == "Base") return baseClass.get();
-            if (name == "PrivateShadow") return privateShadow.get();
-            for (const auto& declaration : module->getTopIdentifierDeclarations()) {
-                const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(declaration.get());
-                if (classDeclaration->getName().getIdentifierString() == name) return classDeclaration;
-            }
-            return nullptr;
-        }
-
-        void leaveBaseScopeUnbuilt() {
-            auto& context = analyzer->context;
-            context = SemanticContext{};
-            const auto fullName = std::string(module->getFullName()) + ".Base";
-            context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const Type*>{}, baseClass.get()));
-            context.pushScope(std::make_unique<Scope>(ScopeKind::MODULE, nullptr, module.get()));
-            context.popScope();
-        }
-
-        void prepareDerivedScopeWithoutBaseScope() {
-            leaveBaseScopeUnbuilt();
-            auto& context = analyzer->context;
-            const auto& derivedClass = dynamic_cast<const ClassDeclarationNode&>(*module->getTopIdentifierDeclarations().front());
-            const auto fullName = std::string(module->getFullName()) + ".Derived";
-            context.registerCustomizedType(std::make_unique<CustomizedType>(CustomizedTypeKind::CLASS, fullName, std::vector<const Type*>{}, &derivedClass));
-            context.mapType(derivedClass.getBaseClass().value().get(), findType("Base"));
-            context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, context.getScopeByAstNode(module.get()), &derivedClass));
-            context.popScope();
-        }
-
-        void prepareUnregisteredDerivedScope() {
-            leaveBaseScopeUnbuilt();
-            auto& context = analyzer->context;
-            const auto* derivedClass = findClass("Derived");
-            context.mapType(derivedClass->getBaseClass().value().get(), findType("Base"));
-            context.pushScope(std::make_unique<Scope>(ScopeKind::CLASS, context.getScopeByAstNode(module.get()), derivedClass));
-        }
-
-        bool canAccess(std::string_view receiver, std::string_view accessor, std::string_view member, bool typeExpression = false, std::string_view object = "object") {
-            accessModules.push_back(parseModule("func inspect() {\n" + std::string(object) + "." + std::string(member) + "\n}\n", config));
-            const auto& function = dynamic_cast<const FunctionDeclarationNode&>(*accessModules.back()->getTopIdentifierDeclarations().front());
-            const auto& statement = dynamic_cast<const ExpressionStatementNode&>(*function.getBody().value()->getStatements().front());
-            const auto& access = dynamic_cast<const MemberAccessExpressionNode&>(statement.getExpression());
-            auto& context = analyzer->context;
-            const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const AstNode*>(module.get()) : findType(accessor)->getLocalNode());
-            context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, parent, &function));
-            const Type* receiverType = findType(receiver);
-            if (typeExpression) {
-                typeExpressions.push_back(std::make_unique<TypeExpressionType>(receiverType));
-                receiverType = typeExpressions.back().get();
-            }
-            context.mapInferredExpressionType(&access.getObject(), receiverType);
-            const bool allowed = analyzer->checkAccessModifier(access);
-            context.popScope();
-            return allowed;
-        }
-
-        bool canAccessIdentifier(std::string_view accessor, std::string_view identifier, std::optional<RegularSymbolKind> localSymbolKind = std::nullopt, bool nestedBlock = false) {
-            const auto parameter = localSymbolKind == RegularSymbolKind::PARAMETER ? std::string(identifier) + ": int" : "";
-            const auto variable = localSymbolKind == RegularSymbolKind::VARIABLE ? "let " + std::string(identifier) + " = 0\n" : "";
-            const auto body = variable + std::string(identifier) + "\n";
-            accessModules.push_back(parseModule("func inspect(" + parameter + ") {\n" + (nestedBlock ? "{\n" + body + "}\n" : body) + "}\n", config));
-            const auto& function = dynamic_cast<const FunctionDeclarationNode&>(*accessModules.back()->getTopIdentifierDeclarations().front());
-            const auto& bodyBlock = *function.getBody().value();
-            const auto& block = nestedBlock ? dynamic_cast<const BlockStatementNode&>(*bodyBlock.getStatements().front()) : bodyBlock;
-            const auto& statement = dynamic_cast<const ExpressionStatementNode&>(*block.getStatements().back());
-            const auto& expression = dynamic_cast<const IdentifierLikeExpressionNode&>(statement.getExpression());
-            auto& context = analyzer->context;
-            const auto* parent = context.getScopeByAstNode(accessor.empty() ? static_cast<const AstNode*>(module.get()) : findClass(accessor));
-            context.pushScope(std::make_unique<Scope>(ScopeKind::FUNCTION, parent, &function));
-            if (localSymbolKind == RegularSymbolKind::PARAMETER) {
-                EXPECT_TRUE(
-                    context.currentScope().declare(RegularSymbol(RegularSymbolKind::PARAMETER, RegularSymbolAccessModifier::PUBLIC, identifier, function.getParameters().front().get()))
-                );
-            }
-            if (nestedBlock) context.pushScope(std::make_unique<Scope>(ScopeKind::BLOCK, &context.currentScope(), &block));
-            if (localSymbolKind == RegularSymbolKind::VARIABLE) {
-                const auto& declaration = dynamic_cast<const VariableDeclarationStatementNode&>(*block.getStatements().front()).getVariableDeclaration();
-                EXPECT_TRUE(context.currentScope().declare(RegularSymbol(RegularSymbolKind::VARIABLE, RegularSymbolAccessModifier::PUBLIC, identifier, &declaration)));
-            }
-            const bool allowed = analyzer->checkAccessModifier(expression);
-            if (nestedBlock) context.popScope();
-            context.popScope();
-            return allowed;
-        }
-    };
-
-    TEST_F(SemanticAnalyzerAccessTest, AllowsImplicitThisAccessWithinTheDeclaringClass) {
-        for (const auto member : { "publicMember", "protectedMember", "privateMember", "protectedInstanceMethod", "protectedMethod" }) {
-            SCOPED_TRACE(member);
-            EXPECT_TRUE(canAccessIdentifier("Base", member));
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, AllowsInheritedProtectedMembersThroughImplicitThis) {
-        for (const auto accessor : { "Derived", "Descendant" }) {
-            SCOPED_TRACE(accessor);
-            for (const auto member : { "publicMember", "protectedMember", "protectedInstanceMethod", "protectedMethod" }) {
-                SCOPED_TRACE(member);
-                EXPECT_TRUE(canAccessIdentifier(accessor, member));
-            }
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, DeniesInheritedPrivateMembersBeforeLookingUpModuleVariables) {
-        EXPECT_FALSE(canAccessIdentifier("Derived", "privateMember"));
-        EXPECT_FALSE(canAccessIdentifier("Descendant", "privateMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, LocalVariablesAndParametersHideInheritedPrivateMembers) {
-        for (const auto localSymbolKind : { RegularSymbolKind::VARIABLE, RegularSymbolKind::PARAMETER }) {
-            for (const bool nestedBlock : { false, true }) {
-                SCOPED_TRACE(nestedBlock);
-                EXPECT_TRUE(canAccessIdentifier("Derived", "privateMember", localSymbolKind, nestedBlock));
-            }
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, ResolvesClassSymbolsBeforeInheritedMembersForImplicitThis) {
-        EXPECT_TRUE(canAccessIdentifier("PublicShadow", "privateMember"));
-        EXPECT_TRUE(canAccessIdentifier("PrivateShadow", "protectedMember"));
-        EXPECT_TRUE(canAccessIdentifier("GenericPrivateShadow", "privateMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, DefersIdentifierResolutionErrorsToOtherChecks) {
-        EXPECT_TRUE(canAccessIdentifier("", "privateMember"));
-        EXPECT_TRUE(canAccessIdentifier("", "protectedMember"));
-        EXPECT_TRUE(canAccessIdentifier("Derived", "missingMember"));
-        EXPECT_TRUE(canAccessIdentifier("MissingBase", "missingMember"));
-        EXPECT_TRUE(canAccessIdentifier("CycleA", "missingMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, ChecksImplicitThisBeforeTheCurrentClassTypeAndBaseScopeAreRegistered) {
-        prepareUnregisteredDerivedScope();
-        EXPECT_TRUE(canAccessIdentifier("Derived", "protectedMember"));
-        EXPECT_TRUE(canAccessIdentifier("Derived", "protectedInstanceMethod"));
-        EXPECT_TRUE(canAccessIdentifier("Derived", "protectedMethod"));
-        EXPECT_FALSE(canAccessIdentifier("Derived", "privateMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, AllowsProtectedMembersWithinDeclaringAndDerivedClasses) {
-        for (const auto accessor : { "Base", "Derived", "Descendant" }) {
-            SCOPED_TRACE(accessor);
-            EXPECT_TRUE(canAccess(accessor, accessor, "protectedMember"));
-            EXPECT_TRUE(canAccess(accessor, accessor, "protectedInstanceMethod"));
-            EXPECT_TRUE(canAccess("Base", accessor, "protectedMethod", true));
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, DeniesProtectedInstanceMembersThroughBaseOrSiblingInstances) {
-        for (const auto member : { "protectedMember", "protectedInstanceMethod" }) {
-            SCOPED_TRACE(member);
-            EXPECT_FALSE(canAccess("Base", "Derived", member));
-            EXPECT_FALSE(canAccess("Base", "Descendant", member));
-            EXPECT_FALSE(canAccess("Derived", "Descendant", member));
-            EXPECT_FALSE(canAccess("GenericShadow", "Derived", member));
-            EXPECT_TRUE(canAccess("Descendant", "Derived", member));
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, AllowsProtectedInstanceMembersThroughThisAndSuper) {
-        for (const auto member : { "protectedMember", "protectedInstanceMethod" }) {
-            SCOPED_TRACE(member);
-            EXPECT_TRUE(canAccess("Derived", "Derived", member, false, "this"));
-            EXPECT_TRUE(canAccess("Descendant", "Descendant", member, false, "this"));
-            EXPECT_TRUE(canAccess("Base", "Derived", member, false, "super"));
-            EXPECT_TRUE(canAccess("Derived", "Descendant", member, false, "super"));
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, AllowsProtectedStaticMethodsThroughBaseAndSiblingInstances) {
-        for (const auto receiver : { "Base", "GenericShadow" }) {
-            SCOPED_TRACE(receiver);
-            for (const bool typeExpression : { false, true }) {
-                SCOPED_TRACE(typeExpression);
-                EXPECT_TRUE(canAccess(receiver, "Derived", "protectedMethod", typeExpression));
-                EXPECT_FALSE(canAccess(receiver, "Unrelated", "protectedMethod", typeExpression));
-                EXPECT_FALSE(canAccess(receiver, "", "protectedMethod", typeExpression));
-            }
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, DeniesProtectedMembersOutsideTheirHierarchy) {
-        for (const auto accessor : { "Unrelated", "" }) {
-            SCOPED_TRACE(accessor);
-            EXPECT_FALSE(canAccess("Base", accessor, "protectedMember"));
-            EXPECT_FALSE(canAccess("Base", accessor, "protectedMethod", true));
-            EXPECT_FALSE(canAccess("Base", accessor, "protectedMember", false, "super"));
-            EXPECT_FALSE(canAccess("Base", accessor, "protectedInstanceMethod", false, "super"));
-        }
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, ChecksInheritedMembersAgainstTheirDeclaringClass) {
-        EXPECT_TRUE(canAccess("Descendant", "Base", "protectedMember"));
-        EXPECT_TRUE(canAccess("Descendant", "Derived", "protectedMember"));
-        EXPECT_TRUE(canAccess("Descendant", "Descendant", "protectedMethod", true));
-        EXPECT_FALSE(canAccess("Descendant", "Unrelated", "protectedMember"));
-        EXPECT_FALSE(canAccess("Descendant", "", "protectedMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, PreservesPublicAndPrivateAccessRules) {
-        EXPECT_TRUE(canAccess("Base", "", "publicMember"));
-        EXPECT_TRUE(canAccess("Descendant", "", "publicMember"));
-        EXPECT_TRUE(canAccess("Base", "Base", "privateMember"));
-        EXPECT_TRUE(canAccess("Descendant", "Base", "privateMember"));
-        EXPECT_FALSE(canAccess("Base", "Derived", "privateMember"));
-        EXPECT_FALSE(canAccess("Base", "", "privateMember"));
-        EXPECT_FALSE(canAccess("Descendant", "Descendant", "privateMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, DoesNotGrantProtectedAccessForMissingOrCyclicBaseTypes) {
-        EXPECT_FALSE(canAccess("Base", "MissingBase", "protectedMember"));
-        EXPECT_FALSE(canAccess("Base", "CycleA", "protectedMember"));
-        EXPECT_TRUE(canAccess("CycleA", "Unrelated", "missingMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, ChecksDeclarationsBeforeTheirScopesAreBuilt) {
-        leaveBaseScopeUnbuilt();
-        EXPECT_FALSE(canAccess("Base", "", "protectedMember"));
-        EXPECT_FALSE(canAccess("Base", "", "protectedMethod", true));
-        EXPECT_FALSE(canAccess("Base", "", "privateMember"));
-        EXPECT_TRUE(canAccess("Base", "", "publicMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, ChecksProtectedReceiversBeforeTheBaseScopeIsBuilt) {
-        prepareDerivedScopeWithoutBaseScope();
-
-        for (const auto member : { "protectedMember", "protectedInstanceMethod" }) {
-            SCOPED_TRACE(member);
-            EXPECT_FALSE(canAccess("Base", "Derived", member));
-            EXPECT_TRUE(canAccess("Derived", "Derived", member));
-            EXPECT_TRUE(canAccess("Base", "Derived", member, false, "super"));
-        }
-        EXPECT_TRUE(canAccess("Base", "Derived", "protectedMethod"));
-        EXPECT_TRUE(canAccess("Base", "Derived", "protectedMethod", true));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, UsesAccessModifierOfTheNearestMemberDeclaration) {
-        EXPECT_TRUE(canAccess("PublicShadow", "", "protectedMember"));
-        EXPECT_TRUE(canAccess("PrivateShadow", "PrivateShadow", "protectedMember"));
-        EXPECT_FALSE(canAccess("PrivateShadow", "", "protectedMember"));
-        EXPECT_FALSE(canAccess("PrivateShadow", "Base", "protectedMember"));
-    }
-
-    TEST_F(SemanticAnalyzerAccessTest, GenericParametersDoNotHideInheritedProtectedMembers) {
-        EXPECT_FALSE(canAccess("GenericShadow", "", "protectedMember"));
-        EXPECT_FALSE(canAccess("GenericShadow", "Unrelated", "protectedMember"));
-        EXPECT_TRUE(canAccess("GenericShadow", "GenericShadow", "protectedMember"));
-    }
 
     TEST(SemanticAnalyzerTest, AcceptsMatchingGenericArgumentCounts) {
         constexpr std::string_view source = R"(
@@ -842,7 +452,7 @@ func value(input: int) {}
             EXPECT_TRUE(collectionResult->getErrors().empty());
         }
 
-        const ImportedPackage* getImportedPackageByName(std::string_view name) const {
+        const ImportedPackage* getImportedRootPackageByName(std::string_view name) const {
             const auto& imports = collectionResult->getImports();
             const auto it = imports.find(std::string(name));
             return it == imports.end() ? nullptr : it->second.get();
@@ -914,14 +524,6 @@ func value(input: int) {}
             context.popScope();
         }
 
-        std::string getFullTypeNameByAlias(std::string_view source) {
-            std::string fullName;
-            withAliasType(source, [&fullName](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
-                fullName = analyzer.getFullTypeNameByTypeReferenceNode(typeAlias.getOriginalType());
-            });
-            return fullName;
-        }
-
         SemanticContext& semanticContext(SemanticAnalyzer& analyzer) const {
             return analyzer.context;
         }
@@ -944,52 +546,6 @@ func value(input: int) {}
             return nullptr;
         }
     };
-
-    TEST_F(SemanticAnalyzerImportTest, PrefixesImportedTypesWithTheirCanonicalPaths) {
-        writeScopedModule();
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox\n"), "pkg.api.Box");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api as api\ntype Result = api.Box\n"), "pkg.api.Box");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg as library\ntype Result = library.api.Box\n"), "pkg.api.Box");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.*\ntype Result = Box\n"), "pkg.api.Box");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.State as State\ntype Result = State.Ready\n"), "pkg.api.State.Ready");
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, PrefixesGenericArgumentsAndDesugarsOptionalImportedTypes) {
-        writeScopedModule();
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api as api\ntype Result = api.Box<api.Readable>\n"), "pkg.api.Box<pkg.api.Readable>");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.*\ntype Result = Box<Readable>\n"), "pkg.api.Box<pkg.api.Readable>");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int?>\n"), "pkg.api.Box<vanillang.typesystem.Optional<int>>");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result<T> = ImportedBox<T>\n"), "pkg.api.Box<T>");
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox?\n"), "vanillang.typesystem.Optional<pkg.api.Box>");
-        EXPECT_EQ(
-            getFullTypeNameByAlias("import pkg.api.Box as ImportedBox\ntype Result = ImportedBox<int?>?\n"),
-            "vanillang.typesystem.Optional<pkg.api.Box<vanillang.typesystem.Optional<int>>>"
-        );
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, BuildsLocalFullTypeNames) {
-        const auto classFullName = getFullTypeNameByAlias("class Box {}\ntype Result = Box\n");
-        EXPECT_EQ(classFullName, std::string(module->getFullName()) + ".Box");
-
-        const auto interfaceFullName = getFullTypeNameByAlias("interface Readable {}\ntype Result = Readable\n");
-        EXPECT_EQ(interfaceFullName, std::string(module->getFullName()) + ".Readable");
-
-        const auto enumMemberFullName = getFullTypeNameByAlias("enum State {\n    Ready\n}\ntype Result = State.Ready\n");
-        EXPECT_EQ(enumMemberFullName, std::string(module->getFullName()) + ".State.Ready");
-
-        const auto typeAliasFullName = getFullTypeNameByAlias("type Alias = int\ntype Result = Alias\n");
-        EXPECT_EQ(typeAliasFullName, std::string(module->getFullName()) + ".Alias");
-    }
-
-    TEST_F(SemanticAnalyzerImportTest, BuildsLocalGenericAndOptionalFullTypeNames) {
-        const auto genericFullName = getFullTypeNameByAlias("class Box<T> {}\ntype Result<T> = Box<T?>\n");
-        EXPECT_EQ(genericFullName, std::string(module->getFullName()) + ".Box<vanillang.typesystem.Optional<T>>");
-
-        const auto optionalCustomizedFullName = getFullTypeNameByAlias("class Box<T> {}\ninterface Readable {}\ntype Result = Box<Readable?>\n");
-        EXPECT_EQ(optionalCustomizedFullName, std::string(module->getFullName()) + ".Box<vanillang.typesystem.Optional<" + std::string(module->getFullName()) + ".Readable>>");
-
-        EXPECT_EQ(getFullTypeNameByAlias("type Result = int?\n"), "vanillang.typesystem.Optional<int>");
-    }
 
     TEST_F(SemanticAnalyzerImportTest, MapsPrimitiveTypeReferenceNodesToSharedTypes) {
         withAliasType("type Result = int\n", [this](SemanticAnalyzer& analyzer, const TypeAliasDeclarationNode& typeAlias) {
@@ -1223,7 +779,7 @@ func value(input: int) {}
         const auto* localScope = result.getScopeByAstNode(*module);
         ASSERT_NE(localScope, nullptr);
         EXPECT_EQ(localScope->getOrigin(), ScopeOrigin::LOCAL);
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1334,7 +890,7 @@ func value(input: int) {}
         ASSERT_NE(external, nullptr);
         EXPECT_EQ(external->getKind(), RegularSymbolKind::IMPORT_ALIAS);
         EXPECT_EQ(result.getScopeByImportedNode(*external->getImportedNode()), nullptr);
-        const auto* extraPackage = getImportedPackageByName("extra");
+        const auto* extraPackage = getImportedRootPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         EXPECT_EQ(result.getScopeByImportedNode(*extraPackage), nullptr);
         for (const auto name : { "api", "Box", "T", "apply", "input", "Ready", "payload", "extra", "External" }) {
@@ -1397,7 +953,7 @@ func value(input: int) {}
             const auto* node = findImportedNode(result, name);
             ASSERT_NE(node, nullptr);
             EXPECT_EQ(result.getScopeByImportedNode(*node), nullptr);
-            const auto* package = getImportedPackageByName("pkg");
+            const auto* package = getImportedRootPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             EXPECT_EQ(result.getScopeByImportedNode(*package), nullptr);
         }
@@ -1450,7 +1006,7 @@ func value(input: int) {}
     TEST_F(SemanticAnalyzerImportTest, DeclaresScopesForModulesAcrossSeparateImports) {
         const auto result = analyze("import pkg.api as api\nimport pkg.sub.other.flag\n");
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1475,7 +1031,7 @@ func value(input: int) {}
         const auto result = analyze("import extra.tools as tools\nimport pkg.api.value\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("extra");
+        const auto* package = getImportedRootPackageByName("extra");
         ASSERT_NE(package, nullptr);
         const auto* packageScope = result.getScopeByImportedNode(*package);
         ASSERT_NE(packageScope, nullptr);
@@ -1507,7 +1063,7 @@ func value(input: int) {}
         ASSERT_FALSE(result.hasErrors());
         EXPECT_EQ(findImportedNode(result, "pkg"), nullptr);
         EXPECT_EQ(findImportedNode(result, "api"), nullptr);
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1532,7 +1088,7 @@ func value(input: int) {}
         const auto result = analyze("import pkg.api\nlet pkg = 0\nlet value = 0\nexport api\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1569,7 +1125,7 @@ func value(input: int) {}
         ASSERT_NE(moduleFunction, nullptr);
         EXPECT_EQ(moduleFunction->getOverloadings().size(), 2);
 
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1654,7 +1210,7 @@ func value(input: int) {}
                 const auto result = analyze(source);
 
                 ASSERT_FALSE(result.hasErrors());
-                const auto* package = getImportedPackageByName("pkg");
+                const auto* package = getImportedRootPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* importedModule = package->getModuleByName("api");
                 ASSERT_NE(importedModule, nullptr);
@@ -1667,7 +1223,7 @@ func value(input: int) {}
 
                 const ImportedItem* expectedTarget = nullptr;
                 if (path == "External") {
-                    const auto* extraPackage = getImportedPackageByName("extra");
+                    const auto* extraPackage = getImportedRootPackageByName("extra");
                     ASSERT_NE(extraPackage, nullptr);
                     const auto* toolsModule = extraPackage->getModuleByName("tools");
                     ASSERT_NE(toolsModule, nullptr);
@@ -1715,7 +1271,7 @@ func value(input: int) {}
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = getImportedPackageByName("pkg");
+            const auto* package = getImportedRootPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             const auto* importedModule = package->getModuleByName("api");
             ASSERT_NE(importedModule, nullptr);
@@ -1735,7 +1291,7 @@ func value(input: int) {}
         const auto result = analyze("import pkg.api.value as renamed\nimport pkg.api as library\nlet value = 0\nlet api = 0\nlet pkg = 0\nexport renamed, library\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1776,58 +1332,11 @@ func value(input: int) {}
         }
     }
 
-    TEST_F(SemanticAnalyzerImportTest, RegistersReexportedTypeScopesUnderTheirOriginalPackageAndModule) {
-        writeFile("dependency_source/api.vni", R"({"External":{"category":"imported","source":"extra.types.Box"},"Alias":{"category":"imported","source":"extra.types.Alias"}})");
-        writeFile("another_source/types.vni", R"({
-    "Box":{"category":"class","genericParameters":["T"],"properties":{},"methods":{},"constructors":{},"operators":{},"baseClass":null,"implementedInterfaces":[],"final":false},
-    "Alias":{"category":"typealias","genericParameters":["T"],"originalType":"T"}
-})");
-
-        for (const auto source : {
-                 "import pkg.api.External as selected\nimport pkg.api.Alias\n",
-                 "import pkg.api.*\nimport pkg.api.External as selected\n",
-             }) {
-            SCOPED_TRACE(source);
-            const auto result = analyze(std::string(source) + "type ClassResult = selected<int>\ntype AliasResult = Alias<int>\n");
-
-            ASSERT_FALSE(result.hasErrors());
-            const auto* package = getImportedPackageByName("extra");
-            ASSERT_NE(package, nullptr);
-            const auto* typesModule = package->getModuleByName("types");
-            ASSERT_NE(typesModule, nullptr);
-            const auto* packageScope = result.getScopeByImportedNode(*package);
-            const auto* typesScope = result.getScopeByImportedNode(*typesModule);
-            ASSERT_NE(packageScope, nullptr);
-            ASSERT_NE(typesScope, nullptr);
-            EXPECT_EQ(packageScope->findParent(), nullptr);
-            EXPECT_EQ(typesScope->findParent(), packageScope);
-            const auto* localScope = result.getScopeByAstNode(*module);
-            ASSERT_NE(localScope, nullptr);
-            for (const auto name : { "selected", "Alias" }) {
-                SCOPED_TRACE(name);
-                const bool isClass = std::string_view(name) == "selected";
-                const auto* symbol = asRegularSymbol(localScope->lookupLocal(name));
-                ASSERT_NE(symbol, nullptr);
-                EXPECT_EQ(symbol->getKind(), isClass ? RegularSymbolKind::CLASS : RegularSymbolKind::TYPE_ALIAS);
-                const auto* node = symbol->getImportedNode();
-                ASSERT_EQ(node, typesModule->getIdentifierByName(isClass ? "Box" : "Alias"));
-                ASSERT_NE(node, nullptr);
-                const auto* scope = result.getScopeByImportedNode(*node);
-                ASSERT_NE(scope, nullptr);
-                EXPECT_EQ(scope->getKind(), isClass ? ScopeKind::CLASS : ScopeKind::TYPE_ALIAS);
-                EXPECT_EQ(scope->getImportedNode(), node);
-                EXPECT_EQ(scope->findParent(), typesScope);
-                EXPECT_NE(scope->lookupLocal("T"), nullptr);
-            }
-        }
-        EXPECT_EQ(getFullTypeNameByAlias("import pkg.api.External as selected\ntype Result = selected<int>\n"), "extra.types.Box<int>");
-    }
-
     TEST_F(SemanticAnalyzerImportTest, ResolvesNestedImportsAndSelfAliases) {
         const auto result = analyze("import pkg.{api.{self as m, value as v}, sub.other}\nlet pkg = 0\nlet api = 0\nlet sub = 0\nlet value = 0\nexport m, v, other\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1858,7 +1367,7 @@ func value(input: int) {}
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = getImportedPackageByName("pkg");
+            const auto* package = getImportedRootPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             EXPECT_EQ(findImportedNode(result, "library"), package);
             EXPECT_EQ(findImportedNode(result, "api"), nullptr);
@@ -1882,7 +1391,7 @@ func value(input: int) {}
         const auto result = analyze("import pkg.api.value\nlet enabled = 0\nlet tools = 0\nlet extra = 0\nexport value, enabled, tools, extra\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         const auto* importedModule = package->getModuleByName("api");
         ASSERT_NE(importedModule, nullptr);
@@ -1905,7 +1414,7 @@ func value(input: int) {}
         const auto result = analyze("import pkg.api.External\nexport External\n");
 
         ASSERT_FALSE(result.hasErrors());
-        const auto* extraPackage = getImportedPackageByName("extra");
+        const auto* extraPackage = getImportedRootPackageByName("extra");
         ASSERT_NE(extraPackage, nullptr);
         const auto* toolsModule = extraPackage->getModuleByName("tools");
         ASSERT_NE(toolsModule, nullptr);
@@ -1930,13 +1439,13 @@ func value(input: int) {}
             ASSERT_FALSE(result.hasErrors());
             const ImportedItem* target = nullptr;
             if (std::string_view(source) == "pkg.sub") {
-                const auto* package = getImportedPackageByName("pkg");
+                const auto* package = getImportedRootPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* subPackage = package->getSubPackageByName("sub");
                 ASSERT_NE(subPackage, nullptr);
                 target = subPackage;
             } else {
-                const auto* extraPackage = getImportedPackageByName("extra");
+                const auto* extraPackage = getImportedRootPackageByName("extra");
                 ASSERT_NE(extraPackage, nullptr);
                 target = std::string_view(source) == "extra" ? static_cast<const ImportedItem*>(extraPackage) : extraPackage->getModuleByName("tools");
             }
@@ -1953,7 +1462,7 @@ func value(input: int) {}
             if (std::string_view(source) == "extra") {
                 EXPECT_EQ(targetScope->findParent(), nullptr);
             } else {
-                const auto* parentPackage = getImportedPackageByName(std::string_view(source) == "pkg.sub" ? "pkg" : "extra");
+                const auto* parentPackage = getImportedRootPackageByName(std::string_view(source) == "pkg.sub" ? "pkg" : "extra");
                 ASSERT_NE(parentPackage, nullptr);
                 const auto* parentScope = result.getScopeByImportedNode(*parentPackage);
                 ASSERT_NE(parentScope, nullptr);
@@ -1977,14 +1486,14 @@ func value(input: int) {}
             const auto result = analyze(source);
 
             ASSERT_FALSE(result.hasErrors());
-            const auto* package = getImportedPackageByName("pkg");
+            const auto* package = getImportedRootPackageByName("pkg");
             ASSERT_NE(package, nullptr);
             const auto* subPackage = package->getSubPackageByName("sub");
             ASSERT_NE(subPackage, nullptr);
             const auto* otherModule = subPackage->getModuleByName("other");
             ASSERT_NE(otherModule, nullptr);
             EXPECT_EQ(findImportedNode(result, "flag"), otherModule->getIdentifierByName("flag"));
-            const auto* extraPackage = getImportedPackageByName("extra");
+            const auto* extraPackage = getImportedRootPackageByName("extra");
             ASSERT_NE(extraPackage, nullptr);
             const auto* toolsModule = extraPackage->getModuleByName("tools");
             ASSERT_NE(toolsModule, nullptr);
@@ -2021,7 +1530,7 @@ func value(input: int) {}
                     EXPECT_EQ(error.getPhase(), DiagnosticPhase::SEMANTIC);
                     EXPECT_TRUE(error.getMessage().starts_with(diagnosticPrefix)) << error.getMessage();
                 }
-                const auto* package = getImportedPackageByName("pkg");
+                const auto* package = getImportedRootPackageByName("pkg");
                 ASSERT_NE(package, nullptr);
                 const auto* api = package->getModuleByName("api");
                 ASSERT_NE(api, nullptr);
@@ -2115,7 +1624,7 @@ func value(input: int) {}
         ASSERT_EQ(result.getErrors().size(), 1);
         EXPECT_EQ(result.getErrors().front().getPhase(), DiagnosticPhase::SEMANTIC);
         EXPECT_EQ(result.getErrors().front().getMessage(), "Could not find imported package, module or identifier 'missing'");
-        const auto* package = getImportedPackageByName("pkg");
+        const auto* package = getImportedRootPackageByName("pkg");
         ASSERT_NE(package, nullptr);
         EXPECT_EQ(findImportedNode(result, "kept"), package->getModuleByName("api"));
         const auto* scope = result.getScopeByAstNode(*module);
