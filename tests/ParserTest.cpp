@@ -169,6 +169,41 @@ namespace vnlc {
         EXPECT_EQ(constructor->getBody().getStatements().size(), 1);
     }
 
+    TEST(ParserTest, FunctionDeclarationsGenerateInternalNames) {
+        std::stringstream input(
+            "func combine(value: int) {}\n"
+            "func combine(first: string, second: Vec3) {}\n"
+            "func reset() {}\n"
+        );
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 3);
+
+        const auto* first = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[0].get());
+        ASSERT_NE(first, nullptr);
+        EXPECT_EQ(first->getInternalName(), "__vnl_function_combine--int__");
+
+        const auto* second = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[1].get());
+        ASSERT_NE(second, nullptr);
+        EXPECT_EQ(second->getInternalName(), "__vnl_function_combine--string-Vec3__");
+
+        const auto* third = dynamic_cast<const FunctionDeclarationNode*>(module.getTopIdentifierDeclarations()[2].get());
+        ASSERT_NE(third, nullptr);
+        EXPECT_EQ(third->getInternalName(), "__vnl_function_reset__");
+    }
+
     TEST(ParserTest, OperatorDeclarationsUseOperatorDeclarationNode) {
         std::stringstream input(
             "class Vec3 {\n"
