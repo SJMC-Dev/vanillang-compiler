@@ -23,11 +23,12 @@ namespace vnlc {
         const ImportedItem* importedNode;
         std::unordered_map<std::string, std::unique_ptr<Symbol>> symbols;
 
+        bool declare(std::unique_ptr<Symbol>&& symbol);
+
     public:
         Scope(ScopeKind kind, const Scope* parent, const AstNode* localNode) noexcept;
         Scope(ScopeKind kind, const Scope* parent, const ImportedItem* importedNode) noexcept;
 
-        bool declare(std::unique_ptr<Symbol>&& symbol);
         bool declare(RegularSymbol&& symbol);
         bool declare(FunctionSymbol&& symbol);
         [[nodiscard]] ScopeKind getKind() const noexcept;

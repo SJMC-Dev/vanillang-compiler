@@ -111,7 +111,7 @@ namespace vnlc {
         return it == importedScopeMap.end() ? nullptr : it->second.get();
     }
 
-    const Scope* SemanticContext::getScopeBySymbol(const RegularSymbol& symbol) const {
+    const Scope* SemanticContext::getScopeByRegularSymbol(const RegularSymbol& symbol) const {
         if (symbol.getLocalNode() != nullptr) {
             return getScopeByAstNode(symbol.getLocalNode());
         }

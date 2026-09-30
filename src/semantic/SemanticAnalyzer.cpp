@@ -192,11 +192,15 @@ namespace vnlc {
             return "";
         }
 
-        const RegularSymbol& firstSymbol = *dynamic_cast<const RegularSymbol*>(currentScope->lookupLocal(nameParts.front()->getIdentifierString()));
-        if (firstSymbol.getKind() == RegularSymbolKind::GENERIC_PARAMETER) {
-            result = std::string(firstSymbol.getName());
-        } else if (firstSymbol.getOrigin() == RegularSymbolOrigin::LOCAL) {
-            const Scope* localScope = context.getScopeBySymbol(firstSymbol);
+        const auto* firstSymbol = dynamic_cast<const RegularSymbol*>(currentScope->lookupLocal(nameParts.front()->getIdentifierString()));
+        if (firstSymbol == nullptr) {
+            context.reportError(*nameParts.front(), fmt::format("Use of undeclared identifier {}", nameParts.front()->getIdentifierString()));
+            return "";
+        }
+        if (firstSymbol->getKind() == RegularSymbolKind::GENERIC_PARAMETER) {
+            result = std::string(firstSymbol->getName());
+        } else if (firstSymbol->getOrigin() == RegularSymbolOrigin::LOCAL) {
+            const Scope* localScope = context.getScopeByRegularSymbol(*firstSymbol);
             if (localScope != nullptr) {
                 while (localScope->findParent() && localScope->getKind() != ScopeKind::MODULE) {
                     const TypeDeclarationNode* node = dynamic_cast<const TypeDeclarationNode*>(localScope->getLocalNode());
@@ -227,8 +231,8 @@ namespace vnlc {
                 result.append(".");
                 result.append(nameParts[index]->getIdentifierString());
             }
-        } else if (firstSymbol.getOrigin() == RegularSymbolOrigin::IMPORTED) {
-            const Scope* importedScope = context.getScopeBySymbol(firstSymbol);
+        } else if (firstSymbol->getOrigin() == RegularSymbolOrigin::IMPORTED) {
+            const Scope* importedScope = context.getScopeByRegularSymbol(*firstSymbol);
             if (importedScope == nullptr) {
                 context.reportError(*nameParts.front(), fmt::format("Identifier '{}' does not have a scope", nameParts.front()->getIdentifierString()));
                 return "";
@@ -286,7 +290,17 @@ namespace vnlc {
 
                 if (dynamic_cast<const ImportedOperator*>(child.get()) != nullptr) continue;
                 if (dynamic_cast<const ImportedConstructor*>(child.get()) != nullptr) continue;
-                scope.declare(RegularSymbol(getImportedSymbolKind(*child), getImportedAccessModifier(*child), name, child.get()));
+                if (const auto* function = dynamic_cast<const ImportedFunc*>(child.get())) {
+                    FunctionSymbol functionSymbol(function->getOriginalName());
+                    functionSymbol.addOverloading(RegularSymbol(RegularSymbolKind::FUNCTION, getImportedAccessModifier(*child), child->getName(), child.get()));
+                    scope.declare(std::move(functionSymbol));
+                } else if (const auto* method = dynamic_cast<const ImportedMethod*>(child.get())) {
+                    FunctionSymbol functionSymbol(method->getOriginalName());
+                    functionSymbol.addOverloading(RegularSymbol(RegularSymbolKind::METHOD, getImportedAccessModifier(*child), child->getName(), child.get()));
+                    scope.declare(std::move(functionSymbol));
+                } else {
+                    scope.declare(RegularSymbol(getImportedSymbolKind(*child), getImportedAccessModifier(*child), name, child.get()));
+                }
             }
         };
         const auto declareGenericParameters = [&](const auto& parameters) {
@@ -327,10 +341,15 @@ namespace vnlc {
     }
 
     void SemanticAnalyzer::checkIdentifierExpressionUse(const IdentifierLikeExpressionNode& exprNode, MetadataInfo metadataInfo) {
-        const auto* symbol = dynamic_cast<const RegularSymbol*>(context.currentScope().lookup(exprNode.getName().getIdentifierString()));
+        const Symbol* symbol = context.currentScope().lookup(exprNode.getName().getIdentifierString());
         if (symbol == nullptr) {
             context.reportError(exprNode, fmt::format("Use of undeclared identifier '{}'", exprNode.getName().getIdentifierString()));
-        } else if (!(dynamic_cast<const ValueDeclarationNode*>(symbol->getLocalNode()) || dynamic_cast<const FunctionDeclarationNode*>(symbol->getLocalNode()))) {
+        } else if (dynamic_cast<const FunctionSymbol*>(symbol) != nullptr) {
+            return;
+        } else if (
+            const auto* regularSymbol = dynamic_cast<const RegularSymbol*>(symbol); regularSymbol == nullptr || !(dynamic_cast<const ValueDeclarationNode*>(regularSymbol->getLocalNode()) ||
+                                                                                                                  dynamic_cast<const FunctionDeclarationNode*>(regularSymbol->getLocalNode()))
+        ) {
             context.reportError(exprNode, fmt::format("Identifier '{}' is not a variable or function", exprNode.getName().getIdentifierString()));
         }
     }
@@ -408,11 +427,17 @@ namespace vnlc {
         while (typeDeclaration != nullptr && visitedClasses.insert(typeDeclaration).second) {
             const auto* scope = context.getScopeByAstNode(typeDeclaration);
             if (scope != nullptr) {
-                const auto* symbol = dynamic_cast<const RegularSymbol*>(scope->lookupLocal(memberName));
-                if (symbol != nullptr &&
-                    (symbol->getKind() == RegularSymbolKind::PROPERTY || symbol->getKind() == RegularSymbolKind::METHOD || symbol->getKind() == RegularSymbolKind::ENUM_MEMBER)) {
-                    accessModifier = symbol->getAccessModifier();
-                    memberDeclaration = symbol->getLocalNode();
+                const Symbol* symbol = scope->lookupLocal(memberName);
+                const auto* regularSymbol = dynamic_cast<const RegularSymbol*>(symbol);
+                if (regularSymbol == nullptr) {
+                    if (const auto* functionSymbol = dynamic_cast<const FunctionSymbol*>(symbol); functionSymbol != nullptr && !functionSymbol->getOverloadings().empty()) {
+                        regularSymbol = &functionSymbol->getOverloadings().begin()->second;
+                    }
+                }
+                if (regularSymbol != nullptr && (regularSymbol->getKind() == RegularSymbolKind::PROPERTY || regularSymbol->getKind() == RegularSymbolKind::METHOD ||
+                                                 regularSymbol->getKind() == RegularSymbolKind::ENUM_MEMBER)) {
+                    accessModifier = regularSymbol->getAccessModifier();
+                    memberDeclaration = regularSymbol->getLocalNode();
                 }
             } else if (const auto* classDecl = dynamic_cast<const ClassDeclarationNode*>(typeDeclaration)) {
                 for (const auto& memberDecl : classDecl->getMemberDeclarations()) {
@@ -562,10 +587,7 @@ namespace vnlc {
                     context.reportError(*varDecl, fmt::format("Redeclaration of symbol '{}'", varDecl->getName().getIdentifierString()));
                 }
             } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(declNode)) {
-                RegularSymbol symbol(RegularSymbolKind::FUNCTION, static_cast<RegularSymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl);
-                if (!context.currentScope().declare(std::move(symbol))) {
-                    context.reportError(*funcDecl, fmt::format("Redeclaration of symbol '{}'", funcDecl->getName().getIdentifierString()));
-                }
+                declareFunctionOverloading(*funcDecl, RegularSymbolKind::FUNCTION, "symbol");
             } else if (auto* classDecl = dynamic_cast<ClassDeclarationNode*>(declNode)) {
                 RegularSymbol symbol(RegularSymbolKind::CLASS, RegularSymbolAccessModifier::PUBLIC, classDecl->getName().getIdentifierString(), classDecl);
                 if (!context.currentScope().declare(std::move(symbol))) {
@@ -627,14 +649,19 @@ namespace vnlc {
         };
 
         std::vector<ImportBinding> bindings;
-        std::unordered_set<std::string> names;
+        std::unordered_map<std::string, bool> names;
         const auto errorCount = context.getErrors().size();
 
         const auto bind = [&](const ImportedItem* target, std::vector<std::string> path, const IdentifierNode* alias, const AstNode& location) {
-            const std::string name(alias ? alias->getIdentifierString() : target->getName());
-            if (context.currentScope().lookupLocal(name) != nullptr || !names.insert(name).second) {
-                context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
-                return;
+            std::string name;
+            if (alias != nullptr) {
+                name = alias->getIdentifierString();
+            } else if (const auto* function = dynamic_cast<const ImportedFunc*>(target)) {
+                name = function->getOriginalName();
+            } else if (const auto* method = dynamic_cast<const ImportedMethod*>(target)) {
+                name = method->getOriginalName();
+            } else {
+                name = target->getName();
             }
 
             std::unordered_set<const ImportedAlias*> visitedAliases;
@@ -660,6 +687,20 @@ namespace vnlc {
                 }
             }
 
+            const bool isFunction = dynamic_cast<const ImportedFunc*>(target) != nullptr || dynamic_cast<const ImportedMethod*>(target) != nullptr;
+
+            const Symbol* existingSymbol = context.currentScope().lookupLocal(name);
+            if (existingSymbol != nullptr && !(isFunction && dynamic_cast<const FunctionSymbol*>(existingSymbol) != nullptr)) {
+                context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
+                return;
+            }
+
+            auto [nameIterator, inserted] = names.try_emplace(name, isFunction);
+            if (!inserted && !(nameIterator->second && isFunction)) {
+                context.reportError(location, fmt::format("Redeclaration of symbol '{}'", name));
+                return;
+            }
+
             bindings.push_back({ name, std::move(path) });
         };
 
@@ -673,12 +714,34 @@ namespace vnlc {
                     if (item.wildcard && name == "*") {
                         continue;
                     }
+                    const ImportedItem* parentItem = target;
                     if (target == nullptr) {
                         target = getImportedPackageByName(name);
                     } else {
                         target = target->getChildByName(name);
                     }
                     if (target == nullptr) {
+                        const auto* importedModule = dynamic_cast<const ImportedModule*>(parentItem);
+                        if (importedModule != nullptr && &part == &item.namePrefix.back() && item.nameSuffixes.empty()) {
+                            const IdentifierNode* alias = item.alias.has_value() ? item.alias.value().get() : nullptr;
+                            bool matched = false;
+                            for (const auto& [internalName, identifier] : importedModule->getIdentifiers()) {
+                                const auto* function = dynamic_cast<const ImportedFunc*>(identifier.get());
+                                const auto* method = dynamic_cast<const ImportedMethod*>(identifier.get());
+                                const std::string_view originalName = function != nullptr ? function->getOriginalName() : method != nullptr ? method->getOriginalName() : std::string_view();
+                                if (originalName != name) {
+                                    continue;
+                                }
+
+                                matched = true;
+                                auto functionPath = path;
+                                functionPath.push_back(internalName);
+                                bind(identifier.get(), std::move(functionPath), alias, alias ? *alias : location);
+                            }
+                            if (matched) {
+                                return;
+                            }
+                        }
                         context.reportError(*part, fmt::format("Could not find imported package, module or identifier '{}'", name));
                         return;
                     }
@@ -730,6 +793,7 @@ namespace vnlc {
         }
 
         std::unordered_set<const ImportedPackage*> scopedPackages;
+        std::unordered_set<std::string> reportedRedeclarations;
 
         for (const auto& binding : bindings) {
             const auto* package = getImportedPackageByName(binding.path.front());
@@ -738,7 +802,21 @@ namespace vnlc {
                 continue;
             }
 
-            context.currentScope().declare(RegularSymbol(getImportedSymbolKind(*target), RegularSymbolAccessModifier::PUBLIC, binding.name, target));
+            bool declared = false;
+            if (const auto* function = dynamic_cast<const ImportedFunc*>(target)) {
+                FunctionSymbol functionSymbol(binding.name);
+                functionSymbol.addOverloading(RegularSymbol(RegularSymbolKind::FUNCTION, RegularSymbolAccessModifier::PUBLIC, function->getName(), function));
+                declared = context.currentScope().declare(std::move(functionSymbol));
+            } else if (const auto* method = dynamic_cast<const ImportedMethod*>(target)) {
+                FunctionSymbol functionSymbol(binding.name);
+                functionSymbol.addOverloading(RegularSymbol(RegularSymbolKind::METHOD, getImportedAccessModifier(*method), method->getName(), method));
+                declared = context.currentScope().declare(std::move(functionSymbol));
+            } else {
+                declared = context.currentScope().declare(RegularSymbol(getImportedSymbolKind(*target), RegularSymbolAccessModifier::PUBLIC, binding.name, target));
+            }
+            if (!declared && reportedRedeclarations.insert(binding.name).second) {
+                context.reportError(importDecl, fmt::format("Redeclaration of symbol '{}'", binding.name));
+            }
             if (getImportedScopeKind(*target).has_value()) {
                 scopedPackages.insert(package);
             }
@@ -746,6 +824,31 @@ namespace vnlc {
 
         for (const auto* package : scopedPackages) {
             registerImportedScopes(*package, nullptr);
+        }
+    }
+
+    void SemanticAnalyzer::declareFunctionOverloading(const FunctionDeclarationNode& funcDecl, RegularSymbolKind kind, std::string_view declarationKind) {
+        const auto name = funcDecl.getName().getIdentifierString();
+        const auto internalName = funcDecl.getInternalName();
+        const Symbol* existingSymbol = context.currentScope().lookupLocal(name);
+
+        if (existingSymbol != nullptr) {
+            const auto* existingFunction = dynamic_cast<const FunctionSymbol*>(existingSymbol);
+            if (existingFunction == nullptr) {
+                context.reportError(funcDecl, fmt::format("Redeclaration of {} '{}'", declarationKind, name));
+                return;
+            }
+            if (existingFunction->getOverloadingByInternalName(internalName) != nullptr) {
+                context.reportError(funcDecl, fmt::format("Redeclaration of {} '{}'", declarationKind, internalName));
+                return;
+            }
+        }
+
+        FunctionSymbol functionSymbol(name);
+        functionSymbol.addOverloading(RegularSymbol(kind, static_cast<RegularSymbolAccessModifier>(funcDecl.getAccessModifier()), internalName, &funcDecl));
+
+        if (!context.currentScope().declare(std::move(functionSymbol))) {
+            context.reportError(funcDecl, fmt::format("Redeclaration of {} '{}'", declarationKind, name));
         }
     }
 
@@ -873,11 +976,7 @@ namespace vnlc {
                     context.reportError(*varDecl, fmt::format("Redeclaration of class member '{}'", varDecl->getName().getIdentifierString()));
                 }
             } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
-                RegularSymbol
-                    memberSymbol(RegularSymbolKind::METHOD, static_cast<RegularSymbolAccessModifier>(funcDecl->getAccessModifier()), funcDecl->getName().getIdentifierString(), funcDecl);
-                if (!context.currentScope().declare(std::move(memberSymbol))) {
-                    context.reportError(*funcDecl, fmt::format("Redeclaration of class member '{}'", funcDecl->getName().getIdentifierString()));
-                }
+                declareFunctionOverloading(*funcDecl, RegularSymbolKind::METHOD, "class member");
             } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
                 if (!operatorNames.insert(std::string(operatorDecl->getInternalName())).second) {
                     context.reportError(*operatorDecl, fmt::format("Redeclaration of class member '{}'", operatorDecl->getInternalName()));
@@ -918,10 +1017,7 @@ namespace vnlc {
         std::unordered_set<std::string> operatorNames;
 
         for (const auto& member : interfaceDecl.getMethodDeclarations()) {
-            RegularSymbol memberSymbol(RegularSymbolKind::METHOD, static_cast<RegularSymbolAccessModifier>(member->getAccessModifier()), member->getName().getIdentifierString(), member.get());
-            if (!context.currentScope().declare(std::move(memberSymbol))) {
-                context.reportError(*member, fmt::format("Redeclaration of interface method '{}'", member->getName().getIdentifierString()));
-            }
+            declareFunctionOverloading(*member, RegularSymbolKind::METHOD, "interface method");
         }
 
         for (const auto& operatorDecl : interfaceDecl.getOperatorDeclarations()) {
@@ -1260,7 +1356,7 @@ namespace vnlc {
                 break;
             }
 
-            scope = context.getScopeBySymbol(*symbol);
+            scope = context.getScopeByRegularSymbol(*symbol);
             if (scope == nullptr) {
                 context.reportError(*namePart, fmt::format("Identifier '{}' does not have a scope", namePart->getIdentifierString()));
                 break;

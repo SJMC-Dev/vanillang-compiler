@@ -62,6 +62,7 @@ namespace vnlc {
         [[nodiscard]] std::size_t getGenericParameterCount(const RegularSymbol& symbol) const;
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);
+        void declareFunctionOverloading(const FunctionDeclarationNode& funcDecl, RegularSymbolKind kind, std::string_view declarationKind);
         void checkExport(const ExportDeclarationNode& exportDecl);
         void checkValueDeclaration(const ValueDeclarationNode& varDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);
         void checkFunctionDeclaration(const FunctionDeclarationNode& funcDecl, MetadataInfo metadataInfo = MetadataInfo::DEFAULT);

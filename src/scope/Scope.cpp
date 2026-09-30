@@ -32,7 +32,33 @@ namespace vnlc {
     }
 
     bool Scope::declare(FunctionSymbol&& symbol) {
-        return declare(std::make_unique<FunctionSymbol>(std::move(symbol)));
+        const std::string name(symbol.getName());
+        auto existingSymbolIterator = symbols.find(name);
+        if (existingSymbolIterator == symbols.end()) {
+            return declare(std::make_unique<FunctionSymbol>(std::move(symbol)));
+        }
+
+        auto* existingFunction = dynamic_cast<FunctionSymbol*>(existingSymbolIterator->second.get());
+        if (existingFunction == nullptr) {
+            return false;
+        }
+        if (symbol.getOverloadings().empty() || existingFunction->getOverloadings().empty()) {
+            return false;
+        }
+        if (symbol.getOverloadings().begin()->second.getOrigin() != existingFunction->getOverloadings().begin()->second.getOrigin()) {
+            return false;
+        }
+
+        for (const auto& [internalName, overloading] : symbol.getOverloadings()) {
+            if (existingFunction->getOverloadingByInternalName(internalName) != nullptr) {
+                return false;
+            }
+        }
+
+        for (const auto& overloading : symbol.getOverloadings()) {
+            existingFunction->addOverloading(RegularSymbol(overloading.second));
+        }
+        return true;
     }
 
     const Symbol* Scope::lookupLocal(std::string_view name) const {
