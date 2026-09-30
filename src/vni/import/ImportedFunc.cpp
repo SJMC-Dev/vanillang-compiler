@@ -2,22 +2,35 @@
 
 namespace vnlc {
     ImportedFunc::ImportedFunc(
-        std::string_view name,
+        std::string_view internalName,
+        std::string_view originalName,
         std::string_view returnType,
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
         bool native,
         std::unordered_map<std::string, std::optional<std::string>>&& metadata
     )
-        : ImportedIdentifier(name, std::move(metadata)),
+        : ImportedIdentifier(internalName, std::move(metadata)),
+          originalName(originalName),
           returnType(returnType),
           parameters(std::move(parameters)),
           native(native) {}
 
-    ImportedFunc::ImportedFunc(std::string_view name, std::string_view returnType, std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters, bool native)
-        : ImportedIdentifier(name),
+    ImportedFunc::ImportedFunc(
+        std::string_view internalName,
+        std::string_view originalName,
+        std::string_view returnType,
+        std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
+        bool native
+    )
+        : ImportedIdentifier(internalName),
+          originalName(originalName),
           returnType(returnType),
           parameters(std::move(parameters)),
           native(native) {}
+
+    std::string_view ImportedFunc::getOriginalName() const {
+        return originalName;
+    }
 
     std::string_view ImportedFunc::getReturnType() const {
         return returnType;

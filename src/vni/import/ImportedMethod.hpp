@@ -9,6 +9,7 @@
 namespace vnlc {
     class ImportedMethod : public ImportedIdentifier {
     private:
+        std::string originalName;
         std::string returnType;
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
         bool staticMethod;
@@ -17,7 +18,8 @@ namespace vnlc {
 
     public:
         ImportedMethod(
-            std::string_view name,
+            std::string_view internalName,
+            std::string_view originalName,
             std::string_view returnType,
             std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
             bool staticMethod,
@@ -27,7 +29,8 @@ namespace vnlc {
         );
 
         ImportedMethod(
-            std::string_view name,
+            std::string_view internalName,
+            std::string_view originalName,
             std::string_view returnType,
             std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
             bool staticMethod,
@@ -35,6 +38,7 @@ namespace vnlc {
             std::string_view accessModifier
         );
 
+        [[nodiscard]] std::string_view getOriginalName() const;
         [[nodiscard]] std::string_view getReturnType() const;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>& getParameters() const;
         [[nodiscard]] bool isStatic() const;

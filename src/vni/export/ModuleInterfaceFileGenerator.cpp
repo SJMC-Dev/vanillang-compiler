@@ -89,6 +89,7 @@ namespace vnlc {
     nlohmann::json ModuleInterfaceFileGenerator::stringifyFunction(const FunctionDeclarationNode* function) {
         nlohmann::json functionObj = nlohmann::json::object();
         functionObj.emplace("category", "func");
+        functionObj.emplace("name", function->getName().getIdentifierString());
 
         const auto& metadata = function->getMetadataTerms();
 
@@ -161,7 +162,7 @@ namespace vnlc {
             if (const auto* property = dynamic_cast<const ValueDeclarationNode*>(memberDeclaration.get())) {
                 propertiesObj.emplace(property->getName().getIdentifierString(), stringifyProperty(property));
             } else if (const auto* method = dynamic_cast<const FunctionDeclarationNode*>(memberDeclaration.get())) {
-                methodsObj.emplace(method->getName().getIdentifierString(), stringifyMethod(method));
+                methodsObj.emplace(method->getInternalName(), stringifyMethod(method));
             } else if (const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(memberDeclaration.get())) {
                 constructorsObj.emplace(constructor->getInternalName(), stringifyConstructor(constructor));
             } else if (const auto* operatorNode = dynamic_cast<const OperatorDeclarationNode*>(memberDeclaration.get())) {
@@ -191,7 +192,7 @@ namespace vnlc {
         nlohmann::json methodsObj = nlohmann::json::object();
         for (const auto& method : interfaceNode->getMethodDeclarations()) {
             nlohmann::json methodObj = stringifyMethod(method.get());
-            methodsObj.emplace(method->getName().getIdentifierString(), methodObj);
+            methodsObj.emplace(method->getInternalName(), methodObj);
         }
         interfaceObj.emplace("methods", methodsObj);
 
@@ -312,6 +313,7 @@ namespace vnlc {
     nlohmann::json ModuleInterfaceFileGenerator::stringifyMethod(const FunctionDeclarationNode* method) {
         nlohmann::json methodObj = nlohmann::json::object();
         methodObj.emplace("category", "method");
+        methodObj.emplace("name", method->getName().getIdentifierString());
 
         const auto& metadata = method->getMetadataTerms();
 
@@ -450,7 +452,7 @@ namespace vnlc {
             if (const auto* variable = dynamic_cast<const ValueDeclarationNode*>(declarationNode)) {
                 moduleObj.emplace(variable->getName().getIdentifierString(), stringifyVariable(variable));
             } else if (const auto* function = dynamic_cast<const FunctionDeclarationNode*>(declarationNode)) {
-                moduleObj.emplace(function->getName().getIdentifierString(), stringifyFunction(function));
+                moduleObj.emplace(function->getInternalName(), stringifyFunction(function));
             } else if (const auto* classNode = dynamic_cast<const ClassDeclarationNode*>(declarationNode)) {
                 moduleObj.emplace(classNode->getName().getIdentifierString(), stringifyClass(classNode));
             } else if (const auto* interfaceNode = dynamic_cast<const InterfaceDeclarationNode*>(declarationNode)) {

@@ -9,21 +9,30 @@
 namespace vnlc {
     class ImportedFunc : public ImportedIdentifier {
     private:
+        std::string originalName;
         std::string returnType;
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>> parameters;
         bool native;
 
     public:
         ImportedFunc(
-            std::string_view name,
+            std::string_view internalName,
+            std::string_view originalName,
             std::string_view returnType,
             std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
             bool native,
             std::unordered_map<std::string, std::optional<std::string>>&& metadata
         );
 
-        ImportedFunc(std::string_view name, std::string_view returnType, std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters, bool native);
+        ImportedFunc(
+            std::string_view internalName,
+            std::string_view originalName,
+            std::string_view returnType,
+            std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
+            bool native
+        );
 
+        [[nodiscard]] std::string_view getOriginalName() const;
         [[nodiscard]] std::string_view getReturnType() const;
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>& getParameters() const;
         [[nodiscard]] bool isNative() const;

@@ -2,7 +2,8 @@
 
 namespace vnlc {
     ImportedMethod::ImportedMethod(
-        std::string_view name,
+        std::string_view internalName,
+        std::string_view originalName,
         std::string_view returnType,
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
         bool staticMethod,
@@ -10,7 +11,8 @@ namespace vnlc {
         std::string_view accessModifier,
         std::unordered_map<std::string, std::optional<std::string>>&& metadata
     )
-        : ImportedIdentifier(name, std::move(metadata)),
+        : ImportedIdentifier(internalName, std::move(metadata)),
+          originalName(originalName),
           returnType(returnType),
           parameters(std::move(parameters)),
           staticMethod(staticMethod),
@@ -18,19 +20,25 @@ namespace vnlc {
           accessModifier(accessModifier) {}
 
     ImportedMethod::ImportedMethod(
-        std::string_view name,
+        std::string_view internalName,
+        std::string_view originalName,
         std::string_view returnType,
         std::unordered_map<std::string, std::unique_ptr<ImportedParameter>>&& parameters,
         bool staticMethod,
         bool native,
         std::string_view accessModifier
     )
-        : ImportedIdentifier(name),
+        : ImportedIdentifier(internalName),
+          originalName(originalName),
           returnType(returnType),
           parameters(std::move(parameters)),
           staticMethod(staticMethod),
           native(native),
           accessModifier(accessModifier) {}
+
+    std::string_view ImportedMethod::getOriginalName() const {
+        return originalName;
+    }
 
     std::string_view ImportedMethod::getReturnType() const {
         return returnType;
