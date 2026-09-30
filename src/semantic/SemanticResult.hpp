@@ -42,8 +42,8 @@ namespace vnlc {
             std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
             std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
         );
-        SemanticResult(const SemanticResult&) = default;
-        SemanticResult& operator=(const SemanticResult&) = default;
+        SemanticResult(const SemanticResult&) = delete;
+        SemanticResult& operator=(const SemanticResult&) = delete;
         SemanticResult(SemanticResult&&) noexcept = default;
         SemanticResult& operator=(SemanticResult&&) noexcept = default;
 
