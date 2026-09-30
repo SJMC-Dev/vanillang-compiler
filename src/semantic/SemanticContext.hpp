@@ -3,6 +3,7 @@
 
 #include "ast/AstNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
@@ -33,6 +34,7 @@ namespace vnlc {
         std::unordered_map<const TypeReferenceNode*, const Type*> typeMap;
         std::unordered_map<const ValueDeclarationNode*, const Type*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
+        std::unordered_map<const OperatorDeclarationNode*, const Type*> inferredOperatorReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
 
         std::size_t loopDepth = 0;
@@ -56,6 +58,7 @@ namespace vnlc {
         void mapType(const TypeReferenceNode* typeNode, const Type* type);
         void mapInferredValueType(const ValueDeclarationNode* valueDeclaration, const Type* type);
         void mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const Type* type);
+        void mapInferredOperatorReturnType(const OperatorDeclarationNode* operatorDeclaration, const Type* type);
         void mapInferredExpressionType(const ExpressionNode* expressionNode, const Type* type);
 
         [[nodiscard]] const CustomizedType* getCustomizedTypeByFullTypeName(const std::string& fullTypeName) const;
@@ -90,6 +93,7 @@ namespace vnlc {
         [[nodiscard]] std::unordered_map<const TypeReferenceNode*, const Type*> takeTypeMap();
         [[nodiscard]] std::unordered_map<const ValueDeclarationNode*, const Type*> takeInferredValueTypeMap();
         [[nodiscard]] std::unordered_map<const FunctionDeclarationNode*, const Type*> takeInferredFunctionReturnTypeMap();
+        [[nodiscard]] std::unordered_map<const OperatorDeclarationNode*, const Type*> takeInferredOperatorReturnTypeMap();
         [[nodiscard]] std::unordered_map<const ExpressionNode*, const Type*> takeInferredExpressionTypeMap();
     };
 } // namespace vnlc

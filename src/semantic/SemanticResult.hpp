@@ -3,6 +3,7 @@
 
 #include "ast/AstNode.hpp"
 #include "ast/declaration/FunctionDeclarationNode.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "ast/declaration/ValueDeclarationNode.hpp"
 #include "ast/expression/ExpressionNode.hpp"
 #include "ast/typeref/TypeReferenceNode.hpp"
@@ -27,6 +28,7 @@ namespace vnlc {
         std::unordered_map<const TypeReferenceNode*, const Type*> typeMap;
         std::unordered_map<const ValueDeclarationNode*, const Type*> inferredValueTypeMap;
         std::unordered_map<const FunctionDeclarationNode*, const Type*> inferredFunctionReturnTypeMap;
+        std::unordered_map<const OperatorDeclarationNode*, const Type*> inferredOperatorReturnTypeMap;
         std::unordered_map<const ExpressionNode*, const Type*> inferredExpressionTypeMap;
 
     public:
@@ -40,6 +42,7 @@ namespace vnlc {
             std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
             std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
             std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
+            std::unordered_map<const OperatorDeclarationNode*, const Type*>&& inferredOperatorReturnTypeMap,
             std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
         );
         SemanticResult(const SemanticResult&) = delete;
@@ -60,6 +63,7 @@ namespace vnlc {
         [[nodiscard]] const Type* getTypeByTypeReferenceNode(const TypeReferenceNode* typeNode) const;
         [[nodiscard]] const Type* getInferredValueType(const ValueDeclarationNode* valueDeclaration) const;
         [[nodiscard]] const Type* getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const;
+        [[nodiscard]] const Type* getInferredOperatorReturnType(const OperatorDeclarationNode* operatorDeclaration) const;
         [[nodiscard]] const Type* getInferredExpressionType(const ExpressionNode* expressionNode) const;
     };
 } // namespace vnlc

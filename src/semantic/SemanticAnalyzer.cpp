@@ -1449,6 +1449,7 @@ namespace vnlc {
         auto types = context.takeTypeMap();
         auto inferredValueTypes = context.takeInferredValueTypeMap();
         auto inferredFunctionReturnTypes = context.takeInferredFunctionReturnTypeMap();
+        auto inferredOperatorReturnTypes = context.takeInferredOperatorReturnTypeMap();
         auto inferredExpressionTypes = context.takeInferredExpressionTypeMap();
         return SemanticResult(
             std::move(std::get<0>(diagnostics)),
@@ -1460,6 +1461,7 @@ namespace vnlc {
             std::move(types),
             std::move(inferredValueTypes),
             std::move(inferredFunctionReturnTypes),
+            std::move(inferredOperatorReturnTypes),
             std::move(inferredExpressionTypes)
         );
     }

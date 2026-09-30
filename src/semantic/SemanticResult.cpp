@@ -1,4 +1,5 @@
 #include "SemanticResult.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include "scope/Scope.hpp"
 #include "type/Type.hpp"
 
@@ -13,6 +14,7 @@ namespace vnlc {
         std::unordered_map<const TypeReferenceNode*, const Type*>&& typeMap,
         std::unordered_map<const ValueDeclarationNode*, const Type*>&& inferredValueTypeMap,
         std::unordered_map<const FunctionDeclarationNode*, const Type*>&& inferredFunctionReturnTypeMap,
+        std::unordered_map<const OperatorDeclarationNode*, const Type*>&& inferredOperatorReturnTypeMap,
         std::unordered_map<const ExpressionNode*, const Type*>&& inferredExpressionTypeMap
     )
         : errors(std::move(errors)),
@@ -24,6 +26,7 @@ namespace vnlc {
           typeMap(std::move(typeMap)),
           inferredValueTypeMap(std::move(inferredValueTypeMap)),
           inferredFunctionReturnTypeMap(std::move(inferredFunctionReturnTypeMap)),
+          inferredOperatorReturnTypeMap(std::move(inferredOperatorReturnTypeMap)),
           inferredExpressionTypeMap(std::move(inferredExpressionTypeMap)) {}
 
     bool SemanticResult::hasErrors() const {
@@ -91,6 +94,14 @@ namespace vnlc {
     const Type* SemanticResult::getInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration) const {
         auto it = inferredFunctionReturnTypeMap.find(functionDeclaration);
         if (it != inferredFunctionReturnTypeMap.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    const Type* SemanticResult::getInferredOperatorReturnType(const OperatorDeclarationNode* operatorDeclaration) const {
+        auto it = inferredOperatorReturnTypeMap.find(operatorDeclaration);
+        if (it != inferredOperatorReturnTypeMap.end()) {
             return it->second;
         }
         return nullptr;

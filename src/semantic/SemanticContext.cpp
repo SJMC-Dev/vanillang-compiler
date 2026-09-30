@@ -1,4 +1,5 @@
 #include "SemanticContext.hpp"
+#include "ast/declaration/OperatorDeclarationNode.hpp"
 #include <memory>
 #include <unordered_map>
 
@@ -55,6 +56,10 @@ namespace vnlc {
 
     void SemanticContext::mapInferredFunctionReturnType(const FunctionDeclarationNode* functionDeclaration, const Type* type) {
         inferredFunctionReturnTypeMap.emplace(functionDeclaration, type);
+    }
+
+    void SemanticContext::mapInferredOperatorReturnType(const OperatorDeclarationNode* operatorDeclaration, const Type* type) {
+        inferredOperatorReturnTypeMap.emplace(operatorDeclaration, type);
     }
 
     void SemanticContext::mapInferredExpressionType(const ExpressionNode* expressionNode, const Type* type) {
@@ -267,6 +272,10 @@ namespace vnlc {
 
     std::unordered_map<const FunctionDeclarationNode*, const Type*> SemanticContext::takeInferredFunctionReturnTypeMap() {
         return std::move(inferredFunctionReturnTypeMap);
+    }
+
+    std::unordered_map<const OperatorDeclarationNode*, const Type*> SemanticContext::takeInferredOperatorReturnTypeMap() {
+        return std::move(inferredOperatorReturnTypeMap);
     }
 
     std::unordered_map<const ExpressionNode*, const Type*> SemanticContext::takeInferredExpressionTypeMap() {
