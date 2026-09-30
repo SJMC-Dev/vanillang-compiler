@@ -22,6 +22,9 @@
 #include "metadata/MetadataInfo.hpp"
 #include "semantic/SemanticContext.hpp"
 #include "semantic/SemanticResult.hpp"
+#include "symbol/RegularSymbol.hpp"
+#include "symbol/RegularSymbolAccessModifier.hpp"
+#include "symbol/RegularSymbolKind.hpp"
 #include "type/Type.hpp"
 #include "type/typeinf/TypeInferenceResult.hpp"
 #include "vni/import/ImportedItem.hpp"
@@ -43,9 +46,9 @@ namespace vnlc {
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>>& imports;
         SemanticContext context;
 
-        [[nodiscard]] static SymbolKind getImportedSymbolKind(const ImportedItem& item);
+        [[nodiscard]] static RegularSymbolKind getImportedSymbolKind(const ImportedItem& item);
         [[nodiscard]] static std::optional<ScopeKind> getImportedScopeKind(const ImportedItem& item);
-        [[nodiscard]] static SymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
+        [[nodiscard]] static RegularSymbolAccessModifier getImportedAccessModifier(const ImportedItem& item);
         [[nodiscard]] static const PrimitiveType* getPrimitiveType(PrimitiveTypeReferenceKind kind);
         [[nodiscard]] const ImportedPackage* getImportedPackageByName(std::string_view name) const;
         [[nodiscard]] std::string getFullTypeNameByTypeReferenceNode(const TypeReferenceNode& typeNode) noexcept;
@@ -56,7 +59,7 @@ namespace vnlc {
         [[nodiscard]] bool checkAccessModifier(const IdentifierLikeExpressionNode& identifierNode);
         [[nodiscard]] bool checkMemberAccessModifier(const TypeDeclarationNode* receiverTypeDeclaration, std::string_view memberName, bool isSuperAccess = false);
         [[nodiscard]] MetadataInfo checkMetadata(const std::vector<DeclarationItem::MetadataTerm>& metadataTerms, const DeclarationNode& declNode);
-        [[nodiscard]] std::size_t getGenericParameterCount(const Symbol& symbol) const;
+        [[nodiscard]] std::size_t getGenericParameterCount(const RegularSymbol& symbol) const;
         void checkModule(const ModuleNode& moduleNode, const Config& config);
         void checkImport(const ImportDeclarationNode& importDecl, const Config& config);
         void checkExport(const ExportDeclarationNode& exportDecl);

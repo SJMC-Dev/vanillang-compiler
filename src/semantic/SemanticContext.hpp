@@ -8,6 +8,7 @@
 #include "ast/typeref/TypeReferenceNode.hpp"
 #include "diagnostic/Diagnostic.hpp"
 #include "scope/Scope.hpp"
+#include "symbol/RegularSymbol.hpp"
 #include "type/CustomizedType.hpp"
 #include "type/Type.hpp"
 #include <memory>
@@ -62,7 +63,7 @@ namespace vnlc {
         [[nodiscard]] const Type* getInferredExpressionType(const ExpressionNode* expressionNode) const;
         [[nodiscard]] const Scope* getScopeByAstNode(const AstNode* astNode) const;
         [[nodiscard]] const Scope* getScopeByImportedNode(const ImportedItem* importedNode) const;
-        [[nodiscard]] const Scope* getScopeBySymbol(const Symbol& symbol) const;
+        [[nodiscard]] const Scope* getScopeBySymbol(const RegularSymbol& symbol) const;
 
         [[nodiscard]] Scope& currentScope();
 

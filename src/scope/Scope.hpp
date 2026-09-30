@@ -4,8 +4,11 @@
 #include "ast/AstNode.hpp"
 #include "scope/ScopeKind.hpp"
 #include "scope/ScopeOrigin.hpp"
+#include "symbol/FunctionSymbol.hpp"
+#include "symbol/RegularSymbol.hpp"
 #include "symbol/Symbol.hpp"
 #include "vni/import/ImportedItem.hpp"
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -18,13 +21,15 @@ namespace vnlc {
         const Scope* parent;
         const AstNode* localNode;
         const ImportedItem* importedNode;
-        std::unordered_map<std::string, Symbol> symbols;
+        std::unordered_map<std::string, std::unique_ptr<Symbol>> symbols;
 
     public:
         Scope(ScopeKind kind, const Scope* parent, const AstNode* localNode) noexcept;
         Scope(ScopeKind kind, const Scope* parent, const ImportedItem* importedNode) noexcept;
 
-        bool declare(Symbol&& symbol);
+        bool declare(std::unique_ptr<Symbol>&& symbol);
+        bool declare(RegularSymbol&& symbol);
+        bool declare(FunctionSymbol&& symbol);
         [[nodiscard]] ScopeKind getKind() const noexcept;
         [[nodiscard]] ScopeOrigin getOrigin() const noexcept;
         [[nodiscard]] const Symbol* lookupLocal(std::string_view name) const;

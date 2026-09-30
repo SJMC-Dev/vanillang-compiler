@@ -74,7 +74,8 @@ add_executable(
     parser/ParseResult.cpp
     parser/Parser.cpp
     diagnostic/Diagnostic.cpp
-    symbol/Symbol.cpp
+    symbol/RegularSymbol.cpp
+    symbol/FunctionSymbol.cpp
     semantic/SemanticContext.cpp
     semantic/SemanticResult.cpp
     semantic/SemanticAnalyzer.cpp

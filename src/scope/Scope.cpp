@@ -15,21 +15,30 @@ namespace vnlc {
           localNode(nullptr),
           importedNode(importedNode) {}
 
-    bool Scope::declare(Symbol&& symbol) {
-        auto existingSymbolIterator = symbols.find(std::string(symbol.getName()));
+    bool Scope::declare(std::unique_ptr<Symbol>&& symbol) {
+        std::string name(symbol->getName());
+        auto existingSymbolIterator = symbols.find(name);
 
         if (existingSymbolIterator != symbols.end()) {
             return false;
         } else {
-            symbols.emplace(symbol.getName(), std::move(symbol));
+            symbols.emplace(std::move(name), std::move(symbol));
             return true;
         }
+    }
+
+    bool Scope::declare(RegularSymbol&& symbol) {
+        return declare(std::make_unique<RegularSymbol>(std::move(symbol)));
+    }
+
+    bool Scope::declare(FunctionSymbol&& symbol) {
+        return declare(std::make_unique<FunctionSymbol>(std::move(symbol)));
     }
 
     const Symbol* Scope::lookupLocal(std::string_view name) const {
         auto it = symbols.find(std::string(name));
         if (it != symbols.end()) {
-            return &(it->second);
+            return it->second.get();
         }
         return nullptr;
     }
@@ -39,7 +48,7 @@ namespace vnlc {
         while (current != nullptr) {
             auto it = current->symbols.find(std::string(name));
             if (it != current->symbols.end()) {
-                return &(it->second);
+                return it->second.get();
             }
             current = current->parent;
         }

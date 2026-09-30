@@ -1,8 +1,8 @@
-#ifndef VNLC_SYMBOL_KIND_HPP
-#define VNLC_SYMBOL_KIND_HPP
+#ifndef VNLC_REGULAR_SYMBOL_KIND_HPP
+#define VNLC_REGULAR_SYMBOL_KIND_HPP
 
 namespace vnlc {
-    enum class SymbolKind {
+    enum class RegularSymbolKind {
         PACKAGE,
         MODULE,
         VARIABLE,
@@ -22,4 +22,4 @@ namespace vnlc {
     };
 }
 
-#endif // VNLC_SYMBOL_KIND_HPP
+#endif // VNLC_REGULAR_SYMBOL_KIND_HPP
