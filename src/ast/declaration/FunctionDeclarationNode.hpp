@@ -8,6 +8,8 @@
 #include "ast/typeref/TypeReferenceNode.hpp"
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 
 namespace vnlc {
     class FunctionDeclarationNode : public DeclarationNode {
@@ -23,6 +25,9 @@ namespace vnlc {
         std::vector<std::unique_ptr<ValueDeclarationNode>> parameters;
         std::optional<std::unique_ptr<TypeReferenceNode>> returnType;
         std::optional<std::unique_ptr<BlockStatementNode>> body;
+        std::string internalName;
+
+        [[nodiscard]] std::string generateInternalName() const;
 
     public:
         FunctionDeclarationNode(
@@ -57,6 +62,7 @@ namespace vnlc {
         [[nodiscard]] const FunctionDeclarationKind::AccessModifier getAccessModifier() const noexcept;
         [[nodiscard]] const FunctionDeclarationKind::Binding getBinding() const noexcept;
         [[nodiscard]] const IdentifierNode& getName() const noexcept;
+        [[nodiscard]] std::string_view getInternalName() const noexcept;
         [[nodiscard]] const std::vector<std::unique_ptr<ValueDeclarationNode>>& getParameters() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<TypeReferenceNode>>& getReturnType() const noexcept;
         [[nodiscard]] const std::optional<std::unique_ptr<BlockStatementNode>>& getBody() const noexcept;

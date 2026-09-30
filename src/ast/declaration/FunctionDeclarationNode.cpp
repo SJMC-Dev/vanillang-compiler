@@ -21,7 +21,9 @@ namespace vnlc {
           name(std::move(name)),
           parameters(std::move(parameters)),
           returnType(std::move(returnType)),
-          body(std::move(body)) {}
+          body(std::move(body)) {
+        internalName = generateInternalName();
+    }
 
     FunctionDeclarationNode::FunctionDeclarationNode(
         FunctionDeclarationKind::Kind kind,
@@ -44,7 +46,25 @@ namespace vnlc {
           name(std::move(name)),
           parameters(std::move(parameters)),
           returnType(std::move(returnType)),
-          body(std::move(body)) {}
+          body(std::move(body)) {
+        internalName = generateInternalName();
+    }
+
+    std::string FunctionDeclarationNode::generateInternalName() const {
+        std::string identifier = "__vnl_function_" + std::string(name->getIdentifierString());
+
+        if (!parameters.empty()) {
+            identifier += '-';
+            for (const auto& parameter : parameters) {
+                if (parameter->getType().has_value()) {
+                    identifier += '-' + parameter->getType().value()->generateInternalNamePart();
+                }
+            }
+        }
+
+        identifier += "__";
+        return identifier;
+    }
 
     const FunctionDeclarationKind::Kind FunctionDeclarationNode::getKind() const noexcept {
         return kind;
@@ -64,6 +84,10 @@ namespace vnlc {
 
     const IdentifierNode& FunctionDeclarationNode::getName() const noexcept {
         return *name;
+    }
+
+    std::string_view FunctionDeclarationNode::getInternalName() const noexcept {
+        return internalName;
     }
 
     const std::vector<std::unique_ptr<ValueDeclarationNode>>& FunctionDeclarationNode::getParameters() const noexcept {
