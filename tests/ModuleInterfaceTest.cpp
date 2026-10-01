@@ -166,7 +166,10 @@ namespace vnlc {
             std::optional<std::unique_ptr<TypeReferenceNode>>&& baseClass,
             std::vector<std::unique_ptr<TypeReferenceNode>>&& implementedInterfaces,
             std::vector<std::unique_ptr<IdentifierNode>>&& genericParameters,
-            std::vector<std::unique_ptr<DeclarationNode>>&& memberDeclarations,
+            std::vector<std::unique_ptr<ValueDeclarationNode>>&& propertyDeclarations,
+            std::vector<std::unique_ptr<FunctionDeclarationNode>>&& methodDeclarations,
+            std::vector<std::unique_ptr<ConstructorDeclarationNode>>&& constructorDeclarations,
+            std::vector<std::unique_ptr<OperatorDeclarationNode>>&& operatorDeclarations,
             std::vector<DeclarationItem::MetadataTerm>&& metadata = {}
         ) {
             return std::make_unique<ClassDeclarationNode>(
@@ -175,7 +178,10 @@ namespace vnlc {
                 std::move(baseClass),
                 std::move(implementedInterfaces),
                 std::move(genericParameters),
-                std::move(memberDeclarations),
+                std::move(propertyDeclarations),
+                std::move(methodDeclarations),
+                std::move(constructorDeclarations),
+                std::move(operatorDeclarations),
                 testToken,
                 testToken,
                 std::move(metadata)
@@ -1026,15 +1032,16 @@ namespace vnlc {
         std::vector<std::unique_ptr<IdentifierNode>> genericParameters;
         genericParameters.push_back(makeIdentifier("T"));
 
-        std::vector<std::unique_ptr<DeclarationNode>> members;
-        members.push_back(makeValue(
+        std::vector<std::unique_ptr<ValueDeclarationNode>> properties;
+        properties.push_back(makeValue(
             ValueDeclarationKind::Kind::STATIC_PROPERTY,
             ValueDeclarationKind::Context::CLASS,
             ValueDeclarationKind::AccessModifier::PROTECTED,
             "count",
             std::make_optional(std::move(propertyType))
         ));
-        members.push_back(makeFunction(
+        std::vector<std::unique_ptr<FunctionDeclarationNode>> methods;
+        methods.push_back(makeFunction(
             FunctionDeclarationKind::Kind::NATIVE,
             FunctionDeclarationKind::Context::CLASS,
             FunctionDeclarationKind::AccessModifier::PUBLIC,
@@ -1043,7 +1050,7 @@ namespace vnlc {
             {},
             std::nullopt
         ));
-        members.push_back(makeFunction(
+        methods.push_back(makeFunction(
             FunctionDeclarationKind::Kind::REGULAR,
             FunctionDeclarationKind::Context::CLASS,
             FunctionDeclarationKind::AccessModifier::PRIVATE,
@@ -1052,6 +1059,7 @@ namespace vnlc {
             {},
             std::make_optional(std::move(methodReturnType))
         ));
+        std::vector<std::unique_ptr<ConstructorDeclarationNode>> constructors;
         std::vector<std::unique_ptr<ValueDeclarationNode>> constructorParameters;
         constructorParameters.push_back(makeValue(
             ValueDeclarationKind::Kind::PARAMETER,
@@ -1060,7 +1068,8 @@ namespace vnlc {
             "amount",
             std::make_optional(std::move(constructorParameterType))
         ));
-        members.push_back(makeConstructor(ConstructorDeclarationKind::AccessModifier::PROTECTED, std::move(constructorParameters), makeMetadata()));
+        constructors.push_back(makeConstructor(ConstructorDeclarationKind::AccessModifier::PROTECTED, std::move(constructorParameters), makeMetadata()));
+        std::vector<std::unique_ptr<OperatorDeclarationNode>> operators;
         std::vector<std::unique_ptr<ValueDeclarationNode>> operatorParameters;
         operatorParameters.push_back(makeValue(
             ValueDeclarationKind::Kind::PARAMETER,
@@ -1069,7 +1078,7 @@ namespace vnlc {
             "other",
             std::make_optional(std::move(operatorParameterType))
         ));
-        members.push_back(makeOperator(
+        operators.push_back(makeOperator(
             OperatorDeclarationKind::Kind::ADDITION,
             OperatorDeclarationKind::Context::CLASS,
             OperatorDeclarationKind::AccessModifier::PROTECTED,
@@ -1084,7 +1093,7 @@ namespace vnlc {
             "other",
             std::make_optional(std::move(secondOperatorParameterType))
         ));
-        members.push_back(makeOperator(
+        operators.push_back(makeOperator(
             OperatorDeclarationKind::Kind::ADDITION,
             OperatorDeclarationKind::Context::CLASS,
             OperatorDeclarationKind::AccessModifier::PUBLIC,
@@ -1092,12 +1101,23 @@ namespace vnlc {
             std::make_optional(std::move(secondOperatorReturnType))
         ));
 
-        auto declaration = makeClass(true, "Box", std::make_optional(std::move(baseClass)), std::move(implementedInterfaces), std::move(genericParameters), std::move(members), makeMetadata());
-        dynamic_cast<const FunctionDeclarationNode*>(declaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_reset__");
-        dynamic_cast<const FunctionDeclarationNode*>(declaration->getMemberDeclarations()[2].get())->setInternalName("__vnl_function_label__");
-        dynamic_cast<const ConstructorDeclarationNode*>(declaration->getMemberDeclarations()[3].get())->setInternalName("__vnl_constructor--int__");
-        dynamic_cast<const OperatorDeclarationNode*>(declaration->getMemberDeclarations()[4].get())->setInternalName("__vnl_operator_addition--int__");
-        dynamic_cast<const OperatorDeclarationNode*>(declaration->getMemberDeclarations()[5].get())->setInternalName("__vnl_operator_addition--string__");
+        auto declaration = makeClass(
+            true,
+            "Box",
+            std::make_optional(std::move(baseClass)),
+            std::move(implementedInterfaces),
+            std::move(genericParameters),
+            std::move(properties),
+            std::move(methods),
+            std::move(constructors),
+            std::move(operators),
+            makeMetadata()
+        );
+        declaration->getMethodDeclarations()[0]->setInternalName("__vnl_function_reset__");
+        declaration->getMethodDeclarations()[1]->setInternalName("__vnl_function_label__");
+        declaration->getConstructorDeclarations()[0]->setInternalName("__vnl_constructor--int__");
+        declaration->getOperatorDeclarations()[0]->setInternalName("__vnl_operator_addition--int__");
+        declaration->getOperatorDeclarations()[1]->setInternalName("__vnl_operator_addition--string__");
         const auto* declarationNode = declaration.get();
         const auto semantic = makeSemanticResult(
             {

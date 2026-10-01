@@ -119,18 +119,16 @@ namespace vnlc {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
         ASSERT_NE(classDeclaration, nullptr);
-        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 2);
+        ASSERT_EQ(classDeclaration->getPropertyDeclarations().size(), 2);
 
-        const auto* instanceProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get());
-        ASSERT_NE(instanceProperty, nullptr);
+        const auto* instanceProperty = classDeclaration->getPropertyDeclarations()[0].get();
         EXPECT_EQ(instanceProperty->getKind(), ValueDeclarationKind::Kind::INSTANCE_PROPERTY);
         EXPECT_EQ(instanceProperty->getContext(), ValueDeclarationKind::Context::CLASS);
         EXPECT_EQ(instanceProperty->getAccessModifier(), ValueDeclarationKind::AccessModifier::PRIVATE);
         EXPECT_TRUE(instanceProperty->getType().has_value());
         EXPECT_FALSE(instanceProperty->getInitializer().has_value());
 
-        const auto* staticProperty = dynamic_cast<const ValueDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get());
-        ASSERT_NE(staticProperty, nullptr);
+        const auto* staticProperty = classDeclaration->getPropertyDeclarations()[1].get();
         EXPECT_EQ(staticProperty->getKind(), ValueDeclarationKind::Kind::STATIC_PROPERTY);
         EXPECT_EQ(staticProperty->getContext(), ValueDeclarationKind::Context::CLASS);
         EXPECT_EQ(staticProperty->getAccessModifier(), ValueDeclarationKind::AccessModifier::PUBLIC);
@@ -158,10 +156,9 @@ namespace vnlc {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
         ASSERT_NE(classDeclaration, nullptr);
-        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 1);
+        ASSERT_EQ(classDeclaration->getConstructorDeclarations().size(), 1);
 
-        const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(classDeclaration->getMemberDeclarations().front().get());
-        ASSERT_NE(constructor, nullptr);
+        const auto* constructor = classDeclaration->getConstructorDeclarations().front().get();
         EXPECT_TRUE(constructor->getInternalName().empty());
         EXPECT_EQ(constructor->getAccessModifier(), ConstructorDeclarationKind::AccessModifier::PROTECTED);
         ASSERT_EQ(constructor->getParameters().size(), 1);
@@ -240,10 +237,9 @@ namespace vnlc {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations()[0].get());
         ASSERT_NE(classDeclaration, nullptr);
-        ASSERT_EQ(classDeclaration->getMemberDeclarations().size(), 3);
+        ASSERT_EQ(classDeclaration->getOperatorDeclarations().size(), 3);
 
-        const auto* addition = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get());
-        ASSERT_NE(addition, nullptr);
+        const auto* addition = classDeclaration->getOperatorDeclarations()[0].get();
         EXPECT_EQ(addition->getKind(), OperatorDeclarationKind::Kind::ADDITION);
         EXPECT_EQ(addition->getContext(), OperatorDeclarationKind::Context::CLASS);
         EXPECT_EQ(addition->getAccessModifier(), OperatorDeclarationKind::AccessModifier::PROTECTED);
@@ -254,14 +250,12 @@ namespace vnlc {
         EXPECT_TRUE(addition->getReturnType().has_value());
         EXPECT_TRUE(addition->getBody().has_value());
 
-        const auto* subscript = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get());
-        ASSERT_NE(subscript, nullptr);
+        const auto* subscript = classDeclaration->getOperatorDeclarations()[1].get();
         EXPECT_EQ(subscript->getKind(), OperatorDeclarationKind::Kind::SUBSCRIPT);
         EXPECT_EQ(subscript->getOperatorName(), "subscript");
         EXPECT_TRUE(subscript->getInternalName().empty());
 
-        const auto* equality = dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[2].get());
-        ASSERT_NE(equality, nullptr);
+        const auto* equality = classDeclaration->getOperatorDeclarations()[2].get();
         EXPECT_EQ(equality->getKind(), OperatorDeclarationKind::Kind::EQUAL);
         EXPECT_EQ(equality->getOperatorName(), "equality");
         EXPECT_TRUE(equality->getInternalName().empty());
@@ -280,6 +274,42 @@ namespace vnlc {
         EXPECT_EQ(call->getKind(), OperatorDeclarationKind::Kind::CALL);
         EXPECT_EQ(call->getOperatorName(), "call");
         EXPECT_TRUE(call->getInternalName().empty());
+    }
+
+    TEST(ParserTest, DistributesClassMembersIntoDeclarationKinds) {
+        std::stringstream input(
+            "class Example {\n"
+            "    value: int\n"
+            "    static count: int = 0\n"
+            "    func reset() {}\n"
+            "    init() {}\n"
+            "    op +(other: Example) -> Example {\n"
+            "        return this\n"
+            "    }\n"
+            "}\n"
+        );
+
+        Config config{
+            .mode = RunningMode::COMPILE,
+            .vanillangVersion = "1.0",
+            .minecraftVersion = "26.1.2",
+            .packageRootPath = std::filesystem::current_path(),
+            .inputFilePath = std::filesystem::current_path() / "test.vnl",
+            .outputDirectory = std::nullopt,
+            .dependencyPackageRootPaths = {},
+            .optimizationLevel = std::nullopt,
+        };
+
+        auto result = parseModule(input, config);
+        const auto& module = result.getModuleNode();
+        ASSERT_EQ(module.getTopIdentifierDeclarations().size(), 1);
+
+        const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module.getTopIdentifierDeclarations().front().get());
+        ASSERT_NE(classDeclaration, nullptr);
+        EXPECT_EQ(classDeclaration->getPropertyDeclarations().size(), 2);
+        EXPECT_EQ(classDeclaration->getMethodDeclarations().size(), 1);
+        EXPECT_EQ(classDeclaration->getConstructorDeclarations().size(), 1);
+        EXPECT_EQ(classDeclaration->getOperatorDeclarations().size(), 1);
     }
 
     TEST(ParserTest, ParsesNoneAsPrimaryExpression) {

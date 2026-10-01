@@ -237,9 +237,9 @@ interface Addable {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations()[0].get());
         ASSERT_NE(classDeclaration, nullptr);
-        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_operator_addition--Vec3__");
-        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_operator_addition--int__");
-        dynamic_cast<const OperatorDeclarationNode*>(classDeclaration->getMemberDeclarations()[2].get())->setInternalName("__vnl_operator_subscript--int__");
+        classDeclaration->getOperatorDeclarations()[0]->setInternalName("__vnl_operator_addition--Vec3__");
+        classDeclaration->getOperatorDeclarations()[1]->setInternalName("__vnl_operator_addition--int__");
+        classDeclaration->getOperatorDeclarations()[2]->setInternalName("__vnl_operator_subscript--int__");
 
         const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(module->getTopIdentifierDeclarations()[1].get());
         ASSERT_NE(interfaceDeclaration, nullptr);
@@ -297,8 +297,8 @@ class Vec3 {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(module->getTopIdentifierDeclarations().front().get());
         ASSERT_NE(classDeclaration, nullptr);
-        for (const auto& member : classDeclaration->getMemberDeclarations()) {
-            dynamic_cast<const OperatorDeclarationNode*>(member.get())->setInternalName("__vnl_operator_addition--int__");
+        for (const auto& operatorDeclaration : classDeclaration->getOperatorDeclarations()) {
+            operatorDeclaration->setInternalName("__vnl_operator_addition--int__");
         }
 
         const std::unordered_map<std::string, std::unique_ptr<ImportedPackage>> imports;
@@ -332,8 +332,8 @@ interface Readable {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(topLevelDeclarations[2].get());
         ASSERT_NE(classDeclaration, nullptr);
-        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_function_convert--int__");
-        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_convert--string__");
+        classDeclaration->getMethodDeclarations()[0]->setInternalName("__vnl_function_convert--int__");
+        classDeclaration->getMethodDeclarations()[1]->setInternalName("__vnl_function_convert--string__");
 
         const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(topLevelDeclarations[3].get());
         ASSERT_NE(interfaceDeclaration, nullptr);
@@ -393,8 +393,8 @@ interface Duplicable {
 
         const auto* classDeclaration = dynamic_cast<const ClassDeclarationNode*>(topLevelDeclarations[2].get());
         ASSERT_NE(classDeclaration, nullptr);
-        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[0].get())->setInternalName("__vnl_function_duplicate--int__");
-        dynamic_cast<const FunctionDeclarationNode*>(classDeclaration->getMemberDeclarations()[1].get())->setInternalName("__vnl_function_duplicate--int__");
+        classDeclaration->getMethodDeclarations()[0]->setInternalName("__vnl_function_duplicate--int__");
+        classDeclaration->getMethodDeclarations()[1]->setInternalName("__vnl_function_duplicate--int__");
 
         const auto* interfaceDeclaration = dynamic_cast<const InterfaceDeclarationNode*>(topLevelDeclarations[3].get());
         ASSERT_NE(interfaceDeclaration, nullptr);
