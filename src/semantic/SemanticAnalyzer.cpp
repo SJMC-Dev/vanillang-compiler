@@ -535,13 +535,15 @@ namespace vnlc {
         std::unordered_set<std::string> operatorNames;
         std::unordered_set<std::string> constructorNames;
 
-        for (const auto& member : classNode.getMemberDeclarations()) {
-            if (auto* varDecl = dynamic_cast<ValueDeclarationNode*>(member.get())) {
-                RegularSymbol
-                    memberSymbol(RegularSymbolKind::PROPERTY, static_cast<RegularSymbolAccessModifier>(varDecl->getAccessModifier()), varDecl->getName().getIdentifierString(), varDecl);
-                if (!context.currentScope().declare(std::move(memberSymbol))) {
-                    context.reportError(*varDecl, fmt::format("Redeclaration of class member '{}'", varDecl->getName().getIdentifierString()));
-                }
+        for (const auto& propertyDecl : classNode.getPropertyDeclarations()) {
+            RegularSymbol memberSymbol(
+                RegularSymbolKind::PROPERTY,
+                static_cast<RegularSymbolAccessModifier>(propertyDecl->getAccessModifier()),
+                propertyDecl->getName().getIdentifierString(),
+                propertyDecl.get()
+            );
+            if (!context.currentScope().declare(std::move(memberSymbol))) {
+                context.reportError(*propertyDecl, fmt::format("Redeclaration of class member '{}'", propertyDecl->getName().getIdentifierString()));
             }
         }
 
@@ -552,28 +554,32 @@ namespace vnlc {
             }
         }
 
-        for (const auto& member : classNode.getMemberDeclarations()) {
-            if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
-                declareFunctionOverloading(*funcDecl, RegularSymbolKind::METHOD, "class member");
-            } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
-                if (!operatorNames.insert(std::string(operatorDecl->getInternalName())).second) {
-                    context.reportError(*operatorDecl, fmt::format("Redeclaration of class member '{}'", operatorDecl->getInternalName()));
-                }
-            } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
-                if (!constructorNames.insert(std::string(constructorDecl->getInternalName())).second) {
-                    context.reportError(*constructorDecl, fmt::format("Redeclaration of class member '{}'", constructorDecl->getInternalName()));
-                }
+        for (const auto& methodDecl : classNode.getMethodDeclarations()) {
+            declareFunctionOverloading(*methodDecl, RegularSymbolKind::METHOD, "class member");
+        }
+
+        for (const auto& constructorDecl : classNode.getConstructorDeclarations()) {
+            if (!constructorNames.insert(std::string(constructorDecl->getInternalName())).second) {
+                context.reportError(*constructorDecl, fmt::format("Redeclaration of class member '{}'", constructorDecl->getInternalName()));
             }
         }
 
-        for (const auto& member : classNode.getMemberDeclarations()) {
-            if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
-                collectLocalSymbolsInFunction(*funcDecl);
-            } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
-                collectLocalSymbolsInConstructor(*constructorDecl);
-            } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
-                collectLocalSymbolsInOperator(*operatorDecl);
+        for (const auto& operatorDecl : classNode.getOperatorDeclarations()) {
+            if (!operatorNames.insert(std::string(operatorDecl->getInternalName())).second) {
+                context.reportError(*operatorDecl, fmt::format("Redeclaration of class member '{}'", operatorDecl->getInternalName()));
             }
+        }
+
+        for (const auto& methodDecl : classNode.getMethodDeclarations()) {
+            collectLocalSymbolsInFunction(*methodDecl);
+        }
+
+        for (const auto& constructorDecl : classNode.getConstructorDeclarations()) {
+            collectLocalSymbolsInConstructor(*constructorDecl);
+        }
+
+        for (const auto& operatorDecl : classNode.getOperatorDeclarations()) {
+            collectLocalSymbolsInOperator(*operatorDecl);
         }
 
         context.popScope();
@@ -998,18 +1004,20 @@ namespace vnlc {
             return;
         }
 
-        for (const auto& member : classDecl.getMemberDeclarations()) {
-            if (auto* varDecl = dynamic_cast<ValueDeclarationNode*>(member.get())) {
-                checkValueDeclaration(*varDecl);
-            } else if (auto* funcDecl = dynamic_cast<FunctionDeclarationNode*>(member.get())) {
-                checkFunctionDeclaration(*funcDecl);
-            } else if (auto* constructorDecl = dynamic_cast<ConstructorDeclarationNode*>(member.get())) {
-                checkConstructorDeclaration(*constructorDecl);
-            } else if (auto* operatorDecl = dynamic_cast<OperatorDeclarationNode*>(member.get())) {
-                checkOperatorDeclaration(*operatorDecl);
-            } else {
-                context.reportError(*member, "Invalid class member declaration");
-            }
+        for (const auto& propertyDecl : classDecl.getPropertyDeclarations()) {
+            checkValueDeclaration(*propertyDecl);
+        }
+
+        for (const auto& methodDecl : classDecl.getMethodDeclarations()) {
+            checkFunctionDeclaration(*methodDecl);
+        }
+
+        for (const auto& constructorDecl : classDecl.getConstructorDeclarations()) {
+            checkConstructorDeclaration(*constructorDecl);
+        }
+
+        for (const auto& operatorDecl : classDecl.getOperatorDeclarations()) {
+            checkOperatorDeclaration(*operatorDecl);
         }
 
         context.popScope();

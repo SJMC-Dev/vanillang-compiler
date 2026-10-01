@@ -158,16 +158,20 @@ namespace vnlc {
         nlohmann::json constructorsObj = nlohmann::json::object();
         nlohmann::json operatorsObj = nlohmann::json::object();
 
-        for (const auto& memberDeclaration : classNode->getMemberDeclarations()) {
-            if (const auto* property = dynamic_cast<const ValueDeclarationNode*>(memberDeclaration.get())) {
-                propertiesObj.emplace(property->getName().getIdentifierString(), stringifyProperty(property));
-            } else if (const auto* method = dynamic_cast<const FunctionDeclarationNode*>(memberDeclaration.get())) {
-                methodsObj.emplace(method->getInternalName(), stringifyMethod(method));
-            } else if (const auto* constructor = dynamic_cast<const ConstructorDeclarationNode*>(memberDeclaration.get())) {
-                constructorsObj.emplace(constructor->getInternalName(), stringifyConstructor(constructor));
-            } else if (const auto* operatorNode = dynamic_cast<const OperatorDeclarationNode*>(memberDeclaration.get())) {
-                operatorsObj.emplace(operatorNode->getInternalName(), stringifyOperator(operatorNode));
-            }
+        for (const auto& property : classNode->getPropertyDeclarations()) {
+            propertiesObj.emplace(property->getName().getIdentifierString(), stringifyProperty(property.get()));
+        }
+
+        for (const auto& method : classNode->getMethodDeclarations()) {
+            methodsObj.emplace(method->getInternalName(), stringifyMethod(method.get()));
+        }
+
+        for (const auto& constructor : classNode->getConstructorDeclarations()) {
+            constructorsObj.emplace(constructor->getInternalName(), stringifyConstructor(constructor.get()));
+        }
+
+        for (const auto& operatorNode : classNode->getOperatorDeclarations()) {
+            operatorsObj.emplace(operatorNode->getInternalName(), stringifyOperator(operatorNode.get()));
         }
 
         classObj.emplace("properties", propertiesObj);

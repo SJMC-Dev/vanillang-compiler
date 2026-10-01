@@ -1062,7 +1062,10 @@ namespace vnlc {
         std::optional<std::unique_ptr<TypeReferenceNode>> baseClass = std::nullopt;
         std::vector<std::unique_ptr<TypeReferenceNode>> implementedInterfaces;
         std::vector<std::unique_ptr<IdentifierNode>> genericParameterNames;
-        std::vector<std::unique_ptr<DeclarationNode>> memberDeclarations;
+        std::vector<std::unique_ptr<ValueDeclarationNode>> propertyDeclarations;
+        std::vector<std::unique_ptr<FunctionDeclarationNode>> methodDeclarations;
+        std::vector<std::unique_ptr<ConstructorDeclarationNode>> constructorDeclarations;
+        std::vector<std::unique_ptr<OperatorDeclarationNode>> operatorDeclarations;
 
         Token firstToken = peek();
 
@@ -1105,6 +1108,18 @@ namespace vnlc {
 
         auto bodyResult = parseClassBody();
 
+        for (auto& declaration : bodyResult.declarations) {
+            if (dynamic_cast<ValueDeclarationNode*>(declaration.get())) {
+                propertyDeclarations.emplace_back(static_cast<ValueDeclarationNode*>(declaration.release()));
+            } else if (dynamic_cast<FunctionDeclarationNode*>(declaration.get())) {
+                methodDeclarations.emplace_back(static_cast<FunctionDeclarationNode*>(declaration.release()));
+            } else if (dynamic_cast<ConstructorDeclarationNode*>(declaration.get())) {
+                constructorDeclarations.emplace_back(static_cast<ConstructorDeclarationNode*>(declaration.release()));
+            } else if (dynamic_cast<OperatorDeclarationNode*>(declaration.get())) {
+                operatorDeclarations.emplace_back(static_cast<OperatorDeclarationNode*>(declaration.release()));
+            }
+        }
+
         Token lastToken = peek();
 
         if (context.hasMetadata) {
@@ -1115,7 +1130,10 @@ namespace vnlc {
                     std::move(baseClass),
                     std::move(implementedInterfaces),
                     std::move(genericParameterNames),
-                    std::move(bodyResult.declarations),
+                    std::move(propertyDeclarations),
+                    std::move(methodDeclarations),
+                    std::move(constructorDeclarations),
+                    std::move(operatorDeclarations),
                     firstToken,
                     lastToken,
                     std::move(context.metadataTerms)
@@ -1129,7 +1147,10 @@ namespace vnlc {
                     std::move(baseClass),
                     std::move(implementedInterfaces),
                     std::move(genericParameterNames),
-                    std::move(bodyResult.declarations),
+                    std::move(propertyDeclarations),
+                    std::move(methodDeclarations),
+                    std::move(constructorDeclarations),
+                    std::move(operatorDeclarations),
                     firstToken,
                     lastToken
                 ),
@@ -1167,9 +1188,9 @@ namespace vnlc {
         auto bodyResult = parseInterfaceBody();
 
         for (auto& declaration : bodyResult.declarations) {
-            if (auto* methodDeclaration = dynamic_cast<FunctionDeclarationNode*>(declaration.get())) {
+            if (dynamic_cast<FunctionDeclarationNode*>(declaration.get())) {
                 methodDeclarations.emplace_back(static_cast<FunctionDeclarationNode*>(declaration.release()));
-            } else if (auto* operatorDeclaration = dynamic_cast<OperatorDeclarationNode*>(declaration.get())) {
+            } else if (dynamic_cast<OperatorDeclarationNode*>(declaration.get())) {
                 operatorDeclarations.emplace_back(static_cast<OperatorDeclarationNode*>(declaration.release()));
             }
         }
